@@ -1,0 +1,19 @@
+# Configuration for Black Hole
+# All paths are relative to project root
+
+[phase1]
+hidden_dim = 64
+num_layers = 3
+omega_0 = 30.0
+epochs = 3000
+learning_rate = 0.001
+
+[phase2]
+idle_threshold = 15.0
+check_interval = 2.0
+recipe_dir = "./recipes"
+max_background_size = 50000
+
+[phase3]
+cache_limit = 1073741824  # 1GB in-memory cache
+ejection_mode = "direct"  # direct | simulated
