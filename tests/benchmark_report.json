@@ -1,0 +1,67 @@
+[
+  {
+    "file": "test_pattern.bin",
+    "type": "Structured Pattern",
+    "original_size": 1000,
+    "zip_size": 124,
+    "zip_ratio": 8.064516129032258,
+    "zip_time": 0.008295059204101562,
+    "bh_recipe_size": 194081,
+    "bh_ratio": 0.005152487878772265,
+    "bh_time": 5.471046686172485,
+    "bh_psnr": 13.339641571044922,
+    "bh_accuracy": 1.0999999999999999
+  },
+  {
+    "file": "test_text.txt",
+    "type": "Text Document",
+    "original_size": 6900,
+    "zip_size": 209,
+    "zip_ratio": 33.014354066985646,
+    "zip_time": 0.006787538528442383,
+    "bh_recipe_size": 194553,
+    "bh_ratio": 0.035465914172487706,
+    "bh_time": 55.9836003780365,
+    "bh_psnr": 19.034866333007812,
+    "bh_accuracy": 0.08695652173913043
+  },
+  {
+    "file": "test_image.raw",
+    "type": "Image (16x16 RGB flattened)",
+    "original_size": 768,
+    "zip_size": 720,
+    "zip_ratio": 1.0666666666666667,
+    "zip_time": 0.00833439826965332,
+    "bh_recipe_size": 194378,
+    "bh_ratio": 0.003951064420870675,
+    "bh_time": 4.351163864135742,
+    "bh_psnr": 14.405852317810059,
+    "bh_accuracy": 1.3020833333333335
+  },
+  {
+    "file": "test_audio.raw",
+    "type": "Audio (440Hz+880Hz sine)",
+    "original_size": 800,
+    "zip_size": 742,
+    "zip_ratio": 1.0781671159029649,
+    "zip_time": 0.006797075271606445,
+    "bh_recipe_size": 194398,
+    "bh_ratio": 0.004115268675603658,
+    "bh_time": 4.719867706298828,
+    "bh_psnr": 35.35184860229492,
+    "bh_accuracy": 13.0
+  },
+  {
+    "file": "test_random.bin",
+    "type": "Random (Kolmogorov Limit)",
+    "original_size": 1000,
+    "zip_size": 1111,
+    "zip_ratio": 0.9000900090009001,
+    "zip_time": 0.006628990173339844,
+    "bh_recipe_size": 194377,
+    "bh_ratio": 0.005144641598543037,
+    "bh_time": 2.0633277893066406,
+    "bh_psnr": 11.99439811706543,
+    "bh_accuracy": 0.7000000000000001
+  }
+]
