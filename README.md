@@ -9,6 +9,7 @@
 **Created by:** Darlan Pereira da Silva  
 **Contact:** darlan1027pc@gmail.com  
 **GitHub:** [Kronos1027](https://github.com/Kronos1027)  
+**X (Twitter):** [@0NATSKY0](https://x.com/0NATSKY0)  
 
 This is a personal research project born from the vision of replacing static file storage with neural mathematical representations. Every line of architecture, concept, and implementation direction was conceived by the author. This repository documents the journey from idea to executable prototype.
 

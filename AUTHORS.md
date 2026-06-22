@@ -4,6 +4,7 @@
 
 **Darlan Pereira da Silva**
 - GitHub: [@Kronos1027](https://github.com/Kronos1027)
+- X (Twitter): [@0NATSKY0](https://x.com/0NATSKY0)
 - Email: darlan1027pc@gmail.com
 - Location: Brazil
 
