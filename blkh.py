@@ -233,6 +233,85 @@ def cmd_benchmark(args):
               f"PSNR={res['psnr_db']:.1f}  {dt:.1f}s  {winner}")
 
 
+def cmd_atlas(args):
+    """Compress N similar images into a shared .bla5 atlas recipe."""
+    import numpy as np
+    from siren_v5_atlas import AtlasCompressor
+
+    inputs = args.inputs
+    if len(inputs) < 2:
+        print("[BLKH] Atlas needs at least 2 input images.")
+        sys.exit(1)
+
+    images = []
+    for path in inputs:
+        try:
+            from PIL import Image
+            img = np.array(Image.open(path).convert('RGB'), dtype=np.uint8)
+            images.append(img)
+            print(f"[BLKH] Loaded: {path} ({img.shape})")
+        except Exception as e:
+            print(f"[BLKH] Failed to load {path}: {e}")
+            sys.exit(1)
+
+    total_orig = sum(im.nbytes for im in images)
+    zip_total = sum(len(zlib.compress(im.tobytes(), 9)) for im in images)
+    print(f"\n[BLKH] Atlas: {len(images)} images, total {total_orig:,}B")
+    print(f"[BLKH] ZIP per-file total: {zip_total:,}B ({total_orig/zip_total:.2f}x)")
+    print(f"[BLKH] Config: epochs={args.epochs} hidden={args.hidden} layers={args.layers}")
+
+    comp = AtlasCompressor(hidden_features=args.hidden,
+                            hidden_layers=args.layers,
+                            omega_0=args.omega)
+    t0 = time.time()
+    res = comp.compress(images, epochs=args.epochs, lr=1e-3,
+                         bits=args.bits, batch_size=4096, verbose=True)
+    dt = time.time() - t0
+
+    Path(args.output).write_bytes(res['recipe_bytes'])
+    winner = "BLKH" if res['recipe_size'] < zip_total else "ZIP"
+    print(f"\n[BLKH] Atlas result:")
+    print(f"  Original:    {total_orig:>10,} B")
+    print(f"  ZIP:         {zip_total:>10,} B  (ratio {total_orig/zip_total:.2f}x)")
+    print(f"  BLKH Atlas:  {res['recipe_size']:>10,} B  (ratio {total_orig/res['recipe_size']:.2f}x)")
+    print(f"    weights (shared): {res['weights_packed_size']:,} B "
+          f"-> {res['weights_packed_size']/len(images):.0f} B/image amortized")
+    print(f"    residuals:        {res['residual_total']:,} B "
+          f"-> {res['residual_per_image']:.0f} B/image")
+    print(f"  Bit acc avg: {res['avg_bit_pct']:.1f}%")
+    print(f"  Winner: {winner}  (BLKH/ZIP = {res['recipe_size']/zip_total:.3f})")
+    print(f"  Time: {dt:.1f}s")
+    print(f"  Output: {args.output}")
+
+
+def cmd_atlas_decompress(args):
+    """Decompress a .bla5 atlas recipe into N images."""
+    import numpy as np
+    from siren_v5_atlas import AtlasCompressor
+
+    recipe = Path(args.input).read_bytes()
+    t0 = time.time()
+    images, meta = AtlasCompressor.decompress(recipe)
+    dt = time.time() - t0
+    print(f"[BLKH] Atlas: decompressed {meta['n_images']} images in {dt*1000:.0f}ms")
+    print(f"  All SHA-256 match: {meta['all_sha256_match']}")
+    if not meta['all_sha256_match']:
+        print(f"  WARNING: some images failed SHA-256 verification!")
+        sys.exit(1)
+    if args.output_dir:
+        out_dir = Path(args.output_dir)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            from PIL import Image
+            for i, img in enumerate(images):
+                Image.fromarray(img).save(out_dir / f"recovered_{i:03d}.png")
+            print(f"  Saved {len(images)} images to: {out_dir}")
+        except ImportError:
+            for i, img in enumerate(images):
+                (out_dir / f"recovered_{i:03d}.raw").write_bytes(img.tobytes())
+            print(f"  Saved {len(images)} raw files to: {out_dir} (install Pillow for PNG)")
+
+
 def main():
     p = argparse.ArgumentParser(prog='blkh',
                                  description='Black Hole — Neural Implicit Compression')
@@ -264,6 +343,22 @@ def main():
     p_b = sub.add_parser('benchmark', help='Benchmark BLKH vs ZIP on a file')
     p_b.add_argument('input')
     p_b.set_defaults(func=cmd_benchmark)
+
+    p_a = sub.add_parser('atlas', help='Compress N similar images into a shared .bla5 atlas')
+    p_a.add_argument('inputs', nargs='+', help='Input image files (2 or more)')
+    p_a.add_argument('output', help='Output .bla5 atlas recipe')
+    p_a.add_argument('--epochs', type=int, default=1500)
+    p_a.add_argument('--bits', type=int, default=8, choices=[4, 8])
+    p_a.add_argument('--hidden', type=int, default=64)
+    p_a.add_argument('--layers', type=int, default=3)
+    p_a.add_argument('--omega', type=float, default=30.0)
+    p_a.set_defaults(func=cmd_atlas)
+
+    p_ad = sub.add_parser('atlas-decompress', help='Decompress a .bla5 atlas into N images')
+    p_ad.add_argument('input', help='Input .bla5 atlas recipe')
+    p_ad.add_argument('output_dir', nargs='?', default=None,
+                      help='Output directory (default: just verify SHA-256)')
+    p_ad.set_defaults(func=cmd_atlas_decompress)
 
     args = p.parse_args()
     args.func(args)
