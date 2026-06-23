@@ -250,7 +250,11 @@ class SIREN2DV4:
         if bits == 4:
             binary = binary_pack_4bit(q_layers)
         else:
-            from .siren_v3 import binary_pack_weights
+            # Import from siren_v3 module (works as script or package)
+            try:
+                from .siren_v3 import binary_pack_weights
+            except ImportError:
+                from siren_v3 import binary_pack_weights
             binary = binary_pack_weights(q_layers, bits)
         with open(path, 'wb') as f:
             f.write(binary)
@@ -262,7 +266,10 @@ class SIREN2DV4:
         if bits == 4:
             q_layers = binary_unpack_4bit(binary)
         else:
-            from .siren_v3 import binary_unpack_weights
+            try:
+                from .siren_v3 import binary_unpack_weights
+            except ImportError:
+                from siren_v3 import binary_unpack_weights
             q_layers = binary_unpack_weights(binary)
         for layer, q in zip(self.layers, q_layers):
             layer.dequantize(q)

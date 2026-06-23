@@ -12,6 +12,7 @@ Measures: encode time, decode time, peak RAM, file size, PSNR
 """
 import sys
 import os
+import io
 import time
 import tracemalloc
 import tempfile
@@ -99,7 +100,7 @@ def benchmark_jpeg(image, quality=85):
     
     # Encode
     def encode():
-        buf = tempfile.BytesIO()
+        buf = io.BytesIO()
         pil_img.save(buf, format='JPEG', quality=quality)
         return buf.getvalue()
     
@@ -107,7 +108,7 @@ def benchmark_jpeg(image, quality=85):
     
     # Decode
     def decode():
-        buf = tempfile.BytesIO(jpeg_data)
+        buf = io.BytesIO(jpeg_data)
         return np.array(Image.open(buf))
     
     recon, dec_time, dec_mem = measure_memory_and_time(decode)
@@ -128,14 +129,14 @@ def benchmark_png(image):
     pil_img = Image.fromarray(image)
     
     def encode():
-        buf = tempfile.BytesIO()
+        buf = io.BytesIO()
         pil_img.save(buf, format='PNG')
         return buf.getvalue()
     
     png_data, enc_time, enc_mem = measure_memory_and_time(encode)
     
     def decode():
-        buf = tempfile.BytesIO(png_data)
+        buf = io.BytesIO(png_data)
         return np.array(Image.open(buf))
     
     recon, dec_time, dec_mem = measure_memory_and_time(decode)

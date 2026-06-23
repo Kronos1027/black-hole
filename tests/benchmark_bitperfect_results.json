@@ -1,0 +1,72 @@
+[
+  {
+    "name": "gradient_64",
+    "orig_size": 12288,
+    "zip_size": 10207,
+    "siren_recipe": 1320,
+    "residual_compressed": 5757,
+    "total_recipe": 7158,
+    "model_bit_pct": 79.99,
+    "psnr_db": 50.12,
+    "sha256_match": true,
+    "compress_time_s": 5.03,
+    "winner": "BLKH",
+    "blkh_vs_zip": 0.701
+  },
+  {
+    "name": "gradient_128",
+    "orig_size": 49152,
+    "zip_size": 45015,
+    "siren_recipe": 1320,
+    "residual_compressed": 24585,
+    "total_recipe": 25986,
+    "model_bit_pct": 77.66,
+    "psnr_db": 48.18,
+    "sha256_match": true,
+    "compress_time_s": 26.54,
+    "winner": "BLKH",
+    "blkh_vs_zip": 0.577
+  },
+  {
+    "name": "blobs_64",
+    "orig_size": 12288,
+    "zip_size": 9066,
+    "siren_recipe": 1320,
+    "residual_compressed": 5575,
+    "total_recipe": 6976,
+    "model_bit_pct": 83.94,
+    "psnr_db": 51.58,
+    "sha256_match": true,
+    "compress_time_s": 2.95,
+    "winner": "BLKH",
+    "blkh_vs_zip": 0.769
+  },
+  {
+    "name": "blobs_128",
+    "orig_size": 49152,
+    "zip_size": 31812,
+    "siren_recipe": 1320,
+    "residual_compressed": 21991,
+    "total_recipe": 23392,
+    "model_bit_pct": 83.02,
+    "psnr_db": 45.99,
+    "sha256_match": true,
+    "compress_time_s": 26.96,
+    "winner": "BLKH",
+    "blkh_vs_zip": 0.735
+  },
+  {
+    "name": "random_64",
+    "orig_size": 12288,
+    "zip_size": 12299,
+    "siren_recipe": 1320,
+    "residual_compressed": 12264,
+    "total_recipe": 13665,
+    "model_bit_pct": 51.32,
+    "psnr_db": 11.65,
+    "sha256_match": true,
+    "compress_time_s": 2.85,
+    "winner": "ZIP",
+    "blkh_vs_zip": 1.111
+  }
+]
