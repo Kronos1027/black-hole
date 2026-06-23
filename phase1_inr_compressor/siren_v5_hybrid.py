@@ -94,11 +94,17 @@ class HybridCompressor:
 
     def __init__(self, hidden_features=32, hidden_layers=2, omega_0=30.0,
                  residual_codec: str = 'webp',
+                 auto_tune: bool = False,
                  device: str | None = None):
         """
         Args:
             residual_codec: 'webp' (best), 'png' (fallback), 'zlib' (original)
+            auto_tune: If True, automatically pick hidden_features and hidden_layers
+                       based on image size (from scaling benchmarks).
         """
+        self._auto_tune = auto_tune
+        self._user_hidden = hidden_features
+        self._user_layers = hidden_layers
         self.inner = ImageINRv5(
             hidden_features=hidden_features,
             hidden_layers=hidden_layers,
@@ -106,6 +112,22 @@ class HybridCompressor:
             device=device,
         )
         self.residual_codec = residual_codec
+
+    @staticmethod
+    def _auto_tune_config(H: int, W: int) -> tuple[int, int]:
+        """Pick optimal SIREN size based on image dimensions.
+        Derived from scaling benchmarks:
+          < 256px:   h=32, l=2 (fast, sufficient)
+          256-512px: h=64, l=3 (sweet spot, 4.5x vs ZIP)
+          > 512px:   h=128, l=3 (more capacity for large images)
+        """
+        max_dim = max(H, W)
+        if max_dim <= 256:
+            return 32, 2
+        elif max_dim <= 512:
+            return 64, 3
+        else:
+            return 128, 3
 
     def compress_bitperfect(self, image_array: np.ndarray,
                             epochs: int = 1500, lr: float = 1e-3,
@@ -117,6 +139,19 @@ class HybridCompressor:
         assert image_array.dtype == np.uint8 and image_array.ndim == 3
         H, W, C = image_array.shape
         original_bytes = image_array.tobytes()
+
+        # Auto-tune SIREN size if enabled
+        if self._auto_tune:
+            tuned_h, tuned_l = self._auto_tune_config(H, W)
+            if tuned_h != self.inner.hidden_features or tuned_l != self.inner.hidden_layers:
+                if verbose:
+                    print(f"  [auto-tune] h={tuned_h}, l={tuned_l} for {H}x{W} image")
+                self.inner = ImageINRv5(
+                    hidden_features=tuned_h,
+                    hidden_layers=tuned_l,
+                    omega_0=self.inner.omega_0,
+                    device=str(self.inner.device),
+                )
 
         # 1. Train SIREN
         meta = self.inner.compress(image_array, epochs=epochs, lr=lr,
