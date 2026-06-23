@@ -7,9 +7,10 @@ __pycache__/
 *.recipe.json
 recipes/
 daemon_stats.json
-# Ignore PNGs except those committed to docs/assets/ (chart images)
+# Ignore PNGs except those committed to docs/assets/ (chart images + sample photos)
 *.png
 !docs/assets/*.png
+!docs/assets/sample_photos/*.png
 *.jpg
 !docs/assets/*.jpg
 

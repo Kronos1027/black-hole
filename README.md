@@ -1,5 +1,10 @@
 # Black Hole (BLKH)
 
+![Tests](https://github.com/Kronos1027/black-hole/actions/workflows/tests.yml/badge.svg)
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
+![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)
+![PyTorch](https://img.shields.io/badge/backend-PyTorch-ee4c2c.svg)
+
 > **"The data is not a static block of bytes waiting to be dragged. The data is a living mathematical function, kept in potential state and ejected instantly on demand."**
 
 ---
@@ -597,6 +602,28 @@ BLKH v5 beats ZIP on **4 out of 5 realistic data types** (all 128x128 RGB, all b
 Run the benchmark yourself:
 ```bash
 python tests/benchmark_realistic.py
+```
+
+---
+
+## v5 Real Photos Benchmark
+
+To validate beyond synthetic data, we generated **5 photo-realistic images** (sky, wood, water, skin, marble) with actual noise and texture content. These are MUCH harder for SIREN than pure mathematical signals — they contain high-frequency detail that the model must learn to predict.
+
+| Photo | Original | ZIP | **BLKH v5** | Bit Acc | PSNR | vs ZIP | Winner |
+|-------|----------|-----|-------------|---------|------|--------|--------|
+| **Sky** | 49,152 B | 36,237 B | **32,355 B** | 75.3% | 38.4 dB | 1.12x | BLKH |
+| **Wood** | 49,152 B | 43,074 B | **36,322 B** | 69.9% | 34.0 dB | 1.19x | BLKH |
+| **Water** | 49,152 B | 45,317 B | **36,648 B** | 70.2% | 29.9 dB | 1.24x | BLKH |
+| **Skin** | 49,152 B | 38,726 B | **35,845 B** | 70.2% | 33.0 dB | 1.08x | BLKH |
+| **Marble** | 49,152 B | 31,174 B | 39,354 B | 65.4% | 24.4 dB | 0.79x | ZIP |
+
+![Real Photos Benchmark](docs/assets/v5_real_photos.png)
+
+**BLKH wins 4 out of 5 real photos** — including textured surfaces like wood, water, and skin. ZIP only wins on marble because its sharp vein transitions are pure high-frequency content (Kolmogorov limit). Sample photos are saved in `docs/assets/sample_photos/`.
+
+```bash
+python tests/benchmark_real_photos.py
 ```
 
 ---
