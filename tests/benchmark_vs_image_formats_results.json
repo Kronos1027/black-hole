@@ -1,0 +1,62 @@
+[
+  {
+    "name": "Sky",
+    "orig_size": 49152,
+    "png_lossless": 25507,
+    "webp_lossless": 23006,
+    "zip_lossless": 36237,
+    "blkh_lossless": 32314,
+    "blkh_bit_pct": 75.49,
+    "blkh_psnr_db": 38.62,
+    "jpeg_lossy": 2014,
+    "webp_lossy": 634
+  },
+  {
+    "name": "Wood",
+    "orig_size": 49152,
+    "png_lossless": 28265,
+    "webp_lossless": 26920,
+    "zip_lossless": 43074,
+    "blkh_lossless": 35972,
+    "blkh_bit_pct": 70.31,
+    "blkh_psnr_db": 34.75,
+    "jpeg_lossy": 2745,
+    "webp_lossy": 1524
+  },
+  {
+    "name": "Water",
+    "orig_size": 49152,
+    "png_lossless": 30459,
+    "webp_lossless": 29616,
+    "zip_lossless": 45317,
+    "blkh_lossless": 36523,
+    "blkh_bit_pct": 70.46,
+    "blkh_psnr_db": 30.03,
+    "jpeg_lossy": 3914,
+    "webp_lossy": 2812
+  },
+  {
+    "name": "Skin",
+    "orig_size": 49152,
+    "png_lossless": 30699,
+    "webp_lossless": 29238,
+    "zip_lossless": 38726,
+    "blkh_lossless": 35794,
+    "blkh_bit_pct": 70.35,
+    "blkh_psnr_db": 33.03,
+    "jpeg_lossy": 2937,
+    "webp_lossy": 2278
+  },
+  {
+    "name": "Marble",
+    "orig_size": 49152,
+    "png_lossless": 27097,
+    "webp_lossless": 25528,
+    "zip_lossless": 31174,
+    "blkh_lossless": 38891,
+    "blkh_bit_pct": 66.02,
+    "blkh_psnr_db": 25.09,
+    "jpeg_lossy": 3634,
+    "webp_lossy": 1790
+  }
+]

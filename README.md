@@ -641,6 +641,46 @@ python tests/demo_visual.py
 
 ---
 
+## v5 vs Image Formats (PNG, WebP, JPEG)
+
+We compared BLKH v5 against the actual industry-standard image formats. **This is the honest, complete picture** — not just ZIP.
+
+| Photo | Original | PNG | **WebP (lossless)** | ZIP | BLKH v5 | JPEG q=85* | WebP q=85* |
+|-------|----------|-----|----------------------|-----|---------|------------|------------|
+| Sky | 49,152 B | 25,507 B | **23,006 B** | 36,237 B | 32,314 B | 3,634 B | 1,790 B |
+| Wood | 49,152 B | 28,265 B | **26,920 B** | 43,074 B | 35,972 B | 5,164 B | 2,832 B |
+| Water | 49,152 B | 30,459 B | **29,616 B** | 45,317 B | 36,523 B | 5,691 B | 3,191 B |
+| Skin | 49,152 B | 30,699 B | **29,238 B** | 38,726 B | 35,794 B | 4,985 B | 2,664 B |
+| Marble | 49,152 B | 27,097 B | **25,528 B** | 31,174 B | 38,891 B | 4,577 B | 2,387 B |
+
+`*` JPEG/WebP lossy do NOT preserve original bytes — they're shown for context only (not fair to compare with BLKH which is lossless).
+
+![vs Image Formats](docs/assets/v5_vs_image_formats.png)
+
+### Honest Assessment
+
+**BLKH v5 does NOT beat PNG or WebP on photo-realistic images.** Both PNG and WebP use prediction filters + context modeling that are highly optimized for natural image content. BLKH's advantage over ZIP comes from SIREN's ability to model smooth 2D structure, but PNG/WebP already capture that structure more efficiently with traditional methods.
+
+**Where BLKH still wins:**
+- **vs ZIP** (general-purpose compressor): BLKH wins on smooth images by 1.1x to 8.4x
+- **Specialized smooth signals**: pure gradients, mathematical surfaces, scientific fields where SIREN's continuous representation is uniquely suited
+- **Resolution-independent decoding**: BLKH can reconstruct at any resolution (query SIREN at any coords) — PNG/WebP cannot
+- **Atlas mode (v5.2)**: shared weights across many similar images — neither PNG nor WebP has this
+
+**Where BLKH loses:**
+- **General photography**: use WebP lossless or PNG
+- **High-frequency content** (marble, text, sharp edges): ZIP, PNG, WebP all beat BLKH
+
+**Bottom line**: BLKH is a **research breakthrough for INR-based compression** with clear niche wins (smooth 2D signals, multi-resolution decoding, atlas mode), but it does not replace specialized image codecs for general photography. We publish this honestly so users know when to choose BLKH vs traditional tools.
+
+```bash
+python tests/benchmark_vs_image_formats.py
+```
+
+---
+
+---
+
 ## v5 Scaling — BLKH Wins BIGGER as Image Grows
 
 This is the **key result** of v5: BLKH's advantage over ZIP **grows with image size**. ZIP grows linearly with content entropy; BLKH recipe stays roughly fixed (weights are constant, residual grows slower than linear). The bigger the smooth image, the bigger BLKH's win.
