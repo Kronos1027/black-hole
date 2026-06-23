@@ -172,10 +172,13 @@ def cmd_decompress(args):
         sys.stdout.buffer.write(img.tobytes())
 
     print(f"[BLKH] Shape: {img.shape}  Time: {dt*1000:.1f}ms", file=sys.stderr)
-    print(f"[BLKH] SHA-256 match: {meta['exact_match']}", file=sys.stderr)
-    if not meta['exact_match']:
-        print(f"[BLKH] WARNING: roundtrip failed! Original bytes not recovered.", file=sys.stderr)
-        sys.exit(1)
+    if meta.get('mode') == 'lossy':
+        print(f"[BLKH] Mode: LOSSY (no SHA-256 match expected — not bit-perfect)", file=sys.stderr)
+    else:
+        print(f"[BLKH] SHA-256 match: {meta['exact_match']}", file=sys.stderr)
+        if not meta['exact_match']:
+            print(f"[BLKH] WARNING: roundtrip failed! Original bytes not recovered.", file=sys.stderr)
+            sys.exit(1)
 
 
 def cmd_info(args):
@@ -312,6 +315,65 @@ def cmd_atlas_decompress(args):
             print(f"  Saved {len(images)} raw files to: {out_dir} (install Pillow for PNG)")
 
 
+def cmd_lossy(args):
+    """Compress with BLKH lossy mode (no residual, smaller recipe, NOT bit-perfect).
+    Competes with JPEG and WebP lossy.
+    """
+    import numpy as np
+    from siren_v5_torch import ImageINRv5
+
+    kind, payload = load_any(args.input)
+    if kind == 'image':
+        img = payload
+    else:
+        img, _, _ = payload
+
+    orig = img.nbytes
+    zip_size = len(zlib.compress(img.tobytes(), 9))
+    print(f"[BLKH] Lossy mode (no residual — NOT bit-perfect)")
+    print(f"[BLKH] Input: {args.input} ({orig:,} bytes)")
+    print(f"[BLKH] Config: epochs={args.epochs} bits={args.bits} "
+          f"prune={args.prune} hidden={args.hidden} layers={args.layers}")
+
+    comp = ImageINRv5(hidden_features=args.hidden,
+                      hidden_layers=args.layers,
+                      omega_0=args.omega)
+    t0 = time.time()
+    res = comp.compress_lossy(img, epochs=args.epochs, lr=1e-3,
+                                bits=args.bits, prune_threshold=args.prune,
+                                batch_size=args.batch_size, verbose=True)
+    dt = time.time() - t0
+
+    Path(args.output).write_bytes(res['recipe_bytes'])
+
+    # JPEG/WebP comparison (if PIL available)
+    jpeg_size = webp_size = None
+    try:
+        import io
+        from PIL import Image as PILImage
+        buf = io.BytesIO()
+        PILImage.fromarray(img).save(buf, format='JPEG', quality=85)
+        jpeg_size = len(buf.getvalue())
+        buf = io.BytesIO()
+        PILImage.fromarray(img).save(buf, format='WebP', lossless=False, quality=85)
+        webp_size = len(buf.getvalue())
+    except Exception:
+        pass
+
+    print(f"\n[BLKH] Result:")
+    print(f"  Original:    {orig:>10,} B")
+    print(f"  ZIP (zlib9): {zip_size:>10,} B  (ratio {orig/zip_size:.2f}x, lossless)")
+    if jpeg_size:
+        print(f"  JPEG q=85:   {jpeg_size:>10,} B  (ratio {orig/jpeg_size:.2f}x, lossy)")
+    if webp_size:
+        print(f"  WebP q=85:   {webp_size:>10,} B  (ratio {orig/webp_size:.2f}x, lossy)")
+    print(f"  BLKH lossy:  {res['recipe_size']:>10,} B  (ratio {orig/res['recipe_size']:.2f}x, "
+          f"PSNR {res['psnr_db']:.1f} dB)")
+    print(f"  Time: {dt:.2f}s")
+    print(f"  Output: {args.output}")
+    print(f"\n  NOTE: Lossy mode is NOT bit-perfect. Use 'blkh compress' for lossless.")
+
+
 def main():
     p = argparse.ArgumentParser(prog='blkh',
                                  description='Black Hole — Neural Implicit Compression')
@@ -359,6 +421,20 @@ def main():
     p_ad.add_argument('output_dir', nargs='?', default=None,
                       help='Output directory (default: just verify SHA-256)')
     p_ad.set_defaults(func=cmd_atlas_decompress)
+
+    p_l = sub.add_parser('lossy', help='Lossy compression (no residual, smaller recipe, NOT bit-perfect)')
+    p_l.add_argument('input')
+    p_l.add_argument('output')
+    p_l.add_argument('--epochs', type=int, default=1500)
+    p_l.add_argument('--bits', type=int, default=4, choices=[4, 8],
+                     help='4 = aggressive (default), 8 = high quality')
+    p_l.add_argument('--prune', type=float, default=0.005,
+                     help='Prune threshold (0.0=none, 0.01=aggressive)')
+    p_l.add_argument('--hidden', type=int, default=32)
+    p_l.add_argument('--layers', type=int, default=2)
+    p_l.add_argument('--omega', type=float, default=30.0)
+    p_l.add_argument('--batch-size', type=int, default=2048)
+    p_l.set_defaults(func=cmd_lossy)
 
     args = p.parse_args()
     args.func(args)

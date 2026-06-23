@@ -429,6 +429,125 @@ class ImageINRv5:
             'sha256': sha.hex(),
         }
 
+    # -------- lossy compress (no residual — competes with JPEG/WebP) --------
+    def compress_lossy(self, image_array: np.ndarray,
+                       epochs: int = 2000, lr: float = 1e-3,
+                       bits: int = 4, prune_threshold: float = 0.01,
+                       batch_size: int | None = None,
+                       verbose: bool = False) -> dict:
+        """
+        Compress to a LOSSY recipe (weights only, no residual).
+        Roundtrip is NOT bit-perfect — small differences are expected.
+
+        This mode is the right comparison vs JPEG and WebP lossy.
+        It uses INT4 quantization + magnitude pruning by default to
+        aggressively shrink the recipe at the cost of fidelity.
+
+        Trade-off:
+          - bits=4, prune=0.01  →  smallest recipe, lowest PSNR
+          - bits=4, prune=0.005 →  balance (recommended default)
+          - bits=8, prune=0.0   →  best quality, larger recipe
+
+        Returns dict with recipe_bytes, psnr_db, etc.
+        """
+        assert image_array.dtype == np.uint8 and image_array.ndim == 3
+        H, W, C = image_array.shape
+        self.H, self.W, self.C = H, W, C
+        original_bytes = image_array.tobytes()
+
+        # 1. Train
+        meta = self.compress(image_array, epochs=epochs, lr=lr,
+                             batch_size=batch_size, verbose=verbose)
+
+        # 2. Quantize weights (with optional pruning)
+        weights_np = self._model.state_to_numpy()
+        if prune_threshold > 0:
+            weights_np = prune_weights(weights_np, prune_threshold)
+
+        if bits == 8:
+            packed, packed_meta = quantize_int8(weights_np)
+        elif bits == 4:
+            packed, packed_meta = quantize_int4(weights_np)
+        else:
+            raise ValueError(f"bits must be 4 or 8, got {bits}")
+
+        # Reload quantized weights to measure actual quality
+        if bits == 8:
+            q_weights = dequantize_int8(packed, packed_meta)
+        else:
+            q_weights = dequantize_int4(packed, packed_meta)
+        self._model.load_from_numpy(q_weights)
+
+        # 3. Inference for quality measurement
+        t0 = time.time()
+        predicted = self.reconstruct()
+        predict_time = time.time() - t0
+        predicted_bytes = predicted.tobytes()
+
+        # 4. Compute PSNR / bit accuracy (informational only — NOT used for recipe)
+        a = np.frombuffer(original_bytes, dtype=np.uint8)
+        b = np.frombuffer(predicted_bytes, dtype=np.uint8)
+        bit_acc = float(np.mean(np.unpackbits(a) == np.unpackbits(b))) * 100
+        # PSNR over uint8 values (max=255)
+        mse = float(np.mean((a.astype(np.float32) - b.astype(np.float32)) ** 2))
+        psnr = 10 * np.log10(255.0 ** 2 / mse) if mse > 0 else float('inf')
+
+        # 5. Pack lossy recipe (no residual, no sha)
+        recipe = self._pack_recipe_lossy(bits, packed, packed_meta)
+
+        return {
+            'recipe_bytes': recipe,
+            'original_size': len(original_bytes),
+            'recipe_size': len(recipe),
+            'weights_packed_size': len(packed),
+            'residual_compressed_size': 0,
+            'model_bit_accuracy': bit_acc,
+            'train_time_s': meta['train_time_s'],
+            'predict_time_s': predict_time,
+            'psnr_db': float(psnr),
+            'mode': 'lossy',
+            'lossless': False,
+        }
+
+    def _pack_recipe_lossy(self, bits: int, packed: bytes, packed_meta: list) -> bytes:
+        """Pack a lossy recipe (no residual, no sha). Format magic = 'BLK5' but
+        residual_compressed_size = 0 signals lossy mode.
+        """
+        out = bytearray()
+        out += MAGIC_V5
+        out += struct.pack('<B', VERSION_V5)
+        out += struct.pack('<B', bits)
+        out += struct.pack('<B', self.in_features)
+        out += struct.pack('<H', self.hidden_features)
+        out += struct.pack('<B', self.hidden_layers)
+        out += struct.pack('<B', self.out_features)
+        out += struct.pack('<f', self.omega_0)
+        out += struct.pack('<H', self.H)
+        out += struct.pack('<H', self.W)
+        out += struct.pack('<B', self.C)
+        out += struct.pack('<I', len(packed))
+        out += packed
+        out += struct.pack('<H', len(packed_meta))
+        for entry in packed_meta:
+            if bits == 8:
+                n_bytes, shape, scale, name = entry
+                n_elem = 0
+            else:
+                n_bytes, shape, scale, n_elem, name = entry
+            name_b = name.encode('utf-8')
+            out += struct.pack('<B', len(name_b))
+            out += name_b
+            out += struct.pack('<I', n_bytes)
+            out += struct.pack('<B', len(shape))
+            for d in shape:
+                out += struct.pack('<i', int(d))
+            out += struct.pack('<d', float(scale))
+            out += struct.pack('<I', n_elem)
+        # Lossy mode: empty residual + zero SHA (signals lossy)
+        out += struct.pack('<Q', 0)  # residual_compressed_size = 0
+        out += b'\x00' * 32          # placeholder SHA (lossy — not verified)
+        return bytes(out)
+
     def _pack_recipe(self, bits: int, packed: bytes, packed_meta: list,
                      residual_compressed: bytes, sha: bytes) -> bytes:
         out = bytearray()
@@ -506,6 +625,9 @@ class ImageINRv5:
         residual_compressed = buf[off:off+resid_size]; off += resid_size
         sha_expected = buf[off:off+32]; off += 32
 
+        # Detect lossy mode: residual_size == 0 (no residual stored)
+        is_lossy = (resid_size == 0)
+
         # Dequantize
         if bits == 8:
             weights = dequantize_int8(packed, meta)
@@ -532,9 +654,30 @@ class ImageINRv5:
         with torch.no_grad():
             pred = model(coords).cpu().numpy()
         predicted = np.clip((pred + 1.0) * 127.5, 0, 255).astype(np.uint8).reshape(H, W, C)
-        predicted_bytes = predicted.tobytes()
 
-        # Apply residual
+        if is_lossy:
+            # Lossy mode: predicted bytes ARE the recovered bytes (no residual)
+            recovered = predicted.tobytes()
+            sha_got = hashlib.sha256(recovered).digest()
+            result_meta = {
+                'H': H, 'W': W, 'C': C,
+                'bits': bits,
+                'hidden_features': hidden_features,
+                'hidden_layers': hidden_layers,
+                'omega_0': omega_0,
+                'weights_packed_size': packed_size,
+                'residual_compressed_size': 0,
+                'sha256_expected': sha_expected.hex(),
+                'sha256_recovered': sha_got.hex(),
+                'sha256_match': False,  # never matches in lossy mode
+                'exact_match': False,
+                'mode': 'lossy',
+                'lossless': False,
+            }
+            return predicted, result_meta
+
+        # Lossless mode: apply residual
+        predicted_bytes = predicted.tobytes()
         residual = zlib.decompress(residual_compressed)
         if len(residual) != len(predicted_bytes):
             raise ValueError(f"residual len {len(residual)} != predicted {len(predicted_bytes)}")
@@ -555,6 +698,8 @@ class ImageINRv5:
             'sha256_recovered': sha_got.hex(),
             'sha256_match': sha_got == sha_expected,
             'exact_match': sha_got == sha_expected,
+            'mode': 'lossless',
+            'lossless': True,
         }
         return np.frombuffer(recovered, dtype=np.uint8).reshape(H, W, C), result_meta
 
