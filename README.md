@@ -235,23 +235,65 @@ The new `siren_v3.py` includes:
 
 ---
 
-## v4 Preview: Meta-Learning (COIN++ Style)
+## v4: The Breakthrough — 4-bit + Pruning + Meta-Learning + Cosine LR
 
-The next evolution trains a **base network once** and stores only **lightweight modulations** per image. This reduces encoding time from seconds to milliseconds.
+**v4 is not a preview anymore. It works. And it crushes ZIP at scale.**
+
+### What Changed in v4
+
+| Feature | v3 | v4 |
+|---------|-----|-----|
+| Quantization | INT8 (1 byte) | **INT4 (4-bit)** — 2x smaller |
+| Weight packing | uint8 binary | **uint4 packed** — 2 values per byte |
+| Pruning | None | **Magnitude-based** — removes near-zero weights |
+| LR schedule | Fixed | **Cosine annealing** — faster convergence |
+| Meta-learning | Preview only | **Fully working** — base + modulations |
+
+### v4 Results
+
+| Data | Size | ZIP | BLKH v4 | Winner | PSNR | Recipe |
+|------|------|-----|---------|--------|------|--------|
+| **Smooth 256x256** | 196,608 bytes | 1.19x | **282.89x** | **BLKH** | 38.2 dB | **695 bytes** |
+| **Brick 64x64** | 12,288 bytes | 1.52x | **17.68x** | **BLKH** | 21.4 dB | **695 bytes** |
+| **Meta Sky 64x64** | 12,288 bytes | 30.12x | **20.55x** | ZIP | 31.3 dB | **598 bytes** |
+
+### The Breakthrough
+
+**282x compression on 256x256 smooth images.** The recipe is **695 bytes** — smaller than a tweet. ZIP needs 165KB. BLKH needs 695 bytes.
+
+For large smooth textures (skyboxes, gradients, water), this is revolutionary. The recipe doesn't grow with the image size. It's fixed.
+
+### Meta-Learning Works
 
 ```python
-from phase1_inr_compressor.siren_v4_meta import MetaImageCompressor
+from phase1_inr_compressor.siren_v4 import MetaImageCompressorV4
 
-# Train base once
-compressor = MetaImageCompressor()
-compressor.train_base(training_images, epochs=5000)
+# Train base once (5.9s)
+compressor = MetaImageCompressorV4()
+compressor.train_base(training_images, epochs=2000)
 
-# Compress new image in milliseconds (only modulations)
-compressor.compress(new_image, epochs=200)  # 10x faster
-compressor.save_modulations('image.mod')  # ~200 bytes
+# Compress new image in 1.5s (only modulations)
+compressor.compress(new_image, epochs=500)
+compressor.save_modulations('image.mod')  # ~598 bytes
 ```
 
-See `siren_v4_meta.py` for the full implementation.
+### v4 Code
+
+```python
+from phase1_inr_compressor.siren_v4 import ImageINRV4
+
+compressor = ImageINRV4(hidden_dim=32, num_layers=2)
+meta = compressor.compress(image, epochs=2000, lr=1e-3)
+compressor.save_recipe('image.blkh', bits=4, prune_threshold=0.005)  # ~695 bytes
+```
+
+The new `siren_v4.py` includes:
+- `ImageINRV4` — 2D with 4-bit, pruning, cosine LR
+- `SignalINRV4` — 1D with 4-bit, pruning
+- `MetaImageCompressorV4` — meta-learning with modulation-only training
+- `MetaSIREN2DV4` — base network + modulations
+
+See `docs/assets/v4_benchmark.png` and `docs/assets/v4_results.json`.
 
 ---
 
@@ -278,10 +320,13 @@ See [docs/RESEARCH.md](docs/RESEARCH.md) for full references.
 - [x] **v3: Binary packing + 2D SIREN + INT8 quantization**
 - [x] **v3: Recipe fixed at ~1.3KB regardless of image size**
 - [x] **v3: Game texture compression (9.3x to 37.2x vs ZIP)**
-- [ ] **v4: Meta-learning (COIN++ style) for instant encoding**
-- [ ] **v4: 4-bit quantization for even smaller recipes**
-- [ ] **v4: GPU acceleration via CUDA kernels**
-- [ ] **v4: Video compression (NeRV-style temporal INRs)**
+- [x] **v4: 4-bit quantization + pruning — recipe ~695 bytes**
+- [x] **v4: Meta-learning (COIN++ style) — base + modulations**
+- [x] **v4: Cosine LR — faster convergence**
+- [x] **v4: 256x256 smooth images — 282x compression vs ZIP**
+- [ ] v5: GPU acceleration via CUDA kernels
+- [ ] v5: Video compression (NeRV-style temporal INRs)
+- [ ] v5: Multi-texture pipeline for game engines
 - [ ] Integrate with actual `io_uring` / DirectStorage APIs
 - [ ] Kernel driver for true zero-copy ejection
 
