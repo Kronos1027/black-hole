@@ -1,0 +1,29 @@
+{
+  "hybrid_scaling": {
+    "description": "BLKH v5.8 hybrid mode scaling: image size vs ZIP advantage",
+    "results": [
+      {"size": "128x128",   "orig": 49152,    "zip": 42683,    "blkh": 14018,   "vs_zip": 3.04, "bit_pct": 74.3, "config": "h=32 l=2"},
+      {"size": "256x256",   "orig": 196608,   "zip": 166852,   "blkh": 41432,   "vs_zip": 4.03, "bit_pct": 74.0, "config": "h=32 l=2"},
+      {"size": "512x512",   "orig": 786432,   "zip": 581705,   "blkh": 128004,  "vs_zip": 4.54, "bit_pct": 84.6, "config": "h=64 l=3"},
+      {"size": "1024x1024", "orig": 3145728,  "zip": 1542928,  "blkh": 414810,  "vs_zip": 3.72, "bit_pct": 86.5, "config": "h=128 l=3"}
+    ],
+    "sweet_spot": "256-512px (4.0-4.5x vs ZIP)",
+    "note": "Advantage grows 128->512 then plateaus at 1024 (SIREN capacity limit)"
+  },
+  "combo_scaling": {
+    "description": "BLKH v5.9 combo mode scaling: N=10 images at different sizes vs ZIP",
+    "results": [
+      {"size": "64x64",   "orig": 122880,  "zip": 82896,   "blkh": 35970,  "vs_zip": 2.30, "bit_pct": 74.2},
+      {"size": "128x128", "orig": 491520,  "zip": 280795,  "blkh": 98982,  "vs_zip": 2.84, "bit_pct": 76.0},
+      {"size": "256x256", "orig": 1966080, "zip": 837418,  "blkh": 270990, "vs_zip": 3.09, "bit_pct": 78.0}
+    ],
+    "sweet_spot": "Advantage grows monotonically with size (ideal for datacenter)",
+    "note": "Combo advantage keeps growing — 256x256 gives 3.09x, likely 3.5x+ at 512x512"
+  },
+  "key_findings": [
+    "Hybrid mode: sweet spot 256-512px (4.0-4.5x vs ZIP, bit-perfect)",
+    "Combo mode: advantage grows with size (2.3x -> 3.1x from 64 to 256px)",
+    "At 1024x1024, need h=128 SIREN (h=64 underfits, h=256 overfits weights)",
+    "All results 100% SHA-256 verified (bit-perfect)"
+  ]
+}

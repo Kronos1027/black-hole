@@ -1172,6 +1172,27 @@ The most impressive BLKH result to date: on a **512x512 realistic satellite imag
 
 This validates BLKH hybrid as the **best mode for large 2D smooth images** — satellite tiles, game textures, scientific fields, medical imaging (slice-by-slice).
 
+### Scaling Summary: Hybrid Mode vs ZIP (all SHA-256 verified)
+
+| Image size | Original | ZIP | **BLKH hybrid** | vs ZIP | Best config |
+|-----------|----------|-----|-----------------|--------|-------------|
+| 128×128 | 49,152 B | 42,683 B | **14,018 B** | **3.04x** | h=32, l=2 |
+| 256×256 | 196,608 B | 166,852 B | **41,432 B** | **4.03x** | h=32, l=2 |
+| 512×512 | 786,432 B | 581,705 B | **128,004 B** | **4.54x** | h=64, l=3 |
+| 1024×1024 | 3,145,728 B | 1,542,928 B | **414,810 B** | **3.72x** | h=128, l=3 |
+
+**Sweet spot: 256-512px** where BLKH hybrid is 4.0-4.5x smaller than ZIP. At 1024×1024, the advantage drops slightly (3.72x) because the SIREN needs more capacity (h=128) to fit the larger image.
+
+### Scaling Summary: Combo Mode vs ZIP (N=10 images, all SHA-256 verified)
+
+| Image size | Total orig | ZIP per-file | **BLKH combo** | vs ZIP | Trend |
+|-----------|-----------|--------------|----------------|--------|-------|
+| 64×64 | 122,880 B | 82,896 B | **35,970 B** | **2.30x** | baseline |
+| 128×128 | 491,520 B | 280,795 B | **98,982 B** | **2.84x** | growing |
+| 256×256 | 1,966,080 B | 837,418 B | **270,990 B** | **3.09x** | still growing |
+
+**Combo advantage grows monotonically with image size** — ideal for datacenter use cases where images are 256×256+. The hypernetwork amortizes better at scale.
+
 ```bash
 # Reproduce this benchmark
 python -c "
