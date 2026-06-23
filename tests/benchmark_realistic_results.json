@@ -1,0 +1,72 @@
+[
+  {
+    "name": "mri_like_128",
+    "orig_size": 49152,
+    "zip_size": 32778,
+    "blkh_size": 18971,
+    "weights_size": 2307,
+    "residual_size": 16276,
+    "bit_pct": 85.77,
+    "psnr_db": 53.64,
+    "sha256_ok": true,
+    "time_s": 4.12,
+    "winner": "BLKH",
+    "atlas_vs_zip": 1.728
+  },
+  {
+    "name": "satellite_like_128",
+    "orig_size": 49152,
+    "zip_size": 30530,
+    "blkh_size": 26559,
+    "weights_size": 2307,
+    "residual_size": 23864,
+    "bit_pct": 79.88,
+    "psnr_db": 47.3,
+    "sha256_ok": true,
+    "time_s": 2.12,
+    "winner": "BLKH",
+    "atlas_vs_zip": 1.15
+  },
+  {
+    "name": "pde_field_128",
+    "orig_size": 49152,
+    "zip_size": 31048,
+    "blkh_size": 33399,
+    "weights_size": 2307,
+    "residual_size": 30704,
+    "bit_pct": 73.23,
+    "psnr_db": 39.07,
+    "sha256_ok": true,
+    "time_s": 2.13,
+    "winner": "ZIP",
+    "atlas_vs_zip": 0.93
+  },
+  {
+    "name": "game_texture_128",
+    "orig_size": 49152,
+    "zip_size": 37895,
+    "blkh_size": 23953,
+    "weights_size": 2307,
+    "residual_size": 21258,
+    "bit_pct": 82.08,
+    "psnr_db": 42.14,
+    "sha256_ok": true,
+    "time_s": 2.13,
+    "winner": "BLKH",
+    "atlas_vs_zip": 1.582
+  },
+  {
+    "name": "photo_with_noise_128",
+    "orig_size": 49152,
+    "zip_size": 45887,
+    "blkh_size": 37506,
+    "weights_size": 2307,
+    "residual_size": 34811,
+    "bit_pct": 68.0,
+    "psnr_db": 32.63,
+    "sha256_ok": true,
+    "time_s": 2.12,
+    "winner": "BLKH",
+    "atlas_vs_zip": 1.223
+  }
+]

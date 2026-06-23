@@ -3,12 +3,15 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-# Recipes and artifacts
+# Recipes and artifacts (transient — generated during tests)
 *.recipe.json
 recipes/
-*.png
-*.jpg
 daemon_stats.json
+# Ignore PNGs except those committed to docs/assets/ (chart images)
+*.png
+!docs/assets/*.png
+*.jpg
+!docs/assets/*.jpg
 
 # Virtual environments
 venv/
