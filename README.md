@@ -1125,6 +1125,126 @@ assert meta['all_sha256_match']
 
 ---
 
+## v5.12: 3D Volume Compression (MRI/CT/scientific)
+
+Compress 3D volumetric data (MRI, CT, seismic, microscopy) using a SIREN with 3D spatial coordinate: `f(x, y, z) -> value(s)`.
+
+### Architecture
+
+```
+VolumeSIREN (siren_v5_volume.py)
+├── Input: (x, y, z) where all in [-1, 1]
+├── SineLayer(3, hidden) — first layer
+├── SineLayer(hidden, hidden) × N — hidden layers
+├── Linear(hidden, C) — output (C channels, e.g. 1 for grayscale MRI)
+└── One SIREN represents the ENTIRE 3D volume
+
+VolumeCompressor
+├── Train ONE SIREN on all voxels simultaneously
+├── Quantize weights (INT8)
+├── Inference -> predicted volume
+├── Residual = (original XOR predicted), zlib-compressed
+└── SHA-256 verification (bit-perfect)
+```
+
+### Results (all 100% SHA-256 verified)
+
+| Volume | Original | ZIP | BLKH Volume | vs ZIP | Status |
+|--------|----------|-----|-------------|--------|--------|
+| 16×32×32×1 (smooth gaussian) | 16,384 B | 7,422 B | 17,784 B | 0.42x | ZIP wins (small) |
+| 32×64×64×1 (MRI-like) | 131,072 B | 37,219 B | 47,168 B | 0.79x | ZIP wins (gap closing) |
+
+**Honest assessment**: BLKH Volume currently LOSES to ZIP on small volumes because the SIREN weight overhead (~13KB) dominates. The advantage should appear on LARGE volumes (>1M voxels) where weights amortize better — that's the target use case (medical imaging datasets).
+
+**Status: EXPERIMENTAL** — roundtrip 100% verified, architecture correct, but needs larger volumes to demonstrate advantage over ZIP.
+
+### Usage
+
+```bash
+# CLI: compress a directory of PNG slices into a .blk3 volume recipe
+python blkh.py volume mri_slices/ output.blk3
+
+# Decompress (recovers all slices, SHA-256 verified)
+python blkh.py volume-decompress output.blk3 recovered_slices/
+```
+
+```python
+from phase1_inr_compressor.siren_v5_volume import VolumeCompressor
+import numpy as np
+
+# volume = D×H×W×C uint8 array (e.g. from NIfTI/DICOM loading)
+comp = VolumeCompressor(hidden_features=64, hidden_layers=3, omega_0=30.0)
+res = comp.compress(volume, epochs=2000, lr=1e-3, bits=8)
+print(f"Volume: {res['recipe_size']:,}B for {res['shape']}")
+
+# Decompress (SHA-256 verified)
+recovered, meta = VolumeCompressor.decompress(res['recipe_bytes'])
+assert meta['exact_match']
+```
+
+---
+
+## v5.13: Streaming Atlas (Datacenter Random Access)
+
+Solves the datacenter problem: when you have 1000+ images in a corpus, you don't want to load the ENTIRE atlas recipe to decompress ONE image.
+
+### Architecture
+
+```
+StreamingAtlas (siren_v5_streaming.py)
+├── Phase 1: train_base() — train shared hypernetwork (one-time)
+├── Phase 2: open_stream() — open streaming file for appending
+│   └── append(img) — compress one image, append to file
+└── Phase 3: open_read() — open for random access
+    └── read(idx) — load ONLY image idx in <1ms (no full atlas load)
+
+File format (.blks):
+  [header: magic, arch, hypernetwork]
+  [per-image records: latent + residual + sha]
+  [index: list of (offset, length) for O(1) random access]
+```
+
+### Performance (self-test, 10 images 32×32×3)
+
+| Operation | Time |
+|-----------|------|
+| Train base | 3.3s |
+| Append 10 images | 2.9s (290ms/image) |
+| **Random read 1 image** | **<1ms** |
+| File size | 17KB (1.7KB/image) |
+
+**Key feature**: O(1) random access — read any image by index without loading the rest of the atlas. This is essential for datacenter use cases where you have 100K+ images but only need to retrieve one at a time.
+
+### Usage
+
+```python
+from phase1_inr_compressor.siren_v5_streaming import StreamingAtlas
+
+# Phase 1: train base on a representative corpus (one-time)
+atlas = StreamingAtlas(latent_dim=16, hidden_features=16, hidden_layers=1)
+atlas.train_base(corpus_images, epochs=2000)
+
+# Phase 2: build streaming atlas (append new images as they arrive)
+with atlas.open_stream('archive.blks', (128, 128, 3)) as writer:
+    for img in new_images:
+        writer.append(img)  # compress and append
+
+# Phase 3: random access (read any image by index in <1ms)
+with StreamingAtlas.open_read('archive.blks') as reader:
+    print(f"Atlas has {reader.n_images} images")
+    img_42 = reader.read(42)  # loads ONLY image 42
+    img_0 = reader.read(0)
+```
+
+### Use cases
+
+- **Hospital PACS** (100K+ MRI slices): train base once, append new scans, retrieve any slice instantly
+- **Satellite archive** (millions of tiles): random access by tile index
+- **Game texture streaming** (10K+ textures): load only needed textures at runtime
+- **Scientific data archive** (PDE simulations, climate data): query any timestep
+
+---
+
 ---
 
 ## v5 Scaling — BLKH Wins BIGGER as Image Grows
@@ -1203,7 +1323,9 @@ res = comp.compress_many(new_images, epochs=1000)
 - [x] **v5.9: Combo mode (hypernetwork + WebP residual) — 2-3x smaller than ZIP on N images**
 - [x] **v5.10: GPU CUDA optimizations (torch.compile, FP16, large batches)**
 - [x] **v5.11: Video compression (temporal SIREN f(x,y,t)) — 1.5-1.7x smaller than ZIP on realistic video**
-- [ ] v5.12: Game engine plugin (Unity/Unreal) for runtime texture loading
+- [x] **v5.12: 3D Volume compression (SIREN f(x,y,z)) for MRI/CT — experimental, needs large volumes**
+- [x] **v5.13: Streaming atlas (datacenter random access, O(1) read by index)**
+- [ ] v5.14: Game engine plugin (Unity/Unreal) for runtime texture loading
 - [ ] v5: GPU acceleration via CUDA kernels
 - [ ] v5: Video compression (NeRV-style temporal INRs)
 - [ ] v5: Multi-texture pipeline for game engines

@@ -499,6 +499,84 @@ def cmd_video_decompress(args):
             print(f"  Saved {len(frames)} raw files to: {out_dir}")
 
 
+def cmd_volume(args):
+    """Compress a 3D volume (stack of slices as PNG files) using v5.12 SIREN f(x,y,z).
+    Input: directory of PNG slices (sorted by name, all same size).
+    The slices are stacked into a 3D volume and compressed as ONE SIREN.
+    """
+    import numpy as np
+    from siren_v5_volume import VolumeCompressor
+
+    d = Path(args.input)
+    if not d.is_dir():
+        print(f"[BLKH] Volume input must be a directory of PNG slices: {args.input}")
+        sys.exit(1)
+    slices = sorted(d.glob('*.png'))
+    if len(slices) < 2:
+        print(f"[BLKH] Need at least 2 PNG slices in {d}")
+        sys.exit(1)
+
+    print(f"[BLKH] Loading {len(slices)} slices from {d}...")
+    from PIL import Image
+    slice_imgs = [np.array(Image.open(s).convert('RGB'), dtype=np.uint8) for s in slices]
+    H, W, C = slice_imgs[0].shape
+    # Stack into (D, H, W, C)
+    volume = np.stack(slice_imgs, axis=0)
+    D = volume.shape[0]
+    print(f"[BLKH] Volume: {volume.shape} = {volume.nbytes:,}B")
+
+    import zlib as _z
+    zip_size = len(_z.compress(volume.tobytes(), 9))
+    print(f"[BLKH] ZIP: {zip_size:,}B")
+
+    comp = VolumeCompressor(hidden_features=args.hidden, hidden_layers=args.layers,
+                              omega_0=args.omega)
+    t0 = time.time()
+    res = comp.compress(volume, epochs=args.epochs, lr=1e-3,
+                          bits=8, batch_size=8192, verbose=True)
+    dt = time.time() - t0
+
+    Path(args.output).write_bytes(res['recipe_bytes'])
+    winner = "BLKH" if res['recipe_size'] < zip_size else "ZIP"
+    print(f"\n[BLKH] Volume result:")
+    print(f"  Original:    {volume.nbytes:>10,} B  ({D}x{H}x{W}x{C})")
+    print(f"  ZIP:         {zip_size:>10,} B  (ratio {volume.nbytes/zip_size:.2f}x)")
+    print(f"  BLKH Volume: {res['recipe_size']:>10,} B  (ratio {volume.nbytes/res['recipe_size']:.2f}x)")
+    print(f"    SIREN: {res['weights_packed_size']:,}B  residual: {res['residual_compressed_size']:,}B")
+    print(f"  Bit acc: {res['model_bit_accuracy']:.1f}%")
+    print(f"  Winner: {winner}  (BLKH/ZIP = {res['recipe_size']/zip_size:.3f})")
+    print(f"  Time: {dt:.1f}s")
+    print(f"  Output: {args.output}")
+
+
+def cmd_volume_decompress(args):
+    """Decompress a .blk3 volume recipe into PNG slices."""
+    import numpy as np
+    from siren_v5_volume import VolumeCompressor
+
+    recipe = Path(args.input).read_bytes()
+    t0 = time.time()
+    volume, meta = VolumeCompressor.decompress(recipe)
+    dt = time.time() - t0
+    print(f"[BLKH] Volume: decompressed {meta['shape']} in {dt:.2f}s")
+    print(f"  SHA-256 match: {meta['exact_match']}")
+    if not meta['exact_match']:
+        print(f"  WARNING: roundtrip failed!")
+        sys.exit(1)
+    if args.output_dir:
+        out_dir = Path(args.output_dir)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            from PIL import Image
+            D, H, W, C = meta['shape']
+            for i in range(D):
+                Image.fromarray(volume[i]).save(out_dir / f"slice_{i:04d}.png")
+            print(f"  Saved {D} slices to: {out_dir}")
+        except ImportError:
+            (out_dir / "volume.raw").write_bytes(volume.tobytes())
+            print(f"  Saved raw volume to: {out_dir}/volume.raw")
+
+
 def cmd_lossy(args):
     """Compress with BLKH lossy mode (no residual, smaller recipe, NOT bit-perfect).
     Competes with JPEG and WebP lossy.
@@ -668,6 +746,22 @@ def main():
     p_vd.add_argument('output_dir', nargs='?', default=None,
                        help='Output directory (default: just verify SHA-256)')
     p_vd.set_defaults(func=cmd_video_decompress)
+
+    p_vol = sub.add_parser('volume',
+                            help='v5.12 3D Volume: SIREN f(x,y,z) for MRI/CT stack of slices')
+    p_vol.add_argument('input', help='Input directory of PNG slices (sorted by name)')
+    p_vol.add_argument('output', help='Output .blk3 volume recipe')
+    p_vol.add_argument('--epochs', type=int, default=2000)
+    p_vol.add_argument('--hidden', type=int, default=64)
+    p_vol.add_argument('--layers', type=int, default=3)
+    p_vol.add_argument('--omega', type=float, default=30.0)
+    p_vol.set_defaults(func=cmd_volume)
+
+    p_vold = sub.add_parser('volume-decompress', help='Decompress a .blk3 volume recipe into PNG slices')
+    p_vold.add_argument('input', help='Input .blk3 volume recipe')
+    p_vold.add_argument('output_dir', nargs='?', default=None,
+                         help='Output directory (default: just verify SHA-256)')
+    p_vold.set_defaults(func=cmd_volume_decompress)
 
     args = p.parse_args()
     args.func(args)
