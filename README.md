@@ -775,6 +775,97 @@ On GPU (CUDA), AMP gives 2-3x speedup with float16. The same code auto-detects t
 
 ---
 
+## v5.7: Hypernetwork Meta-Learning (COIN++ style, experimental)
+
+Replaces the v5.3 FiLM modulations with a proper hypernetwork: a shared linear network that GENERATES the SIREN weights from a per-image latent vector `z`.
+
+### Architecture
+
+```
+HyperNetwork: Linear(latent_dim, total_siren_params)
+  - For SIREN(2, 16, 1, 3): latent_dim=16, target=371 params
+  - HyperNetwork params: 16*371 + 371 = 6,307 (vs 371 for SIREN alone)
+
+Per-image cost: just the latent vector (16 bytes INT8) + residual
+Shared cost: hypernetwork weights (6.3KB, amortized across all images)
+```
+
+### Results vs v5.3 FiLM (10 images 64x64x3, all SHA-256 verified)
+
+| Method | Recipe size | vs ZIP | Hypernetwork size | Per-image latent |
+|--------|-------------|--------|-------------------|------------------|
+| v5.3 FiLM | 110,543 B | 0.697x | 12,867 B | 512 B |
+| **v5.7 Hyper** | **84,724 B** | **0.978x** | **6,307 B** | **16 B** |
+
+### Scaling (latent=16, hidden=16, layers=1, all SHA-256 verified)
+
+| N images | Total orig | ZIP | **BLKH Hyper** | Hyper amortized | vs ZIP |
+|----------|-----------|-----|----------------|-----------------|--------|
+| 10 | 122,880 B | 82,896 B | 84,724 B | 631 B/img | 0.978x |
+| 20 | 245,760 B | 152,928 B | 170,762 B | 315 B/img | 0.896x |
+| 50 | 614,400 B | 365,225 B | 446,883 B | 126 B/img | 0.817x |
+
+**Status: EXPERIMENTAL** — roundtrip 100% verified, hypernetwork amortizes beautifully (126 B/img at N=50), but bit accuracy (~75%) limits the residual. Future: larger SIREN capacity or DCT-based residual should help.
+
+```python
+from phase1_inr_compressor.siren_v5_hyper import HyperCompressor
+
+# Phase 1: train hypernetwork on corpus
+comp = HyperCompressor(latent_dim=16, hidden_features=16, hidden_layers=1)
+comp.train_base(corpus_images, epochs=3000)
+
+# Phase 2: compress new images (train only 16-float latent per image)
+res = comp.compress_many(new_images, epochs=1000)
+```
+
+---
+
+## v5.8: Hybrid Mode (SIREN + Image-Codec Residual)
+
+The original bit-perfect mode uses **XOR + zlib** for the residual. This treats the residual as random bytes — but it's actually a 2D image (the SIREN's prediction error), which has spatial structure that image codecs are designed to exploit.
+
+**Hybrid mode** encodes the residual as a PNG or WebP lossless image instead of XOR+zlib:
+
+```
+Original:  predicted = SIREN(coords)
+Residual:  residual_img = (original - predicted) mod 256  [uint8 image]
+Encoded:   residual_compressed = WebP_encode(residual_img)  [lossless]
+Recovery:  recovered = (predicted + WebP_decode(residual_compressed)) mod 256
+```
+
+### Results: Hybrid vs v5 vs ZIP (smooth gradients, all bit-perfect)
+
+| Image | ZIP | BLKH v5 (XOR+zlib) | **BLKH hybrid (WebP)** | Improvement |
+|-------|-----|---------------------|------------------------|-------------|
+| gradient_64 | 10,207 B | 4,202 B | **3,736 B** | 1.13x better |
+| gradient_128 | 45,015 B | 8,725 B | **4,926 B** | 1.77x better |
+| gradient_256 | 180,219 B | 26,248 B | **8,782 B** | **2.99x better** |
+
+**Hybrid mode is 1.1x to 3x smaller than the original BLKH v5**, with the same 100% bit-perfect guarantee (SHA-256 verified). The improvement grows with image size because WebP's 2D prediction filters scale better than zlib's byte-level LZ77.
+
+### On Real Photos
+
+On photo-realistic images (sky, wood, water, skin, marble), hybrid mode is still smaller than v5 but loses to pure WebP lossless (which has decades of optimization for natural images). BLKH hybrid's sweet spot remains **smooth synthetic signals** (gradients, scientific fields, game textures).
+
+### Usage
+
+```python
+from phase1_inr_compressor.siren_v5_hybrid import HybridCompressor
+
+# Default: WebP residual (best compression)
+comp = HybridCompressor(hidden_features=32, hidden_layers=2,
+                         residual_codec='webp')  # or 'png' or 'zlib'
+res = comp.compress_bitperfect(img, epochs=1500, lr=1e-3, bits=8)
+# res['recipe_size'] is 1.1x to 3x smaller than ImageINRv5.compress_bitperfect()
+```
+
+```bash
+# Run the hybrid benchmark
+python tests/benchmark_hybrid.py
+```
+
+---
+
 ---
 
 ## v5 Scaling — BLKH Wins BIGGER as Image Grows
@@ -848,7 +939,9 @@ res = comp.compress_many(new_images, epochs=1000)
 - [x] **v5.4: Large image benchmark — beats ZIP on all 8 tests (1.18x to 8.43x smaller)**
 - [x] **v5.5: Real photos benchmark + visual demo + image formats comparison**
 - [x] **v5.6: Mixed precision (FP16/BF16) training — 1.45x CPU speedup, free for bit-perfect**
-- [ ] v5.7: Hypernetwork-based meta-learning (replace FiLM, target N>10)
+- [x] **v5.7: Hypernetwork meta-learning (COIN++ style) — 6.3KB shared, 16B latent per image**
+- [x] **v5.8: Hybrid mode (SIREN + WebP/PNG residual) — 1.1x to 3x smaller than v5**
+- [ ] v5.9: Hypernetwork + hybrid residual combo (best of both)
 - [ ] v5: GPU acceleration via CUDA kernels
 - [ ] v5: Video compression (NeRV-style temporal INRs)
 - [ ] v5: Multi-texture pipeline for game engines
