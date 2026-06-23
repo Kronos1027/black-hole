@@ -84,6 +84,7 @@ def load_any(path: str):
 def cmd_compress(args):
     import numpy as np
     from siren_v5_torch import ImageINRv5
+    from siren_v5_hybrid import HybridCompressor
 
     kind, payload = load_any(args.input)
     if kind == 'image':
@@ -93,36 +94,51 @@ def cmd_compress(args):
         img, orig_nbytes, orig_bytes = payload
 
     print(f"[BLKH] Input: {args.input}  ({kind}, {orig_nbytes:,} bytes)")
-    print(f"[BLKH] Config: epochs={args.epochs} bits={args.bits} "
-          f"hidden={args.hidden} layers={args.layers} omega={args.omega} "
-          f"amp={getattr(args, 'amp', False)}")
-
-    comp = ImageINRv5(hidden_features=args.hidden,
-                      hidden_layers=args.layers,
-                      omega_0=args.omega)
+    if getattr(args, 'auto_tune', False):
+        print(f"[BLKH] Config: epochs={args.epochs} bits={args.bits} "
+              f"auto-tune=ON (SIREN size picked from image dims) "
+              f"amp={getattr(args, 'amp', False)}")
+    else:
+        print(f"[BLKH] Config: epochs={args.epochs} bits={args.bits} "
+              f"hidden={args.hidden} layers={args.layers} omega={args.omega} "
+              f"amp={getattr(args, 'amp', False)}")
 
     t0 = time.time()
     if args.no_bit_perfect:
         # Lossy mode (no residual)
+        comp = ImageINRv5(hidden_features=args.hidden,
+                          hidden_layers=args.layers,
+                          omega_0=args.omega)
         meta = comp.compress(img, epochs=args.epochs, lr=1e-3,
                              batch_size=args.batch_size,
                              use_amp=getattr(args, 'amp', False),
                              verbose=True)
-        # Save just the SIREN weights (need to quantize manually)
         from siren_v5_torch import quantize_int8, quantize_int4
         W = comp._model.state_to_numpy()
         if args.bits == 8:
             packed, pm = quantize_int8(W)
         else:
             packed, pm = quantize_int4(W)
-        # Use bit-perfect with empty residual as a way to reuse the format
         sha = hashlib.sha256(img.tobytes()).digest()
         recipe = comp._pack_recipe(args.bits, packed, pm, b'', sha)
-        # NOTE: in lossy mode, decompress will produce predicted-only bytes
-        # (residual is empty), so the SHA won't match. That's expected.
         print(f"[BLKH] Lossy mode: PSNR={meta['psnr']:.2f} dB  "
               f"(recipe will NOT roundtrip bit-perfect)")
+    elif getattr(args, 'auto_tune', False):
+        # Hybrid mode with auto-tune (recommended for images)
+        comp = HybridCompressor(auto_tune=True, omega_0=args.omega,
+                                 residual_codec='webp')
+        res = comp.compress_bitperfect(img, epochs=args.epochs, lr=1e-3,
+                                        bits=args.bits, prune_threshold=0.0,
+                                        batch_size=args.batch_size,
+                                        use_amp=getattr(args, 'amp', False),
+                                        verbose=True)
+        recipe = res['recipe_bytes']
+        print(f"[BLKH] Bit-perfect (hybrid+auto-tune): bit acc={res['model_bit_accuracy']:.1f}%  "
+              f"PSNR={res['psnr_db']:.2f} dB  SHA-256={res['sha256'][:16]}...")
     else:
+        comp = ImageINRv5(hidden_features=args.hidden,
+                          hidden_layers=args.layers,
+                          omega_0=args.omega)
         res = comp.compress_bitperfect(img, epochs=args.epochs, lr=1e-3,
                                         bits=args.bits, prune_threshold=0.0,
                                         batch_size=args.batch_size,
@@ -654,6 +670,8 @@ def main():
     p_c.add_argument('--batch-size', type=int, default=2048)
     p_c.add_argument('--amp', action='store_true',
                      help='Use mixed precision (bfloat16 on CPU, ~1.5x faster)')
+    p_c.add_argument('--auto-tune', action='store_true',
+                     help='Auto-pick SIREN size from image dims + use hybrid WebP residual (recommended)')
     p_c.add_argument('--no-bit-perfect', action='store_true',
                      help='Lossy mode (no residual, ~3x smaller but NOT exact)')
     p_c.set_defaults(func=cmd_compress)

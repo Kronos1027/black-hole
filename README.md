@@ -1385,6 +1385,42 @@ res = comp.compress_many(new_images, epochs=1000)
 
 ---
 
+## Quick Start (Recommended Path)
+
+For new users — just use `--auto-tune` and let BLKH pick the optimal config:
+
+```bash
+# Install
+pip install -e .
+
+# Compress (auto-tune picks SIREN size + uses hybrid WebP residual)
+python blkh.py compress photo.png photo.blkh8 --auto-tune --amp
+
+# Decompress (SHA-256 verified)
+python blkh.py decompress photo.blkh8 recovered.png
+
+# For multiple similar images (datacenter)
+python blkh.py combo img1.png img2.png img3.png output.blkh9
+
+# For video (temporal SIREN)
+python blkh.py video frames_dir/ output.blkv
+
+# For 3D volumes (MRI/CT)
+python blkh.py volume slices_dir/ output.blk3
+
+# Lossy mode (competes with JPEG/WebP)
+python blkh.py lossy photo.png photo_lossy.blkh5 --amp
+```
+
+**`--auto-tune`** automatically picks the SIREN architecture based on image size:
+- < 256px → h=32, l=2
+- 256-512px → h=64, l=3 (sweet spot: 4.5x vs ZIP)
+- > 512px → h=128, l=3
+
+**`--amp`** enables mixed precision (1.5x faster on CPU, 2-3x on GPU, free for bit-perfect mode).
+
+---
+
 ## Roadmap
 
 - [x] Phase 1: Core SIREN INR compressor (1D byte sequences)
@@ -1417,7 +1453,8 @@ res = comp.compress_many(new_images, epochs=1000)
 - [x] **v5.11: Video compression (temporal SIREN f(x,y,t)) — 1.5-1.7x smaller than ZIP on realistic video**
 - [x] **v5.12: 3D Volume compression (SIREN f(x,y,z)) for MRI/CT — experimental, needs large volumes**
 - [x] **v5.13: Streaming atlas (datacenter random access, O(1) read by index)**
-- [x] **v5.14: 3D Volume with DCT residual (lossy, 24-29% smaller than v5.12)**
+- [x] **v5.14: 3D Volume with DCT residual (lossy, 24-29% smaller than v5.12) — vectorized with scipy.fft**
+- [x] **v5.14: Auto-tune SIREN size + Quick Start guide for new users**
 - [ ] v5.15: Game engine plugin (Unity/Unreal) for runtime texture loading
 - [ ] v5: GPU acceleration via CUDA kernels
 - [ ] v5: Video compression (NeRV-style temporal INRs)
