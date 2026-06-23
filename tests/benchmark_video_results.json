@@ -1,0 +1,35 @@
+[
+  {
+    "n_frames": 4,
+    "total_orig": 49152,
+    "zip_total": 9202,
+    "video_size": 19716,
+    "video_ok": true,
+    "video_vs_zip": 0.4667275309393386,
+    "siren_size": 12931,
+    "avg_bit_pct": 90.54514567057291,
+    "time_s": 13.791180610656738
+  },
+  {
+    "n_frames": 8,
+    "total_orig": 98304,
+    "zip_total": 18682,
+    "video_size": 26918,
+    "video_ok": true,
+    "video_vs_zip": 0.6940337320751914,
+    "siren_size": 12931,
+    "avg_bit_pct": 89.81513977050781,
+    "time_s": 11.765639543533325
+  },
+  {
+    "n_frames": 16,
+    "total_orig": 196608,
+    "zip_total": 37176,
+    "video_size": 40800,
+    "video_ok": true,
+    "video_vs_zip": 0.9111764705882353,
+    "siren_size": 12931,
+    "avg_bit_pct": 87.90868123372395,
+    "time_s": 3.3194987773895264
+  }
+]

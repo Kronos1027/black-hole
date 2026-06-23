@@ -409,6 +409,96 @@ def cmd_combo_decompress(args):
             print(f"  Saved {len(images)} raw files to: {out_dir}")
 
 
+def cmd_video(args):
+    """Compress N video frames using v5.11 temporal SIREN.
+    Input: directory of PNG frames (sorted by name) OR explicit file list.
+    """
+    import numpy as np
+    from siren_v5_video import VideoCompressor
+
+    # Collect input frames
+    inputs = args.inputs
+    if len(inputs) == 1 and Path(inputs[0]).is_dir():
+        # Directory mode: load all PNGs sorted
+        d = Path(inputs[0])
+        inputs = sorted([str(f) for f in d.glob('*.png')])
+        print(f"[BLKH] Video: loaded {len(inputs)} frames from {d}")
+
+    if len(inputs) < 2:
+        print("[BLKH] Video needs at least 2 frames (directory or file list).")
+        sys.exit(1)
+
+    frames = []
+    for path in inputs:
+        try:
+            from PIL import Image
+            img = np.array(Image.open(path).convert('RGB'), dtype=np.uint8)
+            frames.append(img)
+        except Exception as e:
+            print(f"[BLKH] Failed to load {path}: {e}")
+            sys.exit(1)
+
+    total_orig = sum(f.nbytes for f in frames)
+    zip_total = sum(len(zlib.compress(f.tobytes(), 9)) for f in frames)
+    print(f"[BLKH] Video: {len(frames)} frames, total {total_orig:,}B")
+    print(f"[BLKH] ZIP per-frame total: {zip_total:,}B ({total_orig/zip_total:.2f}x)")
+    print(f"[BLKH] Config: hidden={args.hidden} layers={args.layers} "
+          f"codec={args.codec} epochs={args.epochs}")
+
+    comp = VideoCompressor(hidden_features=args.hidden,
+                            hidden_layers=args.layers,
+                            omega_0=args.omega,
+                            omega_t=args.omega_t,
+                            residual_codec=args.codec)
+    t0 = time.time()
+    res = comp.compress(frames, epochs=args.epochs, lr=1e-3,
+                          bits=8, batch_size=4096, verbose=True)
+    dt = time.time() - t0
+
+    Path(args.output).write_bytes(res['recipe_bytes'])
+    winner = "BLKH" if res['recipe_size'] < zip_total else "ZIP"
+    print(f"\n[BLKH] Video result:")
+    print(f"  Original:    {total_orig:>10,} B ({len(frames)} frames)")
+    print(f"  ZIP:         {zip_total:>10,} B  (ratio {total_orig/zip_total:.2f}x)")
+    print(f"  BLKH Video:  {res['recipe_size']:>10,} B  (ratio {total_orig/res['recipe_size']:.2f}x)")
+    print(f"    SIREN (shared): {res['weights_packed_size']:,} B "
+          f"-> {res['weights_packed_size']/len(frames):.0f} B/frame amortized")
+    print(f"    residual/frame: {res['residual_per_frame']:.0f} B ({res['residual_codec']})")
+    print(f"  Bit acc avg: {res['avg_bit_pct']:.1f}%")
+    print(f"  Winner: {winner}  (BLKH/ZIP = {res['recipe_size']/zip_total:.3f})")
+    print(f"  Time: {dt:.1f}s")
+    print(f"  Output: {args.output}")
+
+
+def cmd_video_decompress(args):
+    """Decompress a .blkv video recipe into N PNG frames."""
+    import numpy as np
+    from siren_v5_video import VideoCompressor
+
+    recipe = Path(args.input).read_bytes()
+    t0 = time.time()
+    frames, meta = VideoCompressor.decompress(recipe)
+    dt = time.time() - t0
+    print(f"[BLKH] Video: decompressed {meta['n_frames']} frames in {dt*1000:.0f}ms")
+    print(f"  Mode: {meta['mode']}  codec: {meta['residual_codec']}")
+    print(f"  All SHA-256 match: {meta['all_sha256_match']}")
+    if not meta['all_sha256_match']:
+        print(f"  WARNING: some frames failed SHA-256 verification!")
+        sys.exit(1)
+    if args.output_dir:
+        out_dir = Path(args.output_dir)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            from PIL import Image
+            for i, img in enumerate(frames):
+                Image.fromarray(img).save(out_dir / f"frame_{i:04d}.png")
+            print(f"  Saved {len(frames)} frames to: {out_dir}")
+        except ImportError:
+            for i, img in enumerate(frames):
+                (out_dir / f"frame_{i:04d}.raw").write_bytes(img.tobytes())
+            print(f"  Saved {len(frames)} raw files to: {out_dir}")
+
+
 def cmd_lossy(args):
     """Compress with BLKH lossy mode (no residual, smaller recipe, NOT bit-perfect).
     Competes with JPEG and WebP lossy.
@@ -558,6 +648,26 @@ def main():
     p_cbd.add_argument('output_dir', nargs='?', default=None,
                         help='Output directory (default: just verify SHA-256)')
     p_cbd.set_defaults(func=cmd_combo_decompress)
+
+    p_v = sub.add_parser('video',
+                          help='v5.11 Video: temporal SIREN f(x,y,t) for N frames')
+    p_v.add_argument('inputs', nargs='+',
+                      help='Input frame images (2+) OR a single directory of PNGs')
+    p_v.add_argument('output', help='Output .blkv video recipe')
+    p_v.add_argument('--epochs', type=int, default=2000)
+    p_v.add_argument('--hidden', type=int, default=64)
+    p_v.add_argument('--layers', type=int, default=3)
+    p_v.add_argument('--omega', type=float, default=30.0)
+    p_v.add_argument('--omega-t', type=float, default=1.0,
+                      help='Temporal frequency scale (lower=smoother motion)')
+    p_v.add_argument('--codec', choices=['webp', 'png', 'zlib'], default='webp')
+    p_v.set_defaults(func=cmd_video)
+
+    p_vd = sub.add_parser('video-decompress', help='Decompress a .blkv video recipe')
+    p_vd.add_argument('input', help='Input .blkv video recipe')
+    p_vd.add_argument('output_dir', nargs='?', default=None,
+                       help='Output directory (default: just verify SHA-256)')
+    p_vd.set_defaults(func=cmd_video_decompress)
 
     args = p.parse_args()
     args.func(args)
