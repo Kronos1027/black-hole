@@ -1,0 +1,79 @@
+[
+  {
+    "name": "brick 64x64",
+    "orig_size": 12288,
+    "zip_size": 8067,
+    "zip_ratio": 1.52,
+    "bh_size": 1320,
+    "bh_ratio": 9.31,
+    "bh_time": 8.15,
+    "bh_psnr": 21.21,
+    "bh_match": 1.76
+  },
+  {
+    "name": "grass 64x64",
+    "orig_size": 12288,
+    "zip_size": 10097,
+    "zip_ratio": 1.22,
+    "bh_size": 1320,
+    "bh_ratio": 9.31,
+    "bh_time": 8.11,
+    "bh_psnr": 36.76,
+    "bh_match": 19.47
+  },
+  {
+    "name": "sky 64x64",
+    "orig_size": 12288,
+    "zip_size": 408,
+    "zip_ratio": 30.12,
+    "bh_size": 1320,
+    "bh_ratio": 9.31,
+    "bh_time": 8.13,
+    "bh_psnr": 48.72,
+    "bh_match": 44.01
+  },
+  {
+    "name": "wood 64x64",
+    "orig_size": 12288,
+    "zip_size": 10654,
+    "zip_ratio": 1.15,
+    "bh_size": 1320,
+    "bh_ratio": 9.31,
+    "bh_time": 7.38,
+    "bh_psnr": 38.76,
+    "bh_match": 10.45
+  },
+  {
+    "name": "brick 128x128",
+    "orig_size": 49152,
+    "zip_size": 31556,
+    "zip_ratio": 1.56,
+    "bh_size": 1320,
+    "bh_ratio": 37.24,
+    "bh_time": 38.68,
+    "bh_psnr": 15.89,
+    "bh_match": 1.06
+  },
+  {
+    "name": "sky 128x128",
+    "orig_size": 49152,
+    "zip_size": 589,
+    "zip_ratio": 83.45,
+    "bh_size": 1320,
+    "bh_ratio": 37.24,
+    "bh_time": 38.82,
+    "bh_psnr": 45.67,
+    "bh_match": 34.25
+  },
+  {
+    "name": "system 4KB",
+    "orig_size": 4096,
+    "zip_size": 669,
+    "zip_ratio": 6.12,
+    "bh_size": 1222,
+    "bh_ratio": 3.35,
+    "bh_time": 4.56,
+    "bh_psnr": 19.95,
+    "bh_match": 79.47
+  }
+]
