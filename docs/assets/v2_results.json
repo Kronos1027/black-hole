@@ -1,0 +1,59 @@
+[
+  {
+    "name": "Smooth Gradient 16x16",
+    "shape": [
+      16,
+      16,
+      3
+    ],
+    "orig_size": 768,
+    "zip_size": 610,
+    "zip_ratio": 1.259016393442623,
+    "zip_time": 0.012795448303222656,
+    "bh_recipe_size": 42028,
+    "bh_ratio": 0.018273531931093556,
+    "bh_time": 1.7634332180023193,
+    "bh_psnr": 51.93291473388672,
+    "bh_match": 58.333333333333336,
+    "hybrid_size": 42196,
+    "hybrid_ratio": 0.018200777324864918
+  },
+  {
+    "name": "Structured Color 16x16",
+    "shape": [
+      16,
+      16,
+      3
+    ],
+    "orig_size": 768,
+    "zip_size": 720,
+    "zip_ratio": 1.0666666666666667,
+    "zip_time": 0.01056981086730957,
+    "bh_recipe_size": 42110,
+    "bh_ratio": 0.018237948230824034,
+    "bh_time": 1.5837585926055908,
+    "bh_psnr": 50.62957763671875,
+    "bh_match": 51.171875,
+    "hybrid_size": 42293,
+    "hybrid_ratio": 0.018159033409784125
+  },
+  {
+    "name": "Smooth Gradient 32x32",
+    "shape": [
+      32,
+      32,
+      3
+    ],
+    "orig_size": 3072,
+    "zip_size": 2426,
+    "zip_ratio": 1.2662819455894476,
+    "zip_time": 0.009554624557495117,
+    "bh_recipe_size": 42298,
+    "bh_ratio": 0.07262754740176841,
+    "bh_time": 6.227877616882324,
+    "bh_psnr": 51.88903045654297,
+    "bh_match": 57.91015625,
+    "hybrid_size": 42754,
+    "hybrid_ratio": 0.07185292604200777
+  }
+]

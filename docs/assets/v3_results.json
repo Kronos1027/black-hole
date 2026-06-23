@@ -1,0 +1,74 @@
+[
+  {
+    "name": "Smooth Gradient 16x16",
+    "shape": [
+      16,
+      16,
+      3
+    ],
+    "orig_size": 768,
+    "zip_size": 610,
+    "zip_ratio": 1.259016393442623,
+    "bh_size": 1320,
+    "bh_ratio": 0.5818181818181818,
+    "bh_time": 0.5425498485565186,
+    "bh_psnr": 52.16999053955078,
+    "bh_match": 60.546875,
+    "hybrid_size": 1476,
+    "hybrid_ratio": 0.5203252032520326
+  },
+  {
+    "name": "Structured Color 16x16",
+    "shape": [
+      16,
+      16,
+      3
+    ],
+    "orig_size": 768,
+    "zip_size": 720,
+    "zip_ratio": 1.0666666666666667,
+    "bh_size": 1320,
+    "bh_ratio": 0.5818181818181818,
+    "bh_time": 0.5509281158447266,
+    "bh_psnr": 48.795562744140625,
+    "bh_match": 40.88541666666667,
+    "hybrid_size": 1566,
+    "hybrid_ratio": 0.4904214559386973
+  },
+  {
+    "name": "Mandelbrot 32x32",
+    "shape": [
+      32,
+      32,
+      3
+    ],
+    "orig_size": 3072,
+    "zip_size": 495,
+    "zip_ratio": 6.206060606060606,
+    "bh_size": 1320,
+    "bh_ratio": 2.327272727272727,
+    "bh_time": 1.9977552890777588,
+    "bh_psnr": 36.741302490234375,
+    "bh_match": 12.890625,
+    "hybrid_size": 2935,
+    "hybrid_ratio": 1.0466780238500852
+  },
+  {
+    "name": "Smooth Gradient 64x64",
+    "shape": [
+      64,
+      64,
+      3
+    ],
+    "orig_size": 12288,
+    "zip_size": 10421,
+    "zip_ratio": 1.1791574704922752,
+    "bh_size": 1320,
+    "bh_ratio": 9.309090909090909,
+    "bh_time": 7.120969295501709,
+    "bh_psnr": 46.969512939453125,
+    "bh_match": 35.89680989583333,
+    "hybrid_size": 5108,
+    "hybrid_ratio": 2.405638214565388
+  }
+]
