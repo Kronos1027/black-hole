@@ -866,6 +866,98 @@ python tests/benchmark_hybrid.py
 
 ---
 
+## v5.9: Combo Mode (Hypernetwork + Hybrid Residual) — BEST FOR DATACENTER
+
+Combines the two best optimizations from v5.7 and v5.8:
+
+- **v5.7 Hypernetwork**: shared network generates SIREN weights from a per-image latent (16 bytes INT8)
+- **v5.8 Hybrid residual**: encode prediction error as WebP/PNG lossless (1.1x to 3x smaller than XOR+zlib)
+
+The combo is the **recommended mode for datacenter use cases** (10-100+ similar smooth images). It amortizes the hypernetwork across all images AND uses image-codec compression on the residual.
+
+### Results: Combo vs ZIP (all 100% SHA-256 verified)
+
+| N images | Total orig | ZIP per-file | **BLKH Combo** | vs ZIP | Bit Acc |
+|----------|-----------|--------------|----------------|--------|---------|
+| 3 | 36,864 B | 30,243 B | **10,432 B** | **2.90x** | 75.6% |
+| 5 | 61,440 B | 42,369 B | **21,194 B** | **2.00x** | 74.2% |
+| 10 | 122,880 B | 82,896 B | **36,590 B** | **2.27x** | 71.6% |
+
+**BLKH Combo beats ZIP by 2-3x on smooth image corpora, with 100% bit-perfect roundtrip.**
+
+### Comparison: All Multi-Image Strategies (N=10, all SHA-256 verified)
+
+| Strategy | Recipe size | vs ZIP | Notes |
+|----------|-------------|--------|-------|
+| ZIP per-file | 82,896 B | 1.0x | baseline |
+| BLKH v5.2 Atlas (3D-SIREN) | ~65,000 B | 1.28x | shared SIREN, XOR+zlib residual |
+| BLKH v5.7 Hyper (XOR+zlib) | 84,724 B | 0.98x | hypernetwork, but zlib residual is big |
+| **BLKH v5.9 Combo (WebP)** | **36,590 B** | **2.27x** | **hypernetwork + WebP residual = best** |
+
+### Architecture
+
+```
+ComboCompressor (siren_v5_combo.py)
+├── Phase 1: train_base(images)
+│   ├── HyperNetwork: Linear(latent_dim, total_siren_params)
+│   ├── For each epoch: sample image, train latent z + HyperNetwork
+│   └── Cache: shared hypernetwork weights (~6.3KB)
+├── Phase 2: compress_many(images)
+│   ├── Per image: train only 16-float latent z (~0.5s)
+│   ├── Quantize z to INT8 (16 bytes)
+│   ├── Inference with quantized latent + quantized hypernetwork
+│   ├── Compute residual_img = (original - predicted) mod 256
+│   ├── Encode residual as WebP lossless (NOT XOR+zlib)
+│   └── Pack: shared hyper + per-image (latent + WebP residual + SHA-256)
+└── decompress()
+    ├── Unpack shared hypernetwork + per-image data
+    ├── For each image: dequantize latent, inference, decode WebP residual
+    └── recovered = (predicted + residual) mod 256 — verify SHA-256
+```
+
+### Usage
+
+```bash
+# CLI: compress N images into one .blkh9 combo recipe
+python blkh.py combo img1.png img2.png img3.png output.blkh9
+
+# Decompress (recovers all N images, SHA-256 verified)
+python blkh.py combo-decompress output.blkh9 recovered/
+
+# Options: --latent 16, --codec webp|png|zlib, --base-epochs 2000, --compress-epochs 800
+```
+
+```python
+from phase1_inr_compressor.siren_v5_combo import ComboCompressor
+
+# Phase 1: train shared hypernetwork on corpus
+comp = ComboCompressor(latent_dim=16, hidden_features=16, hidden_layers=1,
+                        residual_codec='webp')
+comp.train_base(corpus_images, epochs=2000)
+
+# Phase 2: compress N images (per-image: 16B latent + WebP residual)
+res = comp.compress_many(images, epochs=800)
+# res['recipe_size'] = ~3-5KB per image (vs 12KB ZIP per image)
+
+# Decompress all N images (SHA-256 verified per image)
+recovered, meta = ComboCompressor.decompress(res['recipe_bytes'])
+assert meta['all_sha256_match']
+```
+
+### When to use Combo vs other modes
+
+- **Single image, smooth 2D**: use `blkh compress` (v5 bit-perfect) or `blkh lossy` (v5.4 lossy)
+- **5-10 similar images**: use `blkh atlas` (v5.2) or `blkh combo` (v5.9) — combo wins
+- **10-100+ similar images (datacenter)**: use `blkh combo` (v5.9) — best amortization
+- **Single image, real photo**: use PNG/WebP lossless (BLKH loses to specialized codecs)
+- **Lossy, single image**: use `blkh lossy` (v5.4) — competes with JPEG/WebP lossy
+
+```bash
+python tests/benchmark_combo.py
+```
+
+---
+
 ---
 
 ## v5 Scaling — BLKH Wins BIGGER as Image Grows
@@ -941,7 +1033,8 @@ res = comp.compress_many(new_images, epochs=1000)
 - [x] **v5.6: Mixed precision (FP16/BF16) training — 1.45x CPU speedup, free for bit-perfect**
 - [x] **v5.7: Hypernetwork meta-learning (COIN++ style) — 6.3KB shared, 16B latent per image**
 - [x] **v5.8: Hybrid mode (SIREN + WebP/PNG residual) — 1.1x to 3x smaller than v5**
-- [ ] v5.9: Hypernetwork + hybrid residual combo (best of both)
+- [x] **v5.9: Combo mode (hypernetwork + WebP residual) — 2-3x smaller than ZIP on N images**
+- [ ] v5.10: GPU CUDA kernels (target: 50x speedup over CPU)
 - [ ] v5: GPU acceleration via CUDA kernels
 - [ ] v5: Video compression (NeRV-style temporal INRs)
 - [ ] v5: Multi-texture pipeline for game engines

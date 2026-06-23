@@ -1,0 +1,24 @@
+[
+  {
+    "n": 5,
+    "total_orig": 61440,
+    "zip_total": 42369,
+    "combo_size": 21194,
+    "combo_ok": true,
+    "combo_vs_zip": 1.9991035198641125,
+    "hyper_size": 6307,
+    "avg_bit_pct": 74.18741861979167,
+    "time_s": 17.06370449066162
+  },
+  {
+    "n": 10,
+    "total_orig": 122880,
+    "zip_total": 82896,
+    "combo_size": 36590,
+    "combo_ok": true,
+    "combo_vs_zip": 2.2655370319759496,
+    "hyper_size": 6307,
+    "avg_bit_pct": 71.62465413411458,
+    "time_s": 3.6494157314300537
+  }
+]

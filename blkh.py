@@ -320,6 +320,95 @@ def cmd_atlas_decompress(args):
             print(f"  Saved {len(images)} raw files to: {out_dir} (install Pillow for PNG)")
 
 
+def cmd_combo(args):
+    """Compress N similar images using v5.9 Combo (hypernetwork + WebP residual).
+    Best mode for datacenter: 2-3x smaller than ZIP on smooth image corpora.
+    """
+    import numpy as np
+    from siren_v5_combo import ComboCompressor
+
+    inputs = args.inputs
+    if len(inputs) < 2:
+        print("[BLKH] Combo needs at least 2 input images.")
+        sys.exit(1)
+
+    images = []
+    for path in inputs:
+        try:
+            from PIL import Image
+            img = np.array(Image.open(path).convert('RGB'), dtype=np.uint8)
+            images.append(img)
+            print(f"[BLKH] Loaded: {path} ({img.shape})")
+        except Exception as e:
+            print(f"[BLKH] Failed to load {path}: {e}")
+            sys.exit(1)
+
+    total_orig = sum(im.nbytes for im in images)
+    zip_total = sum(len(zlib.compress(im.tobytes(), 9)) for im in images)
+    print(f"\n[BLKH] Combo: {len(images)} images, total {total_orig:,}B")
+    print(f"[BLKH] ZIP per-file total: {zip_total:,}B ({total_orig/zip_total:.2f}x)")
+    print(f"[BLKH] Config: latent={args.latent} hidden={args.hidden} layers={args.layers} "
+          f"codec={args.codec} base_epochs={args.base_epochs} compress_epochs={args.compress_epochs}")
+
+    comp = ComboCompressor(latent_dim=args.latent,
+                            hidden_features=args.hidden,
+                            hidden_layers=args.layers,
+                            omega_0=args.omega,
+                            residual_codec=args.codec)
+    t0 = time.time()
+    print(f"\n[BLKH] Phase 1: training shared hypernetwork...")
+    comp.train_base(images, epochs=args.base_epochs, lr=1e-3,
+                     batch_size=2048, verbose=True)
+    print(f"\n[BLKH] Phase 2: compressing {len(images)} images (latent + {args.codec} residual)...")
+    res = comp.compress_many(images, epochs=args.compress_epochs, lr=3e-3,
+                              bits=8, batch_size=2048, verbose=False)
+    dt = time.time() - t0
+
+    Path(args.output).write_bytes(res['recipe_bytes'])
+    winner = "BLKH" if res['recipe_size'] < zip_total else "ZIP"
+    print(f"\n[BLKH] Combo result:")
+    print(f"  Original:    {total_orig:>10,} B")
+    print(f"  ZIP:         {zip_total:>10,} B  (ratio {total_orig/zip_total:.2f}x)")
+    print(f"  BLKH Combo:  {res['recipe_size']:>10,} B  (ratio {total_orig/res['recipe_size']:.2f}x)")
+    print(f"    hyper (shared): {res['hyper_size']:,} B "
+          f"-> {res['hyper_size']/len(images):.0f} B/image amortized")
+    print(f"    latent/img:     {res['latent_per_image']} B (INT8)")
+    print(f"    residual/img:   {res['residual_per_image']:.0f} B ({res['residual_codec']})")
+    print(f"  Bit acc avg: {res['avg_bit_pct']:.1f}%")
+    print(f"  Winner: {winner}  (BLKH/ZIP = {res['recipe_size']/zip_total:.3f})")
+    print(f"  Time: {dt:.1f}s ({res['per_image_time_s']:.2f}s/image)")
+    print(f"  Output: {args.output}")
+
+
+def cmd_combo_decompress(args):
+    """Decompress a .blkh9 combo recipe into N images."""
+    import numpy as np
+    from siren_v5_combo import ComboCompressor
+
+    recipe = Path(args.input).read_bytes()
+    t0 = time.time()
+    images, meta = ComboCompressor.decompress(recipe)
+    dt = time.time() - t0
+    print(f"[BLKH] Combo: decompressed {meta['n_images']} images in {dt*1000:.0f}ms")
+    print(f"  Mode: {meta['mode']}  codec: {meta['residual_codec']}")
+    print(f"  All SHA-256 match: {meta['all_sha256_match']}")
+    if not meta['all_sha256_match']:
+        print(f"  WARNING: some images failed SHA-256 verification!")
+        sys.exit(1)
+    if args.output_dir:
+        out_dir = Path(args.output_dir)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            from PIL import Image
+            for i, img in enumerate(images):
+                Image.fromarray(img).save(out_dir / f"recovered_{i:03d}.png")
+            print(f"  Saved {len(images)} images to: {out_dir}")
+        except ImportError:
+            for i, img in enumerate(images):
+                (out_dir / f"recovered_{i:03d}.raw").write_bytes(img.tobytes())
+            print(f"  Saved {len(images)} raw files to: {out_dir}")
+
+
 def cmd_lossy(args):
     """Compress with BLKH lossy mode (no residual, smaller recipe, NOT bit-perfect).
     Competes with JPEG and WebP lossy.
@@ -446,6 +535,29 @@ def main():
     p_l.add_argument('--amp', action='store_true',
                      help='Use mixed precision (bfloat16 on CPU, ~1.5x faster)')
     p_l.set_defaults(func=cmd_lossy)
+
+    p_cb = sub.add_parser('combo',
+                           help='v5.9 Combo: hypernetwork + WebP residual (best for N similar images)')
+    p_cb.add_argument('inputs', nargs='+', help='Input image files (2 or more)')
+    p_cb.add_argument('output', help='Output .blkh9 combo recipe')
+    p_cb.add_argument('--latent', type=int, default=16,
+                       help='Latent vector dim per image (default 16 = 16 bytes INT8)')
+    p_cb.add_argument('--hidden', type=int, default=16)
+    p_cb.add_argument('--layers', type=int, default=1)
+    p_cb.add_argument('--omega', type=float, default=30.0)
+    p_cb.add_argument('--codec', choices=['webp', 'png', 'zlib'], default='webp',
+                       help='Residual codec (webp=best, png=compat, zlib=legacy)')
+    p_cb.add_argument('--base-epochs', type=int, default=2000,
+                       help='Phase 1: hypernetwork training epochs')
+    p_cb.add_argument('--compress-epochs', type=int, default=800,
+                       help='Phase 2: per-image latent training epochs')
+    p_cb.set_defaults(func=cmd_combo)
+
+    p_cbd = sub.add_parser('combo-decompress', help='Decompress a .blkh9 combo recipe')
+    p_cbd.add_argument('input', help='Input .blkh9 combo recipe')
+    p_cbd.add_argument('output_dir', nargs='?', default=None,
+                        help='Output directory (default: just verify SHA-256)')
+    p_cbd.set_defaults(func=cmd_combo_decompress)
 
     args = p.parse_args()
     args.func(args)
