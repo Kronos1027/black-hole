@@ -1,0 +1,38 @@
+[
+  {
+    "name": "gradient_256",
+    "orig": 196608,
+    "zip": 180219,
+    "v5": 32178,
+    "hybrid": 8800,
+    "bit_pct": 84.26,
+    "ok": true
+  },
+  {
+    "name": "gradient_512",
+    "orig": 786432,
+    "zip": 253402,
+    "v5": 144520,
+    "hybrid": 30616,
+    "bit_pct": 85.68,
+    "ok": true
+  },
+  {
+    "name": "blobs_256",
+    "orig": 196608,
+    "zip": 87233,
+    "v5": 67689,
+    "hybrid": 24830,
+    "bit_pct": 85.27,
+    "ok": true
+  },
+  {
+    "name": "blobs_512",
+    "orig": 786432,
+    "zip": 192674,
+    "v5": 188349,
+    "hybrid": 77844,
+    "bit_pct": 85.08,
+    "ok": true
+  }
+]
