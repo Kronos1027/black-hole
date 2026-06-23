@@ -1,0 +1,10 @@
+{
+  "n_images": 20,
+  "size": 128,
+  "total_orig": 983040,
+  "zip_total": 669491,
+  "blkh_single_total": 463470,
+  "blkh_atlas_total": 475060,
+  "atlas_sha256_ok": true,
+  "atlas_bit_pct": 78.87186686197916
+}
