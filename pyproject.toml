@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "black-hole"
+version = "5.0.0"
+description = "Black Hole (BLKH) — Neural Implicit Compression with SIREN"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "Darlan Pereira da Silva", email = "darlan1027pc@gmail.com"}
+]
+requires-python = ">=3.9"
+dependencies = [
+    "numpy>=1.24.0",
+    "psutil>=5.9.0",
+    "Pillow>=10.0.0",
+    "torch>=2.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "matplotlib>=3.7.0",
+    "tqdm>=4.65.0",
+]
+
+[project.scripts]
+blkh = "blkh:main"
+
+[tool.setuptools]
+py-modules = ["blkh"]
+
+[tool.setuptools.packages.find]
+include = ["phase1_inr_compressor*", "phase2_opportunistic_daemon*", "phase3_ejection_engine*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]

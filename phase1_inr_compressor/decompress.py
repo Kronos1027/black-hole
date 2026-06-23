@@ -1,38 +1,40 @@
 #!/usr/bin/env python3
 """
-Black Hole - Phase 1: INR Decompressor
-Reconstruct a file from a SIREN neural recipe.
-Usage: python decompress.py <recipe.json> <output_file> <original_size>
+Black Hole - Phase 1: Decompress (v5 PyTorch backend)
+======================================================
+Replaces the legacy v1 decompress.py. Uses siren_v5_torch.py.
+SHA-256 verified roundtrip — guarantees 100% bit-perfect recovery.
+
+Usage:
+    python decompress.py <recipe.blkh5> <output_file>
+
+Examples:
+    python decompress.py out.blkh5 recovered.png
+    python decompress.py out.blkh5 recovered.raw
 """
 import sys
-import os
-from siren_core import DataINRCompressor
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE.parent))
+
+from blkh import cmd_decompress
+import argparse
+
 
 def main():
-    if len(sys.argv) < 4:
-        print("Usage: python decompress.py <recipe.json> <output_file> <original_size>")
+    if len(sys.argv) < 3:
+        print("Usage: python decompress.py <recipe.blkh5> <output_file>")
+        print("\nExamples:")
+        print("  python decompress.py out.blkh5 recovered.png")
         sys.exit(1)
-    
-    recipe_file = sys.argv[1]
-    output_file = sys.argv[2]
-    original_size = int(sys.argv[3])
-    
-    if not os.path.exists(recipe_file):
-        print(f"Error: recipe not found: {recipe_file}")
-        sys.exit(1)
-    
-    print(f"[Black Hole] Loading recipe: {recipe_file}")
-    compressor = DataINRCompressor(hidden_dim=64, num_layers=3)
-    compressor.load_recipe(recipe_file)
-    
-    print(f"[Black Hole] Ejecting {original_size} bytes...")
-    data = compressor.reconstruct(original_size)
-    
-    with open(output_file, 'wb') as f:
-        f.write(data.tobytes())
-    
-    print(f"[Black Hole] Ejection complete: {output_file}")
-    print(f"  Bytes: {len(data)}")
+
+    args = argparse.Namespace(
+        input=sys.argv[1],
+        output=sys.argv[2],
+    )
+    cmd_decompress(args)
+
 
 if __name__ == '__main__':
     main()

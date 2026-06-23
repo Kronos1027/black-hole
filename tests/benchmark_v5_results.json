@@ -1,0 +1,62 @@
+[
+  {
+    "name": "gradient_64",
+    "orig_size": 12288,
+    "zip_size": 10207,
+    "v4_recipe": 8552,
+    "v4_time_s": 2.8466875553131104,
+    "v4_bit_pct": 76.13321940104166,
+    "v4_ok": true,
+    "v5_recipe": 3891,
+    "v5_time_s": 4.315798997879028,
+    "v5_bit_pct": 92.6727294921875,
+    "v5_ok": true,
+    "speedup": 0.659596880371884,
+    "v5_winner": "BLKH"
+  },
+  {
+    "name": "gradient_128",
+    "orig_size": 49152,
+    "zip_size": 45015,
+    "v4_recipe": 34356,
+    "v4_time_s": 26.974321126937866,
+    "v4_bit_pct": 71.97977701822916,
+    "v4_ok": true,
+    "v5_recipe": 7958,
+    "v5_time_s": 2.210996150970459,
+    "v5_bit_pct": 88.64262898763022,
+    "v5_ok": true,
+    "speedup": 12.200076022338706,
+    "v5_winner": "BLKH"
+  },
+  {
+    "name": "smooth_blobs_64",
+    "orig_size": 12288,
+    "zip_size": 9066,
+    "v4_recipe": 7567,
+    "v4_time_s": 2.8187255859375,
+    "v4_bit_pct": 82.62532552083334,
+    "v4_ok": true,
+    "v5_recipe": 6706,
+    "v5_time_s": 2.3801121711730957,
+    "v5_bit_pct": 88.2965087890625,
+    "v5_ok": true,
+    "speedup": 1.1842826653620375,
+    "v5_winner": "BLKH"
+  },
+  {
+    "name": "smooth_blobs_128",
+    "orig_size": 49152,
+    "zip_size": 31812,
+    "v4_recipe": 21589,
+    "v4_time_s": 27.185139417648315,
+    "v4_bit_pct": 84.67305501302084,
+    "v4_ok": true,
+    "v5_recipe": 18603,
+    "v5_time_s": 2.188674211502075,
+    "v5_bit_pct": 87.07962036132812,
+    "v5_ok": true,
+    "speedup": 12.420825024932013,
+    "v5_winner": "BLKH"
+  }
+]
