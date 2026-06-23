@@ -626,6 +626,19 @@ To validate beyond synthetic data, we generated **5 photo-realistic images** (sk
 python tests/benchmark_real_photos.py
 ```
 
+### Visual Demo — Bit-Perfect Roundtrip
+
+Below is a visual comparison of original → BLKH reconstructed → difference (amplified 10x). Note that the **difference panel looks dark** because the residual correction layer makes the final reconstruction **byte-for-byte identical** to the original (SHA-256 verified), even though the SIREN model alone has only ~70-75% bit accuracy.
+
+![Visual Demo](docs/assets/v5_visual_demo.png)
+
+The "trick": BLKH's bit-perfect mode stores a tiny XOR residual alongside the SIREN weights. The SIREN gives a good prediction; the residual corrects every wrong bit. Result: 100% identical recovery, smaller than ZIP.
+
+Generate the demo yourself:
+```bash
+python tests/demo_visual.py
+```
+
 ---
 
 ## v5 Scaling — BLKH Wins BIGGER as Image Grows
