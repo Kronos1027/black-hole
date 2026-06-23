@@ -94,7 +94,8 @@ def cmd_compress(args):
 
     print(f"[BLKH] Input: {args.input}  ({kind}, {orig_nbytes:,} bytes)")
     print(f"[BLKH] Config: epochs={args.epochs} bits={args.bits} "
-          f"hidden={args.hidden} layers={args.layers} omega={args.omega}")
+          f"hidden={args.hidden} layers={args.layers} omega={args.omega} "
+          f"amp={getattr(args, 'amp', False)}")
 
     comp = ImageINRv5(hidden_features=args.hidden,
                       hidden_layers=args.layers,
@@ -104,7 +105,9 @@ def cmd_compress(args):
     if args.no_bit_perfect:
         # Lossy mode (no residual)
         meta = comp.compress(img, epochs=args.epochs, lr=1e-3,
-                             batch_size=args.batch_size, verbose=True)
+                             batch_size=args.batch_size,
+                             use_amp=getattr(args, 'amp', False),
+                             verbose=True)
         # Save just the SIREN weights (need to quantize manually)
         from siren_v5_torch import quantize_int8, quantize_int4
         W = comp._model.state_to_numpy()
@@ -122,7 +125,9 @@ def cmd_compress(args):
     else:
         res = comp.compress_bitperfect(img, epochs=args.epochs, lr=1e-3,
                                         bits=args.bits, prune_threshold=0.0,
-                                        batch_size=args.batch_size, verbose=True)
+                                        batch_size=args.batch_size,
+                                        use_amp=getattr(args, 'amp', False),
+                                        verbose=True)
         recipe = res['recipe_bytes']
         print(f"[BLKH] Bit-perfect: bit acc={res['model_bit_accuracy']:.1f}%  "
               f"PSNR={res['psnr_db']:.2f} dB  SHA-256={res['sha256'][:16]}...")
@@ -341,7 +346,9 @@ def cmd_lossy(args):
     t0 = time.time()
     res = comp.compress_lossy(img, epochs=args.epochs, lr=1e-3,
                                 bits=args.bits, prune_threshold=args.prune,
-                                batch_size=args.batch_size, verbose=True)
+                                batch_size=args.batch_size,
+                                use_amp=getattr(args, 'amp', False),
+                                verbose=True)
     dt = time.time() - t0
 
     Path(args.output).write_bytes(res['recipe_bytes'])
@@ -388,6 +395,8 @@ def main():
     p_c.add_argument('--layers', type=int, default=2)
     p_c.add_argument('--omega', type=float, default=30.0)
     p_c.add_argument('--batch-size', type=int, default=2048)
+    p_c.add_argument('--amp', action='store_true',
+                     help='Use mixed precision (bfloat16 on CPU, ~1.5x faster)')
     p_c.add_argument('--no-bit-perfect', action='store_true',
                      help='Lossy mode (no residual, ~3x smaller but NOT exact)')
     p_c.set_defaults(func=cmd_compress)
@@ -434,6 +443,8 @@ def main():
     p_l.add_argument('--layers', type=int, default=2)
     p_l.add_argument('--omega', type=float, default=30.0)
     p_l.add_argument('--batch-size', type=int, default=2048)
+    p_l.add_argument('--amp', action='store_true',
+                     help='Use mixed precision (bfloat16 on CPU, ~1.5x faster)')
     p_l.set_defaults(func=cmd_lossy)
 
     args = p.parse_args()
