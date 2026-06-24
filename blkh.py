@@ -383,6 +383,82 @@ def cmd_wavelet3(args):
     print(f"  Output:      {args.output}")
 
 
+def cmd_batch_compress(args):
+    """Batch compress directory with v5.24 async parallel processing."""
+    from siren_v5_async import AsyncBatchCompressor
+
+    mode_map = {
+        'fast': ('fast', '.blkf'),
+        'dct': ('dct', '.blkd'),
+        'photo': ('photo', '.blkp'),
+        'wavelet3': ('wavelet3', '.blkw3'),
+    }
+    mode, _ = mode_map.get(args.mode, ('fast', '.blkf'))
+
+    comp = AsyncBatchCompressor(
+        mode=mode,
+        quality=args.quality,
+        speed=args.speed,
+        workers=args.workers,
+    )
+    stats = comp.compress_directory_sync(args.input, args.output)
+    if stats['n_files'] == 0:
+        print("[BLKH] No images found to compress")
+
+
+def cmd_fast(args):
+    """Compress with v5.23 Fast DCT (speed competitive with ZIP)."""
+    import numpy as np
+    from siren_v5_fast import FastDCTCompressor
+
+    kind, payload = load_any(args.input)
+    if kind == 'image':
+        img = payload
+    else:
+        img, _, _ = payload
+
+    orig = img.nbytes
+    zip_sz = len(zlib.compress(img.tobytes(), 9))
+    try:
+        from PIL import Image as PILImage
+        import io
+        png_buf = io.BytesIO()
+        PILImage.fromarray(img).save(png_buf, format='PNG', optimize=True)
+        png_sz = png_buf.tell()
+    except ImportError:
+        png_sz = 0
+
+    print(f"[BLKH] Fast DCT v5.23: {args.input} ({orig:,}B)")
+    print(f"[BLKH] ZIP: {zip_sz:,}B" + (f", PNG: {png_sz:,}B" if png_sz else ""))
+    print(f"[BLKH] Mode: LOSSY (DCT q={args.quality}, speed={args.speed})")
+
+    comp = FastDCTCompressor(quality=args.quality, speed=args.speed)
+    t0 = time.time()
+    res = comp.compress(img, verbose=True)
+    dt = time.time() - t0
+
+    Path(args.output).write_bytes(res['recipe_bytes'])
+
+    rec, meta = FastDCTCompressor.decompress(res['recipe_bytes'])
+    mse = np.mean((img.astype(float) - rec.astype(float))**2)
+    psnr = 10*np.log10(255**2 / max(mse, 1e-10))
+
+    winner_zip = "BLKH" if res['recipe_size'] < zip_sz else "ZIP"
+    winner_png = "BLKH" if png_sz and res['recipe_size'] < png_sz else "PNG"
+    print(f"\n[BLKH] Fast DCT v5.23 result:")
+    print(f"  Original:    {orig:>10,} B")
+    print(f"  ZIP:         {zip_sz:>10,} B  ({orig/zip_sz:.2f}x)")
+    if png_sz:
+        print(f"  PNG:         {png_sz:>10,} B  ({orig/png_sz:.2f}x)")
+    print(f"  BLKH fast:   {res['recipe_size']:>10,} B  ({orig/res['recipe_size']:.2f}x)")
+    print(f"  PSNR:        {psnr:.1f} dB")
+    print(f"  Speed:       {args.speed} ({dt*1000:.1f}ms, {res.get('throughput_mbs', 0):.1f} MB/s)")
+    print(f"  vs ZIP:      {winner_zip}  ({res['recipe_size']/zip_sz:.3f} size, {zip_sz/max(dt,0.001)/1000:.1f}KB/ms ZIP vs {res['recipe_size']/max(dt,0.001)/1000:.1f}KB/ms BLKH)")
+    if png_sz:
+        print(f"  vs PNG:      {winner_png}  ({res['recipe_size']/png_sz:.3f})")
+    print(f"  Output:      {args.output}")
+
+
 def cmd_dct(args):
     """Compress with v5.22 DCT-quantized mode (JPEG-like, maximum compression)."""
     import numpy as np
@@ -784,6 +860,11 @@ def cmd_decompress(args):
         from siren_v5_dct import DCTCompressor
         img, meta = DCTCompressor.decompress(recipe)
         meta['exact_match'] = meta.get('sha256_match', False)
+    elif magic == b'BLKF':
+        # Fast DCT v5.23 format (.blkf) — use FastDCTCompressor
+        from siren_v5_fast import FastDCTCompressor
+        img, meta = FastDCTCompressor.decompress(recipe)
+        meta['exact_match'] = meta.get('sha256_match', False)
     elif magic == b'BLK5':
         # v5 format (.blkh5) — use ImageINRv5
         img, meta = ImageINRv5.decompress(recipe)
@@ -902,6 +983,18 @@ def cmd_info(args):
         W = struct.unpack('<H', recipe[8:10])[0]
         print(f"  version:    {version}")
         print(f"  quality:    {quality_int/100.0:.2f}")
+        print(f"  image:      {H}x{W}")
+    elif magic == b'BLKF':
+        print(f"[BLKH] Format: BLKF (v5.23 Fast DCT, speed-optimized)")
+        version = recipe[4]
+        quality_int = recipe[5]
+        speed_int = recipe[6]
+        H = struct.unpack('<H', recipe[7:9])[0]
+        W = struct.unpack('<H', recipe[9:11])[0]
+        speed_str = {0: 'fast', 1: 'balanced', 2: 'best'}.get(speed_int, 'unknown')
+        print(f"  version:    {version}")
+        print(f"  quality:    {quality_int/100.0:.2f}")
+        print(f"  speed:      {speed_str}")
         print(f"  image:      {H}x{W}")
     elif magic == b'BLKW':
         print(f"[BLKH] Format: BLKW (v5.18 Wavelet+INR — DEPRECATED, lossy not bit-perfect)")
@@ -1394,12 +1487,18 @@ Examples:
     p_doc = sub.add_parser('doctor', help='Diagnose environment and show recommendations')
     p_doc.set_defaults(func=cmd_doctor)
 
-    p_batch = sub.add_parser('batch', help='Compress all images in a directory')
+    p_batch = sub.add_parser('batch', help='Compress all images in a directory (v5.24 async parallel)')
     p_batch.add_argument('input', help='Input directory with images')
-    p_batch.add_argument('output', help='Output directory for .blkh8 files')
-    p_batch.add_argument('--instant', action='store_true', help='Instant mode (~0.5s/image)')
-    p_batch.add_argument('--turbo', action='store_true', help='Turbo mode (~1s/image)')
-    p_batch.set_defaults(func=cmd_batch)
+    p_batch.add_argument('output', help='Output directory for compressed files')
+    p_batch.add_argument('--mode', default='fast', choices=['fast', 'dct', 'photo', 'wavelet3', 'hybrid'],
+                          help='Compression mode (default: fast)')
+    p_batch.add_argument('--quality', type=float, default=0.9, help='Quality 0.1-1.0 for lossy modes')
+    p_batch.add_argument('--speed', default='balanced', choices=['fast', 'balanced', 'best'],
+                          help='Speed for fast mode')
+    p_batch.add_argument('--workers', type=int, default=4, help='Number of parallel workers')
+    p_batch.add_argument('--instant', action='store_true', help='Use hybrid instant mode (legacy)')
+    p_batch.add_argument('--turbo', action='store_true', help='Use hybrid turbo mode (legacy)')
+    p_batch.set_defaults(func=cmd_batch_compress)
 
     p_audio = sub.add_parser('audio', help='Compress WAV audio via STFT spectrogram INR')
     p_audio.add_argument('input', help='Input WAV file')
@@ -1461,6 +1560,14 @@ Examples:
     p_dct.add_argument('--codec', default='brotli', choices=['auto', 'zstd', 'brotli', 'zlib'],
                         help='Codec (brotli=default best)')
     p_dct.set_defaults(func=cmd_dct)
+
+    p_fast = sub.add_parser('fast', help='Fast DCT v5.23 (speed competitive with ZIP, 2-3x faster)')
+    p_fast.add_argument('input')
+    p_fast.add_argument('output')
+    p_fast.add_argument('--quality', type=float, default=0.9, help='Quality 0.1-1.0')
+    p_fast.add_argument('--speed', default='balanced', choices=['fast', 'balanced', 'best'],
+                         help='fast=zstd L3 (fastest), balanced=brotli q=6, best=brotli q=11 (smallest)')
+    p_fast.set_defaults(func=cmd_fast)
 
     p_gray = sub.add_parser('gray', help='Compress grayscale image (1 channel, MRI/CT optimized)')
     p_gray.add_argument('input')
