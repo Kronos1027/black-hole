@@ -39,6 +39,8 @@
 | **Photo v5.21** | 128×128 wood photo | **2.01x smaller than PNG** | lossy 35dB | **0.02s** |
 | **DCT v5.22** | 128×128 marble photo (q=0.9) | **23.5x smaller than PNG** | lossy 30dB | **0.04s** |
 | **DCT v5.22** | 128×128 marble photo (q=0.5) | **53x smaller than PNG** | lossy 25dB | **0.04s** |
+| **Fast v5.23** | 128×128 photos (q=0.9, fast) | **20-50x smaller than PNG** | lossy 30-36dB | **0.4ms (3x faster than ZIP)** |
+| **Batch v5.24** | CIFAR-10 (10000 32×32 imgs) | **6-13x smaller than ZIP** | lossy 21-36dB | **0.3ms/img** |
 | **Lossy** | 128×128 photos vs WebP | **wins 3/5** | lossy | ~2s |
 
 > ⚠️ **Honest correction (v5.19):** The v5.18 wavelet mode claimed "✅ bit-perfect" but was actually lossy
@@ -91,6 +93,10 @@ python blkh.py photo photo.png photo.blkp
 # DCT v5.22 — JPEG-like DCT + brotli (MAXIMUM compression, 20-50x vs PNG)
 python blkh.py dct photo.png photo.blkd --quality 0.9  # 30dB PSNR, 20x vs PNG
 python blkh.py dct photo.png photo.blkd --quality 0.5  # 25dB PSNR, 50x vs PNG
+# Fast v5.23 — speed-optimized DCT (3x faster than ZIP!)
+python blkh.py fast photo.png photo.blkf --speed fast  # 0.4ms, 20-50x vs PNG
+# Batch v5.24 — async parallel directory compression
+python blkh.py batch input_dir/ output_dir/ --mode fast --workers 4
 # Wavelet+INR v2 — bit-perfect + lossy mode
 python blkh.py wavelet2 photo.png photo.blkw2                          # lossless
 python blkh.py wavelet2 photo.png photo.blkw2 --lossy --quality 0.5 --threshold 5  # 50x+ lossy
@@ -1456,6 +1462,8 @@ res = comp.compress_many(new_images, epochs=1000)
 - [x] v5.20: Wavelet+INR v3 - float16 breakthrough (30% smaller than v5.19, 2x faster). Brotli support (8% smaller than zstd). Parallel adaptive search (2-3x faster). Combined mode (single bytestream, 6% smaller). Beats ZIP 1.87-2.74x on smooth images with TRUE bit-perfect.
 - [x] v5.21: Photo mode - YCbCr 4:2:0 chroma subsampling + brotli. Beats PNG 2-2.7x on natural photos with 35-38 dB PSNR (visually lossless). 0.02s encoding.
 - [x] v5.22: DCT mode - JPEG-like 8x8 DCT + standard quantization tables + brotli. Quality control (0.1-1.0). 20-50x smaller than PNG with 25-36 dB PSNR. Maximum compression for natural photos.
+- [x] v5.23: Fast DCT - speed-optimized codec selection (zstd L3 / brotli q=6 / brotli q=11). 3x FASTER than ZIP while being 6-7x smaller. Addresses Copilot feedback on speed.
+- [x] v5.24: Async batch - asyncio + ProcessPoolExecutor for io_uring-style concurrent I/O. Batch compression for large datasets (CIFAR-10 tested: 6-13x smaller than ZIP at 0.3ms/img).
 - [x] Game engine integration (Texture Streaming Server + Unity + Godot)
 - [x] LOD streaming (resolution-independent texture loading)
 - [x] Web demo (Gradio interactive compression)

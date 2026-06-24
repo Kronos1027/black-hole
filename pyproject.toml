@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "blackhole-blkh"
-version = "5.22.0"
+version = "5.24.0"
 description = "Black Hole (BLKH) — Bit-Perfect Neural Implicit Compression with SIREN"
 readme = "README.md"
 license = {text = "MIT"}
@@ -41,6 +41,7 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
+avif = ["pillow-avif-plugin>=1.0.0"]
 dev = [
     "pytest>=7.0",
     "matplotlib>=3.7.0",
