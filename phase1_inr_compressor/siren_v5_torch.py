@@ -283,15 +283,17 @@ class ImageINRv5:
                  epochs: int = 2000, lr: float = 1e-3,
                  batch_size: int | None = None,
                  use_amp: bool = False,
+                 patience: int = 0,
                  verbose: bool = False) -> dict:
         """
         Train SIREN to fit the image. Returns metadata dict.
 
         Args:
             use_amp: If True, use mixed precision (bfloat16 on CPU, float16 on GPU).
-                     Gives 1.5-2x speedup on CPU, 2-3x on GPU. Slight quality
-                     loss is acceptable because we either quantize after (lossy)
-                     or correct via residual (bit-perfect).
+                     Gives 1.5-2x speedup on CPU, 2-3x on GPU.
+            patience: If >0, enable early stopping. Training stops if loss hasn't
+                      improved by >1e-6 for `patience` consecutive checks (every 50
+                      epochs). Set patience=10 for ~2x speedup with minimal quality loss.
         """
         assert image_array.dtype == np.uint8 and image_array.ndim == 3
         H, W, C = image_array.shape
@@ -315,7 +317,6 @@ class ImageINRv5:
         # Mixed precision setup
         amp_dtype = None
         if use_amp:
-            # bfloat16 is faster on CPU (no scaler needed); float16 on GPU
             if self.device.type == 'cpu':
                 amp_dtype = torch.bfloat16
             else:
@@ -323,6 +324,8 @@ class ImageINRv5:
 
         model.train()
         history = []
+        best_loss = float('inf')
+        patience_counter = 0
         t0 = time.time()
         for epoch in range(epochs):
             # warmup
@@ -350,11 +353,24 @@ class ImageINRv5:
             if epoch >= warmup_steps:
                 sched.step()
 
+            cur_loss = float(loss.item())
             if verbose and (epoch % max(1, epochs // 10) == 0 or epoch == epochs - 1):
                 cur_lr = opt.param_groups[0]['lr']
-                print(f"  epoch {epoch:>5}/{epochs}  loss={loss.item():.6e}  lr={cur_lr:.2e}")
+                print(f"  epoch {epoch:>5}/{epochs}  loss={cur_loss:.6e}  lr={cur_lr:.2e}")
             if epoch % 50 == 0 or epoch == epochs - 1:
-                history.append(float(loss.item()))
+                history.append(cur_loss)
+
+                # Early stopping check
+                if patience > 0 and epoch >= warmup_steps:
+                    if cur_loss < best_loss - 1e-6:
+                        best_loss = cur_loss
+                        patience_counter = 0
+                    else:
+                        patience_counter += 1
+                        if patience_counter >= patience:
+                            if verbose:
+                                print(f"  early stopping at epoch {epoch} (patience={patience})")
+                            break
 
         train_time = time.time() - t0
         self._model = model
@@ -387,6 +403,7 @@ class ImageINRv5:
                             bits: int = 8, prune_threshold: float = 0.0,
                             batch_size: int | None = None,
                             use_amp: bool = False,
+                            patience: int = 0,
                             zlib_level: int = 9,
                             verbose: bool = False) -> dict:
         """
@@ -400,7 +417,8 @@ class ImageINRv5:
 
         # 1. Train
         meta = self.compress(image_array, epochs=epochs, lr=lr,
-                             batch_size=batch_size, use_amp=use_amp, verbose=verbose)
+                             batch_size=batch_size, use_amp=use_amp,
+                             patience=patience, verbose=verbose)
 
         # 2. Quantize weights (always reload from quantized to match decompress)
         weights_np = self._model.state_to_numpy()

@@ -140,6 +140,7 @@ class HybridCompressor:
                             bits: int = 8, prune_threshold: float = 0.0,
                             batch_size: int | None = None,
                             use_amp: bool = False,
+                            patience: int = 0,
                             verbose: bool = False) -> dict:
         """Compress with image-codec residual instead of XOR+zlib."""
         assert image_array.dtype == np.uint8 and image_array.ndim == 3
@@ -162,7 +163,7 @@ class HybridCompressor:
         # 1. Train SIREN
         meta = self.inner.compress(image_array, epochs=epochs, lr=lr,
                                      batch_size=batch_size, use_amp=use_amp,
-                                     verbose=verbose)
+                                     patience=patience, verbose=verbose)
 
         # 2. Quantize weights (reload to match decompress)
         weights_np = self.inner._model.state_to_numpy()

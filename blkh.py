@@ -118,6 +118,7 @@ def cmd_compress(args):
         meta = comp.compress(img, epochs=args.epochs, lr=1e-3,
                              batch_size=args.batch_size,
                              use_amp=getattr(args, 'amp', False),
+                             patience=getattr(args, 'patience', 0),
                              verbose=True)
         from siren_v5_torch import quantize_int8, quantize_int4
         W = comp._model.state_to_numpy()
@@ -137,6 +138,7 @@ def cmd_compress(args):
                                         bits=args.bits, prune_threshold=0.0,
                                         batch_size=args.batch_size,
                                         use_amp=getattr(args, 'amp', False),
+                                        patience=getattr(args, 'patience', 0),
                                         verbose=True)
         recipe = res['recipe_bytes']
         print(f"[BLKH] Bit-perfect (hybrid+auto-tune): bit acc={res['model_bit_accuracy']:.1f}%  "
@@ -149,6 +151,7 @@ def cmd_compress(args):
                                         bits=args.bits, prune_threshold=0.0,
                                         batch_size=args.batch_size,
                                         use_amp=getattr(args, 'amp', False),
+                                        patience=getattr(args, 'patience', 0),
                                         verbose=True)
         recipe = res['recipe_bytes']
         print(f"[BLKH] Bit-perfect: bit acc={res['model_bit_accuracy']:.1f}%  "
@@ -678,6 +681,8 @@ def main():
                      help='Use mixed precision (bfloat16 on CPU, ~1.5x faster)')
     p_c.add_argument('--auto-tune', action='store_true',
                      help='Auto-pick SIREN size from image dims + use hybrid WebP residual (recommended)')
+    p_c.add_argument('--patience', type=int, default=0,
+                     help='Early stopping patience (try 5 for ~2x speedup, 0=disabled)')
     p_c.add_argument('--no-bit-perfect', action='store_true',
                      help='Lossy mode (no residual, ~3x smaller but NOT exact)')
     p_c.set_defaults(func=cmd_compress)
