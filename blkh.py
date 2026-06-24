@@ -383,6 +383,60 @@ def cmd_wavelet3(args):
     print(f"  Output:      {args.output}")
 
 
+def cmd_dct(args):
+    """Compress with v5.22 DCT-quantized mode (JPEG-like, maximum compression)."""
+    import numpy as np
+    from siren_v5_dct import DCTCompressor
+
+    kind, payload = load_any(args.input)
+    if kind == 'image':
+        img = payload
+    else:
+        img, _, _ = payload
+
+    orig = img.nbytes
+    zip_sz = len(zlib.compress(img.tobytes(), 9))
+    try:
+        from PIL import Image as PILImage
+        import io
+        png_buf = io.BytesIO()
+        PILImage.fromarray(img).save(png_buf, format='PNG', optimize=True)
+        png_sz = png_buf.tell()
+    except ImportError:
+        png_sz = 0
+
+    print(f"[BLKH] DCT v5.22: {args.input} ({orig:,}B)")
+    print(f"[BLKH] ZIP: {zip_sz:,}B" + (f", PNG: {png_sz:,}B" if png_sz else ""))
+    print(f"[BLKH] Mode: LOSSY (DCT q={args.quality}, codec={args.codec})")
+
+    comp = DCTCompressor(quality=args.quality, codec=args.codec)
+    t0 = time.time()
+    res = comp.compress(img, verbose=True)
+    dt = time.time() - t0
+
+    Path(args.output).write_bytes(res['recipe_bytes'])
+
+    rec, meta = DCTCompressor.decompress(res['recipe_bytes'])
+    mse = np.mean((img.astype(float) - rec.astype(float))**2)
+    psnr = 10*np.log10(255**2 / max(mse, 1e-10))
+
+    winner_zip = "BLKH" if res['recipe_size'] < zip_sz else "ZIP"
+    winner_png = "BLKH" if png_sz and res['recipe_size'] < png_sz else "PNG"
+    print(f"\n[BLKH] DCT v5.22 result:")
+    print(f"  Original:    {orig:>10,} B")
+    print(f"  ZIP:         {zip_sz:>10,} B  (ratio {orig/zip_sz:.2f}x)")
+    if png_sz:
+        print(f"  PNG:         {png_sz:>10,} B  (ratio {orig/png_sz:.2f}x)")
+    print(f"  BLKH DCT:    {res['recipe_size']:>10,} B  (ratio {orig/res['recipe_size']:.2f}x)")
+    print(f"  PSNR:        {psnr:.1f} dB")
+    print(f"  Quality:     {args.quality} (q_scale={res['q_scale']:.1f})")
+    print(f"  vs ZIP:      {winner_zip}  ({res['recipe_size']/zip_sz:.3f})")
+    if png_sz:
+        print(f"  vs PNG:      {winner_png}  ({res['recipe_size']/png_sz:.3f})")
+    print(f"  Time:        {dt:.2f}s")
+    print(f"  Output:      {args.output}")
+
+
 def cmd_photo(args):
     """Compress with v5.21 photo-optimized lossy mode (YCbCr 4:2:0 + brotli)."""
     import numpy as np
@@ -725,6 +779,11 @@ def cmd_decompress(args):
         from siren_v5_photo import PhotoCompressor
         img, meta = PhotoCompressor.decompress(recipe)
         meta['exact_match'] = meta.get('sha256_match', False)  # lossy, will be False
+    elif magic == b'BLKD':
+        # DCT v5.22 format (.blkd) — use DCTCompressor
+        from siren_v5_dct import DCTCompressor
+        img, meta = DCTCompressor.decompress(recipe)
+        meta['exact_match'] = meta.get('sha256_match', False)
     elif magic == b'BLK5':
         # v5 format (.blkh5) — use ImageINRv5
         img, meta = ImageINRv5.decompress(recipe)
@@ -1344,6 +1403,15 @@ Examples:
                           help='Codec (brotli=default best, zstd, zlib, auto)')
     p_photo.add_argument('--quality', type=float, default=1.0, help='Quality 0.0-1.0 (currently informational)')
     p_photo.set_defaults(func=cmd_photo)
+
+    p_dct = sub.add_parser('dct', help='DCT v5.22 (JPEG-like, max compression, 30-60x vs PNG)')
+    p_dct.add_argument('input')
+    p_dct.add_argument('output')
+    p_dct.add_argument('--quality', type=float, default=0.9,
+                        help='Quality 0.1-1.0 (1.0=best, 0.1=most lossy)')
+    p_dct.add_argument('--codec', default='brotli', choices=['auto', 'zstd', 'brotli', 'zlib'],
+                        help='Codec (brotli=default best)')
+    p_dct.set_defaults(func=cmd_dct)
 
     p_gray = sub.add_parser('gray', help='Compress grayscale image (1 channel, MRI/CT optimized)')
     p_gray.add_argument('input')

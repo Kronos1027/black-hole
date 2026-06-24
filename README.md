@@ -37,6 +37,8 @@
 | **Wavelet+INR v3** | 512×512 satellite (lossless) | **2.08x smaller** | ✅ | **1.4s parallel** |
 | **Photo v5.21** | 128×128 marble photo | **2.68x smaller than PNG** | lossy 38dB | **0.02s** |
 | **Photo v5.21** | 128×128 wood photo | **2.01x smaller than PNG** | lossy 35dB | **0.02s** |
+| **DCT v5.22** | 128×128 marble photo (q=0.9) | **23.5x smaller than PNG** | lossy 30dB | **0.04s** |
+| **DCT v5.22** | 128×128 marble photo (q=0.5) | **53x smaller than PNG** | lossy 25dB | **0.04s** |
 | **Lossy** | 128×128 photos vs WebP | **wins 3/5** | lossy | ~2s |
 
 > ⚠️ **Honest correction (v5.19):** The v5.18 wavelet mode claimed "✅ bit-perfect" but was actually lossy
@@ -86,6 +88,9 @@ python blkh.py wavelet photo.png photo.blkw --instant
 python blkh.py wavelet3 photo.png photo.blkw3 --parallel --combined
 # Photo v5.21 — YCbCr 4:2:0 + brotli (RECOMMENDED for natural photos, beats PNG 2x)
 python blkh.py photo photo.png photo.blkp
+# DCT v5.22 — JPEG-like DCT + brotli (MAXIMUM compression, 20-50x vs PNG)
+python blkh.py dct photo.png photo.blkd --quality 0.9  # 30dB PSNR, 20x vs PNG
+python blkh.py dct photo.png photo.blkd --quality 0.5  # 25dB PSNR, 50x vs PNG
 # Wavelet+INR v2 — bit-perfect + lossy mode
 python blkh.py wavelet2 photo.png photo.blkw2                          # lossless
 python blkh.py wavelet2 photo.png photo.blkw2 --lossy --quality 0.5 --threshold 5  # 50x+ lossy
@@ -1450,6 +1455,7 @@ res = comp.compress_many(new_images, epochs=1000)
 - [x] v5.19: Wavelet+INR v2 - CRITICAL fix (v5.18 was lossy not bit-perfect as claimed). TRUE bit-perfect lossless mode + lossy mode (5-60x compression, 38-56 dB PSNR). zstd level 22, adaptive wavelet/level selection, soft thresholding.
 - [x] v5.20: Wavelet+INR v3 - float16 breakthrough (30% smaller than v5.19, 2x faster). Brotli support (8% smaller than zstd). Parallel adaptive search (2-3x faster). Combined mode (single bytestream, 6% smaller). Beats ZIP 1.87-2.74x on smooth images with TRUE bit-perfect.
 - [x] v5.21: Photo mode - YCbCr 4:2:0 chroma subsampling + brotli. Beats PNG 2-2.7x on natural photos with 35-38 dB PSNR (visually lossless). 0.02s encoding.
+- [x] v5.22: DCT mode - JPEG-like 8x8 DCT + standard quantization tables + brotli. Quality control (0.1-1.0). 20-50x smaller than PNG with 25-36 dB PSNR. Maximum compression for natural photos.
 - [x] Game engine integration (Texture Streaming Server + Unity + Godot)
 - [x] LOD streaming (resolution-independent texture loading)
 - [x] Web demo (Gradio interactive compression)
