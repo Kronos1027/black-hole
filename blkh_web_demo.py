@@ -6,12 +6,12 @@
 """
 blkh_web_demo.py — Interactive BLKH Web Demo (Gradio)
 ======================================================
-A simple web interface for BLKH compression. Users can:
-  1. Upload an image
-  2. Compress it with BLKH (hybrid mode, auto-tune)
-  3. See compression ratio, file sizes, SHA-256 verification
-  4. Download the compressed .blkh8 recipe
-  5. View original vs reconstructed side-by-side
+Optimized web interface for BLKH compression:
+  - Turbo mode by default (sub-1s on 256x256)
+  - Side-by-side original vs reconstructed
+  - BLKH vs ZIP vs PNG vs WebP comparison
+  - SHA-256 verification
+  - Download .blkh8 recipe
 
 Run:
     python blkh_web_demo.py
@@ -29,7 +29,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'phase1_inr_compresso
 
 import numpy as np
 import torch
-torch.set_num_threads(4)
+torch.set_num_threads(max(4, torch.get_num_threads()))
 
 import gradio as gr
 from PIL import Image
@@ -37,7 +37,7 @@ from PIL import Image
 from siren_v5_hybrid import HybridCompressor
 
 
-def compress_image(input_image, epochs, patience, use_amp):
+def compress_image(input_image, mode, use_amp):
     """Compress uploaded image with BLKH hybrid mode."""
     if input_image is None:
         return None, None, "Please upload an image first.", "", "", "", ""
@@ -54,7 +54,6 @@ def compress_image(input_image, epochs, patience, use_amp):
         img = np.array(input_image.convert('RGB'), dtype=np.uint8)
 
     orig_size = img.nbytes
-    orig_sha = hashlib.sha256(img.tobytes()).hexdigest()[:32]
 
     # ZIP baseline
     zip_size = len(zlib.compress(img.tobytes(), 9))
@@ -69,14 +68,24 @@ def compress_image(input_image, epochs, patience, use_amp):
     Image.fromarray(img).save(buf, format='WebP', lossless=True)
     webp_size = len(buf.getvalue())
 
+    # Configure based on mode
+    if mode == "Turbo (~1s)":
+        epochs, lr, bs, patience = 200, 3e-3, 16384, 3
+    elif mode == "Fast (~3s)":
+        epochs, lr, bs, patience = 400, 2e-3, 16384, 5
+    elif mode == "Quality (~6s)":
+        epochs, lr, bs, patience = 800, 1e-3, 8192, 5
+    else:
+        epochs, lr, bs, patience = 200, 3e-3, 16384, 3
+
     # BLKH compress
     comp = HybridCompressor(auto_tune=True, residual_codec='webp')
     t0 = time.time()
     try:
         res = comp.compress_bitperfect(
-            img, epochs=int(epochs), lr=2e-3, bits=8,
-            batch_size=16384, use_amp=bool(use_amp),
-            patience=int(patience), verbose=False
+            img, epochs=epochs, lr=lr, bits=8,
+            batch_size=bs, use_amp=bool(use_amp),
+            patience=patience, verbose=False
         )
     except Exception as e:
         return None, None, f"Error: {str(e)}", "", "", "", ""
@@ -92,77 +101,85 @@ def compress_image(input_image, epochs, patience, use_amp):
     tmp.write(res['recipe_bytes'])
     tmp.close()
 
-    # Format output text
+    # Format output
     blkh_size = res['recipe_size']
     ratio = orig_size / blkh_size
     vs_zip = zip_size / blkh_size if blkh_size > 0 else 0
     vs_png = png_size / blkh_size if blkh_size > 0 else 0
     vs_webp = webp_size / blkh_size if blkh_size > 0 else 0
 
+    # Determine winner
+    formats = {'ZIP': zip_size, 'PNG': png_size, 'WebP-L': webp_size, 'BLKH': blkh_size}
+    winner = min(formats, key=formats.get)
+
     result_text = f"""BLKH Compression Results
 {'=' * 50}
-Original:        {orig_size:>10,} bytes
-ZIP (zlib-9):    {zip_size:>10,} bytes  ({orig_size/zip_size:.2f}x)
-PNG (lossless):  {png_size:>10,} bytes  ({orig_size/png_size:.2f}x)
-WebP (lossless): {webp_size:>10,} bytes  ({orig_size/webp_size:.2f}x)
-BLKH (hybrid):   {blkh_size:>10,} bytes  ({ratio:.2f}x)
+  Original:        {orig_size:>10,} bytes
+  ZIP (zlib-9):    {zip_size:>10,} bytes  ({orig_size/zip_size:.2f}x)
+  PNG (lossless):  {png_size:>10,} bytes  ({orig_size/png_size:.2f}x)
+  WebP (lossless): {webp_size:>10,} bytes  ({orig_size/webp_size:.2f}x)
+  BLKH (hybrid):   {blkh_size:>10,} bytes  ({ratio:.2f}x)
 
-BLKH vs ZIP:     {vs_zip:.2f}x {'(BLKH wins!)' if vs_zip > 1 else '(ZIP wins)'}
-BLKH vs PNG:     {vs_png:.2f}x {'(BLKH wins!)' if vs_png > 1 else '(PNG wins)'}
-BLKH vs WebP:    {vs_webp:.2f}x {'(BLKH wins!)' if vs_webp > 1 else '(WebP wins)'}
+  BLKH vs ZIP:     {vs_zip:.2f}x {'✓ BLKH wins' if vs_zip > 1 else '✗ ZIP wins'}
+  BLKH vs PNG:     {vs_png:.2f}x {'✓ BLKH wins' if vs_png > 1 else '✗ PNG wins'}
+  BLKH vs WebP:    {vs_webp:.2f}x {'✓ BLKH wins' if vs_webp > 1 else '✗ WebP wins'}
 
-Bit accuracy:    {res['model_bit_accuracy']:.1f}%
-SHA-256:         {'VERIFIED' if sha_ok else 'FAILED'}
-Encoding time:   {dt:.2f}s
-Recipe file:     {tmp.name}
+  Best format:     {winner}
+  Bit accuracy:    {res['model_bit_accuracy']:.1f}%
+  SHA-256:         {'✓ VERIFIED' if sha_ok else '✗ FAILED'}
+  Encoding time:   {dt:.2f}s
+  Mode:            {mode}
 """
 
     return (
-        Image.fromarray(img),               # original image
-        Image.fromarray(recon),             # reconstructed image
-        result_text,                         # results text
-        f"{blkh_size:,}",                    # blkh size
-        f"{ratio:.2f}x",                     # ratio
-        f"{vs_zip:.2f}x",                    # vs zip
-        tmp.name,                            # recipe file for download
+        Image.fromarray(img),
+        Image.fromarray(recon),
+        result_text,
+        f"{blkh_size:,} B ({ratio:.2f}x)",
+        f"{vs_zip:.2f}x",
+        f"{dt:.2f}s",
+        tmp.name,
     )
 
 
 # Gradio UI
-with gr.Blocks(title="Black Hole (BLKH) — Neural Compression Demo", theme=gr.themes.Soft()) as demo:
+with gr.Blocks(title="Black Hole (BLKH) — Neural Compression") as demo:
     gr.Markdown("""
-    # Black Hole (BLKH) — Neural Implicit Compression
+    # 🕳️ Black Hole (BLKH) — Neural Implicit Compression
 
     Compress images with SIREN + hybrid WebP residual. **100% bit-perfect** (SHA-256 verified).
 
-    Upload an image, adjust settings, and click **Compress**.
+    Upload an image, choose speed mode, and click **Compress**.
     """)
 
     with gr.Row():
         with gr.Column(scale=1):
             input_img = gr.Image(label="Upload Image", type='pil')
-            epochs = gr.Slider(100, 2000, value=400, step=100, label="Training Epochs")
-            patience = gr.Slider(0, 15, value=5, step=1, label="Early Stopping Patience (0=off)")
-            use_amp = gr.Checkbox(value=True, label="Use AMP (mixed precision, 1.5x faster)")
-            compress_btn = gr.Button("Compress with BLKH", variant='primary')
+            mode = gr.Radio(
+                ["Turbo (~1s)", "Fast (~3s)", "Quality (~6s)"],
+                value="Turbo (~1s)",
+                label="Speed Mode"
+            )
+            use_amp = gr.Checkbox(value=True, label="AMP (mixed precision)")
+            compress_btn = gr.Button("🚀 Compress with BLKH", variant='primary', size='lg')
 
         with gr.Column(scale=2):
-            result_text = gr.Textbox(label="Results", lines=18, max_lines=25)
+            result_text = gr.Textbox(label="Results", lines=20, max_lines=25)
             with gr.Row():
                 orig_display = gr.Image(label="Original")
                 recon_display = gr.Image(label="Reconstructed (BLKH)")
 
     with gr.Row():
         blkh_size_out = gr.Textbox(label="BLKH Size", scale=1)
-        ratio_out = gr.Textbox(label="Compression Ratio", scale=1)
         vs_zip_out = gr.Textbox(label="vs ZIP", scale=1)
-        recipe_file = gr.File(label="Download .blkh8 recipe", scale=1)
+        time_out = gr.Textbox(label="Encoding Time", scale=1)
+        recipe_file = gr.File(label="Download .blkh8", scale=1)
 
     compress_btn.click(
         fn=compress_image,
-        inputs=[input_img, epochs, patience, use_amp],
+        inputs=[input_img, mode, use_amp],
         outputs=[orig_display, recon_display, result_text,
-                 blkh_size_out, ratio_out, vs_zip_out, recipe_file]
+                 blkh_size_out, vs_zip_out, time_out, recipe_file]
     )
 
     gr.Markdown("""

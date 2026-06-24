@@ -282,10 +282,34 @@ def cmd_compress(args):
 def cmd_decompress(args):
     import numpy as np
     from siren_v5_torch import ImageINRv5
+    from siren_v5_hybrid import HybridCompressor
 
     recipe = Path(args.input).read_bytes()
+    magic = recipe[:4]
+
     t0 = time.time()
-    img, meta = ImageINRv5.decompress(recipe)
+    # Auto-detect format by magic bytes
+    if magic == b'BLK8':
+        # Hybrid format (.blkh8) — use HybridCompressor
+        img, meta = HybridCompressor.decompress(recipe)
+    elif magic == b'BLK5':
+        # v5 format (.blkh5) — use ImageINRv5
+        img, meta = ImageINRv5.decompress(recipe)
+    elif magic == b'BLKV':
+        # Video format — not supported via CLI decompress (use video-decompress)
+        print("[BLKH] Error: this is a video recipe. Use 'blkh video-decompress' instead.")
+        sys.exit(1)
+    elif magic == b'BLK3':
+        # 3D volume format — not supported via CLI decompress (use volume-decompress)
+        print("[BLKH] Error: this is a 3D volume recipe. Use 'blkh volume-decompress' instead.")
+        sys.exit(1)
+    elif magic == b'BLK9':
+        # Combo format — not supported via CLI decompress (use combo-decompress)
+        print("[BLKH] Error: this is a combo recipe. Use 'blkh combo-decompress' instead.")
+        sys.exit(1)
+    else:
+        # Try ImageINRv5 as fallback
+        img, meta = ImageINRv5.decompress(recipe)
     dt = time.time() - t0
 
     if args.output:
