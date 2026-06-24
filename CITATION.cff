@@ -1,0 +1,29 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it."
+authors:
+  - family-names: "Silva"
+    given-names: "Darlan Pereira da"
+    alias: "Kronos1027"
+title: "Black Hole (BLKH): Neural Implicit Compression"
+version: 5.14
+date-released: "2026-06-24"
+url: "https://github.com/Kronos1027/black-hole"
+repository-code: "https://github.com/Kronos1027/black-hole"
+contact-email: "darlan1027pc@gmail.com"
+license: MIT
+keywords:
+  - neural compression
+  - implicit neural representations
+  - SIREN
+  - lossless compression
+  - image compression
+  - INR
+  - data compression
+preferred-citation:
+  type: software
+  authors:
+    - family-names: "Silva"
+      given-names: "Darlan Pereira da"
+  title: "Black Hole (BLKH): Bit-Perfect Neural Implicit Compression for Smooth Signals via SIREN + Hybrid Residual Coding"
+  year: 2026
+  url: "https://github.com/Kronos1027/black-hole"

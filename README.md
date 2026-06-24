@@ -1467,6 +1467,14 @@ python blkh.py lossy photo.png photo_lossy.blkh5 --amp
 
 ---
 
+## License & Commercial Use
+
+This project is open-source under the MIT License for research and educational use.  
+Commercial use requires a separate license agreement.  
+Contact: darlan1027pc@gmail.com
+
+---
+
 ## License
 
 MIT License — Copyright (c) 2025 Darlan Pereira da Silva.  
@@ -1481,13 +1489,21 @@ The singularity is for everyone.
 If you use Black Hole in research, please cite:
 
 ```bibtex
-@software{blackhole2025,
-  title = {Black Hole: Implicit Neural Compression Architecture},
+@software{blackhole2026,
+  title = {Black Hole (BLKH): Bit-Perfect Neural Implicit Compression},
   author = {Darlan Pereira da Silva},
-  year = {2025},
+  year = {2026},
   url = {https://github.com/Kronos1027/black-hole}
 }
 ```
+
+---
+
+## License & Commercial Use
+
+This project is open-source under the MIT License for research and educational use.  
+Commercial use requires a separate license agreement.  
+Contact: darlan1027pc@gmail.com
 
 ---
 

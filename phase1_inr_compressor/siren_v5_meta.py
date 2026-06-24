@@ -1,3 +1,9 @@
+# SPDX-FileCopyrightText: 2026 Darlan Pereira da Silva (Kronos1027)
+# SPDX-License-Identifier: MIT
+# Author: Darlan Pereira da Silva <darlan1027pc@gmail.com>
+# Project: Black Hole (BLKH) — https://github.com/Kronos1027/black-hole
+
+# BLKH-AUTH-DPS-2025-Kronos1027-darlan1027pc@gmail.com
 """
 siren_v5_meta.py — v5.3 Meta-Learning with Per-Image Modulations (COIN++ style)
 ================================================================================
