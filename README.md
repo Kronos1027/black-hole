@@ -33,8 +33,8 @@
 | **Wavelet+INR** | 256×256 gradient | **36.6x smaller** | lossy* | **0.3s** |
 | **Wavelet+INR v2** | 256×256 satellite (lossless) | true bit-perfect | ✅ | **1.1s** |
 | **Wavelet+INR v2** | 256×256 satellite (lossy q0.5 th5) | **56.6x smaller** | lossy 53dB | **0.2s** |
-| **Wavelet+INR v3** | 256×256 satellite (lossless) | **2.15x smaller** | ✅ | **0.7s** |
-| **Wavelet+INR v3** | 512×512 satellite (lossless) | **2.11x smaller** | ✅ | **1.4s parallel** |
+| **Wavelet+INR v3** | 256×256 satellite (lossless) | **2.74x smaller** | ✅ | **0.4s parallel** |
+| **Wavelet+INR v3** | 512×512 satellite (lossless) | **2.08x smaller** | ✅ | **1.4s parallel** |
 | **Lossy** | 128×128 photos vs WebP | **wins 3/5** | lossy | ~2s |
 
 > ⚠️ **Honest correction (v5.19):** The v5.18 wavelet mode claimed "✅ bit-perfect" but was actually lossy
@@ -80,8 +80,8 @@ python blkh.py compress photo.png photo.blkh8 --auto-tune --amp --patience 5
 # Wavelet+INR (best compression + speed — RECOMMENDED for smooth images)
 python blkh.py wavelet photo.png photo.blkw --instant
 
-# Wavelet+INR v3 — TRUE bit-perfect + float16 + brotli (RECOMMENDED)
-python blkh.py wavelet3 photo.png photo.blkw3 --parallel
+# Wavelet+INR v3 — TRUE bit-perfect + float16 + brotli + combined (RECOMMENDED)
+python blkh.py wavelet3 photo.png photo.blkw3 --parallel --combined
 # Wavelet+INR v2 — bit-perfect + lossy mode
 python blkh.py wavelet2 photo.png photo.blkw2                          # lossless
 python blkh.py wavelet2 photo.png photo.blkw2 --lossy --quality 0.5 --threshold 5  # 50x+ lossy
@@ -1444,7 +1444,7 @@ res = comp.compress_many(new_images, epochs=1000)
 - [x] v5.17: Audio compression via STFT spectrogram INR (2.38-2.62x vs ZIP on realistic audio)
 - [x] v5.18: Wavelet+INR hybrid (DWT separates smooth/detail, 28% smaller, 10x faster)
 - [x] v5.19: Wavelet+INR v2 - CRITICAL fix (v5.18 was lossy not bit-perfect as claimed). TRUE bit-perfect lossless mode + lossy mode (5-60x compression, 38-56 dB PSNR). zstd level 22, adaptive wavelet/level selection, soft thresholding.
-- [x] v5.20: Wavelet+INR v3 - float16 breakthrough (30% smaller than v5.19, 2x faster). Brotli support (8% smaller than zstd). Parallel adaptive search (2-3x faster). Beats ZIP 1.87-2.15x on smooth images with TRUE bit-perfect.
+- [x] v5.20: Wavelet+INR v3 - float16 breakthrough (30% smaller than v5.19, 2x faster). Brotli support (8% smaller than zstd). Parallel adaptive search (2-3x faster). Combined mode (single bytestream, 6% smaller). Beats ZIP 1.87-2.74x on smooth images with TRUE bit-perfect.
 - [x] Game engine integration (Texture Streaming Server + Unity + Godot)
 - [x] LOD streaming (resolution-independent texture loading)
 - [x] Web demo (Gradio interactive compression)

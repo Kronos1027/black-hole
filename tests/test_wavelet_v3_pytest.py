@@ -152,5 +152,46 @@ def test_wavelet_v3_large_image():
     assert np.array_equal(rec, img)
 
 
+def test_wavelet_v3_combined_mode():
+    """Combined mode (single bytestream) must be bit-perfect."""
+    img = _make_smooth_image(128, seed=42)
+    comp = WaveletINRCompressorV3(wavelet='haar', level=3, lossless=True, combined=True)
+    res = comp.compress(img, verbose=False)
+    rec, meta = WaveletINRCompressorV3.decompress(res['recipe_bytes'])
+    assert meta['sha256_match'], "Combined mode must be bit-perfect"
+    assert meta['combined'], "Combined flag must be set in meta"
+    assert np.array_equal(rec, img)
+
+
+def test_wavelet_v3_combined_smaller_than_per_subband():
+    """Combined mode should be smaller than per-subband on smooth content."""
+    img = _make_smooth_image(256, seed=42)
+    # Per-subband
+    comp1 = WaveletINRCompressorV3(wavelet='haar', level=3, lossless=True, combined=False, codec='brotli')
+    res1 = comp1.compress(img, verbose=False)
+    # Combined
+    comp2 = WaveletINRCompressorV3(wavelet='haar', level=3, lossless=True, combined=True, codec='brotli')
+    res2 = comp2.compress(img, verbose=False)
+    assert res2['recipe_size'] <= res1['recipe_size'], \
+        f"Combined ({res2['recipe_size']}B) should be <= per-subband ({res1['recipe_size']}B)"
+
+
+def test_wavelet_v3_parallel_mode():
+    """Parallel mode must produce same result as sequential (bit-perfect)."""
+    img = _make_smooth_image(128, seed=42)
+    # Sequential
+    comp1 = WaveletINRCompressorV3(wavelet='auto', level='auto', lossless=True, parallel=False, codec='zstd')
+    res1 = comp1.compress(img, verbose=False)
+    # Parallel
+    comp2 = WaveletINRCompressorV3(wavelet='auto', level='auto', lossless=True, parallel=True, n_workers=2, codec='zstd')
+    res2 = comp2.compress(img, verbose=False)
+    # Both must be bit-perfect
+    rec1, meta1 = WaveletINRCompressorV3.decompress(res1['recipe_bytes'])
+    rec2, meta2 = WaveletINRCompressorV3.decompress(res2['recipe_bytes'])
+    assert meta1['sha256_match'] and meta2['sha256_match']
+    # Sizes should be very close (may differ if parallel picks different wavelet due to nondeterminism)
+    assert abs(res1['recipe_size'] - res2['recipe_size']) < 1000
+
+
 if __name__ == '__main__':
     pytest.main([__file__, '-v'])

@@ -357,6 +357,7 @@ def cmd_wavelet3(args):
         codec=args.codec,
         parallel=args.parallel,
         n_workers=args.workers,
+        combined=args.combined,
     )
     t0 = time.time()
     res = comp.compress(img, verbose=True)
@@ -1264,7 +1265,9 @@ Examples:
     p_wave3.add_argument('--level', default='auto', help='Decomposition level (auto, 2, 3, 4)')
     p_wave3.add_argument('--codec', default='auto', choices=['auto', 'zstd', 'brotli', 'zlib'],
                           help='Codec (auto picks best, default: auto)')
-    p_wave3.add_argument('--parallel', action='store_true', help='Parallel adaptive search (3-4x faster)')
+    p_wave3.add_argument('--combined', action='store_true',
+                          help='Combined mode (single bytestream, ~6% smaller, no per-subband access)')
+    p_wave3.add_argument('--parallel', action='store_true', help='Parallel adaptive search (2-3x faster)')
     p_wave3.add_argument('--workers', type=int, default=4, help='Number of parallel workers')
     p_wave3.set_defaults(func=cmd_wavelet3)
 

@@ -51,6 +51,7 @@ MAGIC_WAVELET_V3 = b'BKWF'  # BLKH Wavelet Float16
 VERSION_WAVELET_V3 = 3
 
 FLAG_LOSSLESS = 0x01
+FLAG_COMBINED = 0x02
 
 try:
     import zstandard as _zstd
@@ -127,7 +128,7 @@ def _soft_threshold(arr: np.ndarray, threshold: float) -> np.ndarray:
 
 def _parallel_worker(args):
     """Module-level worker for ProcessPoolExecutor (must be picklable)."""
-    img_bytes, H, W, C, wl, lvl, codec = args
+    img_bytes, H, W, C, wl, lvl, codec, combined = args
     ll_channels = []
     all_detail = []
     for c in range(C):
@@ -138,16 +139,25 @@ def _parallel_worker(args):
             for d in dt_:
                 all_detail.append(d.astype(np.float32))
     ll = np.stack(ll_channels, axis=-1)
-    ll_f16 = ll.astype(np.float16).tobytes()
-    ll_comp, ll_codec = _compress_bytes(ll_f16, codec)
-    total = len(ll_comp)
-    detail_results = []
-    for d in all_detail:
-        d_f16 = d.astype(np.float16).tobytes()
-        d_comp, d_codec = _compress_bytes(d_f16, codec)
-        detail_results.append((d_comp, d_codec))
-        total += len(d_comp)
-    return (wl, lvl, ll_comp, ll_codec, detail_results, total)
+    if combined:
+        # Pack all subbands as float16 into single bytestream
+        ll_f16 = ll.astype(np.float16).tobytes()
+        combined_bytes = ll_f16
+        for d in all_detail:
+            combined_bytes += d.astype(np.float16).tobytes()
+        compressed, codec_id = _compress_bytes(combined_bytes, codec)
+        return (wl, lvl, compressed, codec_id, [], len(compressed))
+    else:
+        ll_f16 = ll.astype(np.float16).tobytes()
+        ll_comp, ll_codec = _compress_bytes(ll_f16, codec)
+        total = len(ll_comp)
+        detail_results = []
+        for d in all_detail:
+            d_f16 = d.astype(np.float16).tobytes()
+            d_comp, d_codec = _compress_bytes(d_f16, codec)
+            detail_results.append((d_comp, d_codec))
+            total += len(d_comp)
+        return (wl, lvl, ll_comp, ll_codec, detail_results, total)
 
 
 class WaveletINRCompressorV3:
@@ -164,7 +174,14 @@ class WaveletINRCompressorV3:
                  lossless: bool = True,
                  threshold: float = 0.0,
                  parallel: bool = False,
-                 n_workers: int = 4):
+                 n_workers: int = 4,
+                 combined: bool = False):
+        """
+        Args:
+            combined: if True, pack all subbands into single bytestream and compress
+                      once (better compression, ~6% smaller, but no per-subband access).
+                      if False (default), compress each subband independently.
+        """
         self.wavelet = wavelet
         self.level = level
         self.device = device
@@ -173,6 +190,7 @@ class WaveletINRCompressorV3:
         self.threshold = float(threshold)
         self.parallel = parallel
         self.n_workers = n_workers
+        self.combined = combined
 
     @staticmethod
     def is_zstd_available() -> bool:
@@ -234,11 +252,32 @@ class WaveletINRCompressorV3:
             detail_results.append((d_comp, d_codec))
         return ll_comp, ll_codec, detail_results
 
+    def _quantize_lossless_combined(self, ll: np.ndarray, detail_list: list
+                                       ) -> tuple[bytes, int, list[int]]:
+        """Lossless combined mode: pack LL + all detail subbands into single bytestream.
+        detail_list order from _decompose is: c0_L1_0, c0_L1_1, c0_L1_2, c0_L2_0, ..., c1_L1_0, ...
+        = c * level * 3 + lv * 3 + d_idx
+        Returns (combined_compressed, codec_id, list_of_subband_byte_sizes)."""
+        ll_f16 = ll.astype(np.float16).tobytes()
+        sizes = [len(ll_f16)]
+        combined = ll_f16
+        # detail_list is already in the correct order from _decompose
+        for d in detail_list:
+            d_f16 = d.astype(np.float16).tobytes()
+            sizes.append(len(d_f16))
+            combined += d_f16
+        compressed, codec = _compress_bytes(combined, self.codec)
+        return compressed, codec, sizes
+
     def _try_candidate(self, image: np.ndarray, wavelet: str, level: int
                        ) -> tuple[bytes, int, list[tuple[bytes, int]], int]:
-        """Try a (wavelet, level). Returns (ll_comp, ll_codec, detail_results, total_size)."""
+        """Try a (wavelet, level). Returns (ll_comp, ll_codec, detail_results, total_size).
+        In combined mode, detail_results is empty and ll_comp contains everything."""
         ll, detail_list = self._decompose(image, wavelet, level)
         if self.lossless:
+            if self.combined:
+                combined_comp, codec, _ = self._quantize_lossless_combined(ll, detail_list)
+                return combined_comp, codec, [], len(combined_comp)
             ll_comp, ll_codec, detail_results = self._quantize_lossless(ll, detail_list)
         else:
             ll_comp, ll_codec, detail_results = self._quantize_lossy(ll, detail_list)
@@ -252,8 +291,9 @@ class WaveletINRCompressorV3:
         H, W, C = image.shape
         img_bytes = image.tobytes()
         codec = self.codec
+        combined = self.combined
 
-        args_list = [(img_bytes, H, W, C, wl, lvl, codec) for wl, lvl in candidates]
+        args_list = [(img_bytes, H, W, C, wl, lvl, codec, combined) for wl, lvl in candidates]
         best = None
         with ProcessPoolExecutor(max_workers=self.n_workers) as executor:
             futures = {executor.submit(_parallel_worker, args): args for args in args_list}
@@ -321,7 +361,11 @@ class WaveletINRCompressorV3:
 
         # Pack recipe
         sha = hashlib.sha256(original_bytes).digest()
-        flags = FLAG_LOSSLESS if self.lossless else 0
+        flags = 0
+        if self.lossless:
+            flags |= FLAG_LOSSLESS
+        if self.combined:
+            flags |= FLAG_COMBINED
         recipe = self._pack_recipe(
             flags, H, W, C, chosen_wavelet, chosen_level,
             ll_comp, ll_codec, detail_results, sha
@@ -362,11 +406,11 @@ class WaveletINRCompressorV3:
         out += struct.pack('<H', H)
         out += struct.pack('<H', W)
         out += struct.pack('<B', C)
-        # LL data + codec
+        # LL data + codec (in combined mode, ll_comp contains everything)
         out += struct.pack('<B', ll_codec)
         out += struct.pack('<I', len(ll_comp))
         out += ll_comp
-        # Detail subbands (each with its own codec)
+        # Detail subbands (each with its own codec). Empty in combined mode.
         n_subbands = len(detail_results)
         out += struct.pack('<B', n_subbands)
         for d_comp, d_codec in detail_results:
@@ -394,6 +438,7 @@ class WaveletINRCompressorV3:
         C = struct.unpack('<B', buf[off:off+1])[0]; off += 1
 
         lossless = bool(flags & FLAG_LOSSLESS)
+        combined = bool(flags & FLAG_COMBINED)
 
         # LL data + codec
         ll_codec = struct.unpack('<B', buf[off:off+1])[0]; off += 1
@@ -409,27 +454,48 @@ class WaveletINRCompressorV3:
 
         sha_expected = buf[off:off+32]; off += 32
 
-        # Decompress LL
-        ll_bytes = _decompress_bytes(ll_comp, ll_codec)
-        # Compute expected LL shape
+        # Compute expected shapes
         coeffs_template = _pywt.wavedec2(
             np.zeros((H, W), dtype=np.float32), wavelet, level=level, mode='symmetric'
         )
         ll_h, ll_w = coeffs_template[0].shape
-        if lossless:
-            ll = np.frombuffer(ll_bytes, dtype=np.float16).astype(np.float32).reshape(ll_h, ll_w, C)
-        else:
-            raise NotImplementedError("Lossy mode not yet supported in v3 — use v2 for lossy")
 
-        # Decompress detail subbands
-        detail_arrays = []
-        for d_comp, d_codec in detail_results:
-            d_bytes = _decompress_bytes(d_comp, d_codec)
+        if combined:
+            # Combined mode: single compressed buffer contains LL + all details (float16)
+            if not lossless:
+                raise NotImplementedError("Combined lossy not supported")
+            all_bytes = _decompress_bytes(ll_comp, ll_codec)
+            # Unpack LL float16 first
+            ll_byte_size = ll_h * ll_w * C * 2  # float16 = 2 bytes
+            ll = np.frombuffer(all_bytes[:ll_byte_size], dtype=np.float16).astype(np.float32).reshape(ll_h, ll_w, C)
+            # Unpack detail subbands in same order they were packed:
+            # for c in range(C): for lv in range(level): for d_idx in range(3)
+            detail_arrays = [None] * (C * level * 3)
+            offset = ll_byte_size
+            for c in range(C):
+                for lv in range(level):
+                    for d_idx in range(3):
+                        shp = coeffs_template[lv + 1][d_idx].shape
+                        sz = shp[0] * shp[1] * 2  # float16
+                        d = np.frombuffer(all_bytes[offset:offset+sz], dtype=np.float16).astype(np.float32).reshape(shp)
+                        detail_arrays[c * level * 3 + lv * 3 + d_idx] = d
+                        offset += sz
+        else:
+            # Per-subband mode
+            ll_bytes = _decompress_bytes(ll_comp, ll_codec)
             if lossless:
-                d = np.frombuffer(d_bytes, dtype=np.float16).astype(np.float32)
+                ll = np.frombuffer(ll_bytes, dtype=np.float16).astype(np.float32).reshape(ll_h, ll_w, C)
             else:
-                d = np.frombuffer(d_bytes, dtype=np.int8).astype(np.float32)
-            detail_arrays.append(d)
+                raise NotImplementedError("Lossy mode not yet supported in v3 — use v2 for lossy")
+
+            detail_arrays = []
+            for d_comp, d_codec in detail_results:
+                d_bytes = _decompress_bytes(d_comp, d_codec)
+                if lossless:
+                    d = np.frombuffer(d_bytes, dtype=np.float16).astype(np.float32)
+                else:
+                    d = np.frombuffer(d_bytes, dtype=np.int8).astype(np.float32)
+                detail_arrays.append(d)
 
         # Reconstruct image
         reconstructed = np.zeros((H, W, C), dtype=np.float32)
@@ -454,6 +520,7 @@ class WaveletINRCompressorV3:
             'wavelet': wavelet,
             'level': level,
             'lossless': lossless,
+            'combined': combined,
             'sha256_match': sha_got == sha_expected,
             'exact_match': sha_got == sha_expected,
             'mode': 'wavelet_inr_v3',
