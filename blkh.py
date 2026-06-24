@@ -273,6 +273,62 @@ def cmd_wavelet(args):
     print(f"  Output:      {args.output}")
 
 
+def cmd_wavelet2(args):
+    """Compress with Wavelet+INR v2 (TRUE bit-perfect + zstd + adaptive)."""
+    import numpy as np
+    from siren_v5_wavelet_v2 import WaveletINRCompressorV2
+
+    kind, payload = load_any(args.input)
+    if kind == 'image':
+        img = payload
+    else:
+        img, _, _ = payload
+
+    orig = img.nbytes
+    zip_sz = len(zlib.compress(img.tobytes(), 9))
+    print(f"[BLKH] Wavelet+INR v2: {args.input} ({orig:,}B)")
+    print(f"[BLKH] ZIP: {zip_sz:,}B")
+    print(f"[BLKH] Mode: {'LOSSY' if args.lossy else 'LOSSLESS (bit-perfect)'}")
+
+    # Parse level (auto or int)
+    level = args.level
+    if level != 'auto':
+        level = int(level)
+
+    comp = WaveletINRCompressorV2(
+        wavelet=args.wavelet,
+        level=level,
+        lossless=not args.lossy,
+        use_zstd=not args.no_zstd,
+        quality=args.quality,
+        threshold=args.threshold,
+    )
+    t0 = time.time()
+    res = comp.compress_bitperfect(img, verbose=True)
+    dt = time.time() - t0
+
+    Path(args.output).write_bytes(res['recipe_bytes'])
+
+    # Verify roundtrip
+    rec, meta = WaveletINRCompressorV2.decompress(res['recipe_bytes'])
+    if meta['sha256_match']:
+        print(f"\n[BLKH] SHA-256 verified: ✅ bit-perfect")
+    else:
+        mse = np.mean((img.astype(float) - rec.astype(float))**2)
+        psnr = 10*np.log10(255**2 / max(mse, 1e-10))
+        print(f"\n[BLKH] PSNR: {psnr:.1f} dB (lossy)")
+
+    winner = "BLKH" if res['recipe_size'] < zip_sz else "ZIP"
+    print(f"\n[BLKH] Wavelet+INR v2 result:")
+    print(f"  Original:    {orig:>10,} B")
+    print(f"  ZIP:         {zip_sz:>10,} B  (ratio {orig/zip_sz:.2f}x)")
+    print(f"  BLKH v2:     {res['recipe_size']:>10,} B  (ratio {orig/res['recipe_size']:.2f}x)")
+    print(f"  Wavelet:     {res['wavelet']} L{res['level']}")
+    print(f"  Winner:      {winner}  (BLKH/ZIP = {res['recipe_size']/zip_sz:.3f})")
+    print(f"  Time:        {dt:.2f}s")
+    print(f"  Output:      {args.output}")
+
+
 def cmd_audio(args):
     """Compress a WAV audio file with BLKH STFT spectrogram INR."""
     import numpy as np
@@ -543,6 +599,10 @@ def cmd_decompress(args):
     if magic == b'BLK8':
         # Hybrid format (.blkh8) — use HybridCompressor
         img, meta = HybridCompressor.decompress(recipe)
+    elif magic == b'BLK2':
+        # Wavelet v2 format (.blkw2) — use WaveletINRCompressorV2
+        from siren_v5_wavelet_v2 import WaveletINRCompressorV2
+        img, meta = WaveletINRCompressorV2.decompress(recipe)
     elif magic == b'BLK5':
         # v5 format (.blkh5) — use ImageINRv5
         img, meta = ImageINRv5.decompress(recipe)
@@ -1128,6 +1188,17 @@ Examples:
     p_wave.add_argument('--instant', action='store_true')
     p_wave.add_argument('--turbo', action='store_true')
     p_wave.set_defaults(func=cmd_wavelet)
+
+    p_wave2 = sub.add_parser('wavelet2', help='Wavelet+INR v2 (TRUE bit-perfect + zstd + adaptive)')
+    p_wave2.add_argument('input')
+    p_wave2.add_argument('output')
+    p_wave2.add_argument('--wavelet', default='auto', help='Wavelet (auto, db4, db6, bior4.4, sym4, haar)')
+    p_wave2.add_argument('--level', default='auto', help='Decomposition level (auto, 2, 3, 4)')
+    p_wave2.add_argument('--lossy', action='store_true', help='Lossy mode (much higher compression)')
+    p_wave2.add_argument('--quality', type=float, default=1.0, help='Quality 0.0-1.0 (lossy mode only)')
+    p_wave2.add_argument('--threshold', type=float, default=0.0, help='Soft threshold (lossy mode only, 0-15)')
+    p_wave2.add_argument('--no-zstd', action='store_true', help='Use zlib instead of zstd')
+    p_wave2.set_defaults(func=cmd_wavelet2)
 
     p_gray = sub.add_parser('gray', help='Compress grayscale image (1 channel, MRI/CT optimized)')
     p_gray.add_argument('input')

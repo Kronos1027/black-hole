@@ -28,10 +28,17 @@
 | **Volume DCT** | 64³ MRI-like volume | **3.90x smaller** | lossy 51dB | ~6s |
 | **Grayscale** | 256×256 MRI-like (1ch) | **1.29x smaller** | ✅ | ~3s |
 | **Audio** | 5s music+noise @ 16kHz | **2.38x smaller** | lossy 37dB | ~9s |
-| **Wavelet+INR** | 512×512 satellite | **62.6x smaller** | ✅ | **0.4s** |
-| **Wavelet+INR** | 256×256 satellite | **22.2x smaller** | ✅ | **0.3s** |
-| **Wavelet+INR** | 256×256 gradient | **36.6x smaller** | ✅ | **0.3s** |
+| **Wavelet+INR** | 512×512 satellite | **62.6x smaller** | lossy* | **0.4s** |
+| **Wavelet+INR** | 256×256 satellite | **22.2x smaller** | lossy* | **0.3s** |
+| **Wavelet+INR** | 256×256 gradient | **36.6x smaller** | lossy* | **0.3s** |
+| **Wavelet+INR v2** | 256×256 satellite (lossless) | true bit-perfect | ✅ | **1.1s** |
+| **Wavelet+INR v2** | 256×256 satellite (lossy q0.5 th5) | **56.6x smaller** | lossy 53dB | **0.2s** |
 | **Lossy** | 128×128 photos vs WebP | **wins 3/5** | lossy | ~2s |
+
+> ⚠️ **Honest correction (v5.19):** The v5.18 wavelet mode claimed "✅ bit-perfect" but was actually lossy
+> (PSNR 4-12 dB on real photos — the LL was clipped to uint8 destroying the wavelet decomposition).
+> v5.19 fixes this with two clearly-labeled modes: **lossless** (SHA-256 verified, true bit-perfect)
+> and **lossy** (5-60x compression with 38-56 dB PSNR, visually near-lossless).
 
 **BLKH beats ZIP on 7 out of 7 workload types tested** (gradients, blobs, satellite, sky, terrain, water, mandala).
 
@@ -68,10 +75,14 @@ python blkh.py doctor
 # Compress (auto-tune picks optimal SIREN size + hybrid WebP residual)
 python blkh.py compress photo.png photo.blkh8 --auto-tune --amp --patience 5
 
-# Wavelet+INR (best compression + speed — RECOMMENDED)
+# Wavelet+INR (best compression + speed — RECOMMENDED for smooth images)
 python blkh.py wavelet photo.png photo.blkw --instant
 
-# Decompress (SHA-256 verified, auto-detects format)
+# Wavelet+INR v2 — TRUE bit-perfect (SHA-256 verified) + zstd + adaptive wavelet
+python blkh.py wavelet2 photo.png photo.blkw2                          # lossless
+python blkh.py wavelet2 photo.png photo.blkw2 --lossy --quality 0.5 --threshold 5  # 50x+ lossy
+
+# Decompress (SHA-256 verified, auto-detects format including BLK2)
 python blkh.py decompress photo.blkw recovered.png
 
 # Multiple similar images (datacenter mode)
