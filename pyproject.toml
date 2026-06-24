@@ -3,20 +3,38 @@ requires = ["setuptools>=64", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "black-hole"
-version = "5.0.0"
-description = "Black Hole (BLKH) — Neural Implicit Compression with SIREN"
+name = "blackhole-blkh"
+version = "5.16.0"
+description = "Black Hole (BLKH) — Bit-Perfect Neural Implicit Compression with SIREN"
 readme = "README.md"
 license = {text = "MIT"}
 authors = [
     {name = "Darlan Pereira da Silva", email = "darlan1027pc@gmail.com"}
 ]
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dependencies = [
     "numpy>=1.24.0",
     "psutil>=5.9.0",
     "Pillow>=10.0.0",
     "torch>=2.0.0",
+    "scipy>=1.10.0",
+]
+keywords = [
+    "compression", "neural compression", "SIREN", "INR",
+    "implicit neural representations", "lossless", "image compression",
+    "data compression", "MRI", "medical imaging",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Image Processing",
+    "Topic :: System :: Archiving :: Compression",
 ]
 
 [project.optional-dependencies]
@@ -24,16 +42,28 @@ dev = [
     "pytest>=7.0",
     "matplotlib>=3.7.0",
     "tqdm>=4.65.0",
+    "gradio>=4.0.0",
+]
+game-engine = [
+    "gradio>=4.0.0",
 ]
 
 [project.scripts]
 blkh = "blkh:main"
+blkh-server = "game_engine.server.blkh_texture_server:main"
+blkh-demo = "blkh_web_demo:demo"
+
+[project.urls]
+Homepage = "https://github.com/Kronos1027/black-hole"
+Repository = "https://github.com/Kronos1027/black-hole"
+Documentation = "https://github.com/Kronos1027/black-hole#readme"
+"Bug Tracker" = "https://github.com/Kronos1027/black-hole/issues"
 
 [tool.setuptools]
-py-modules = ["blkh"]
+py-modules = ["blkh", "blkh_web_demo"]
 
 [tool.setuptools.packages.find]
-include = ["phase1_inr_compressor*", "phase2_opportunistic_daemon*", "phase3_ejection_engine*"]
+include = ["phase1_inr_compressor*", "phase2_opportunistic_daemon*", "phase3_ejection_engine*", "game_engine*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -951,7 +951,36 @@ def cmd_lossy(args):
 
 def main():
     p = argparse.ArgumentParser(prog='blkh',
-                                 description='Black Hole — Neural Implicit Compression')
+                                 description='Black Hole (BLKH) — Neural Implicit Compression v5.16\n'
+                                             'Bit-perfect lossless compression with SIREN + hybrid residual.\n'
+                                             'Created by Darlan Pereira da Silva (Kronos1027)',
+                                 formatter_class=argparse.RawDescriptionHelpFormatter,
+                                 epilog="""
+Examples:
+  # Fastest compression (0.5-1s per image)
+  blkh compress photo.png photo.blkh8 --instant
+
+  # Best quality
+  blkh compress photo.png photo.blkh8 --auto-tune --amp --patience 5
+
+  # Batch compress a directory
+  blkh batch input_dir/ output_dir/ --instant
+
+  # Grayscale (MRI/CT)
+  blkh gray scan.png scan.blkg --instant
+
+  # Decompress (auto-detects format)
+  blkh decompress photo.blkh8 recovered.png
+
+  # Check environment
+  blkh doctor
+
+  # Start game engine texture server
+  blkh-server --port 8080
+
+  # Launch web demo
+  blkh-demo
+""")
     sub = p.add_subparsers(dest='cmd', required=True)
 
     p_c = sub.add_parser('compress', help='Compress a file into a .blkh5 recipe')
