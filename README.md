@@ -22,9 +22,11 @@
 |------|-----------|--------|-------------|---------------|
 | **Hybrid** | 512×512 satellite image | **4.89x smaller** | ✅ | ~6s |
 | **Hybrid** | 256×256 gradient | **22.7x smaller** | ✅ | ~3s |
+| **Hybrid --instant** | 256×256 satellite | **2.79x smaller** | ✅ | **0.70s** |
 | **Combo** | 10× 256×256 similar images | **3.09x smaller** | ✅ | ~6s total |
 | **Video** | 16 frames 64×64 (realistic) | **1.71x smaller** | ✅ | ~5s |
 | **Volume DCT** | 64³ MRI-like volume | **3.90x smaller** | lossy 51dB | ~6s |
+| **Grayscale** | 256×256 MRI-like (1ch) | **1.29x smaller** | ✅ | ~3s |
 | **Lossy** | 128×128 photos vs WebP | **wins 3/5** | lossy | ~2s |
 
 **BLKH beats ZIP on 7 out of 7 workload types tested** (gradients, blobs, satellite, sky, terrain, water, mandala).
@@ -1416,6 +1418,7 @@ res = comp.compress_many(new_images, epochs=1000)
 - [x] v5.14: 3D DCT residual (vectorized scipy.fft, 3.9x vs ZIP on 64³)
 - [x] v5.14: Auto-tune SIREN size + early stopping (2.1x speedup)
 - [x] v5.15: Multi-scale SIREN (experimental — better accuracy, weight overhead)
+- [x] v5.16: Native grayscale support (59% smaller for MRI/CT, beats ZIP 1.29x)
 - [x] Game engine integration (Texture Streaming Server + Unity + Godot)
 - [x] LOD streaming (resolution-independent texture loading)
 - [x] Web demo (Gradio interactive compression)
