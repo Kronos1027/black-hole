@@ -229,6 +229,57 @@ def cmd_batch(args):
     print(f"  Output:        {output_dir}")
 
 
+def cmd_audio(args):
+    """Compress a WAV audio file with BLKH STFT spectrogram INR."""
+    import numpy as np
+    from scipy.io import wavfile
+    from siren_v5_audio import AudioCompressor
+
+    # Read WAV
+    try:
+        sr, audio = wavfile.read(args.input)
+        # Convert to float32 mono
+        if audio.ndim > 1:
+            audio = audio.mean(axis=1)
+        if audio.dtype != np.float32:
+            audio = audio.astype(np.float32) / 32768.0
+    except Exception as e:
+        print(f"[BLKH] Failed to read {args.input}: {e}")
+        sys.exit(1)
+
+    orig = audio.nbytes
+    zip_sz = len(zlib.compress(audio.tobytes(), 9))
+    duration = len(audio) / sr
+    print(f"[BLKH] Audio: {args.input} ({duration:.1f}s @ {sr}Hz, {orig:,}B)")
+    print(f"[BLKH] ZIP: {zip_sz:,}B ({orig/zip_sz:.2f}x)")
+
+    if args.instant:
+        epochs, lr, patience = 150, 3e-3, 3
+    elif args.turbo:
+        epochs, lr, patience = 300, 2e-3, 3
+    else:
+        epochs, lr, patience = 500, 1e-3, 5
+
+    comp = AudioCompressor(hidden_features=64, hidden_layers=3, omega_0=30.0,
+                            n_fft=512, hop_length=256)
+    t0 = time.time()
+    res = comp.compress(audio, sample_rate=sr, epochs=epochs, lr=lr, bits=8,
+                         batch_size=8192, use_amp=True, patience=patience, verbose=True)
+    dt = time.time() - t0
+
+    Path(args.output).write_bytes(res['recipe_bytes'])
+    winner = "BLKH" if res['recipe_size'] < zip_sz else "ZIP"
+    print(f"\n[BLKH] Audio result:")
+    print(f"  Original:    {orig:>10,} B  ({duration:.1f}s)")
+    print(f"  ZIP:         {zip_sz:>10,} B  ({orig/zip_sz:.2f}x)")
+    print(f"  BLKH Audio:  {res['recipe_size']:>10,} B  ({orig/res['recipe_size']:.2f}x)")
+    print(f"    SIREN:     {res['weights_packed_size']:,}B  Phase: {res['phase_compressed_size']:,}B  Resid: {res['mag_residual_size']:,}B")
+    print(f"  SNR:         {res['snr_db']:.1f}dB")
+    print(f"  Winner:      {winner}  (BLKH/ZIP = {res['recipe_size']/zip_sz:.3f})")
+    print(f"  Time:        {dt:.1f}s")
+    print(f"  Output:      {args.output}")
+
+
 def cmd_doctor(args):
     """Diagnose the BLKH environment and show recommendations."""
     import torch
@@ -1015,6 +1066,13 @@ Examples:
     p_batch.add_argument('--instant', action='store_true', help='Instant mode (~0.5s/image)')
     p_batch.add_argument('--turbo', action='store_true', help='Turbo mode (~1s/image)')
     p_batch.set_defaults(func=cmd_batch)
+
+    p_audio = sub.add_parser('audio', help='Compress WAV audio via STFT spectrogram INR')
+    p_audio.add_argument('input', help='Input WAV file')
+    p_audio.add_argument('output', help='Output .blka recipe')
+    p_audio.add_argument('--instant', action='store_true', help='Instant mode')
+    p_audio.add_argument('--turbo', action='store_true', help='Turbo mode')
+    p_audio.set_defaults(func=cmd_audio)
 
     p_gray = sub.add_parser('gray', help='Compress grayscale image (1 channel, MRI/CT optimized)')
     p_gray.add_argument('input')
