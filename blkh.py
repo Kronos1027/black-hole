@@ -837,9 +837,12 @@ def cmd_info(args):
     import struct
     from siren_v5_torch import MAGIC_V5
     recipe = Path(args.input).read_bytes()
-    if recipe[:4] == MAGIC_V5:
-        print(f"[BLKH] Format: BLK5 (v5 PyTorch)")
-        print(f"[BLKH] Size: {len(recipe):,} bytes")
+    magic = recipe[:4]
+    print(f"[BLKH] File: {args.input}")
+    print(f"[BLKH] Size: {len(recipe):,} bytes")
+
+    if magic == MAGIC_V5:
+        print(f"[BLKH] Format: BLK5 (v5 PyTorch SIREN)")
         # Parse header
         version = recipe[4]
         bits = recipe[5]
@@ -856,8 +859,54 @@ def cmd_info(args):
         print(f"  arch:       in={in_f} hidden={hidden} layers={hidden_l} out={out_f}")
         print(f"  omega_0:    {omega}")
         print(f"  image:      {H}x{W}x{C}")
+    elif magic == b'BLK8':
+        print(f"[BLKH] Format: BLK8 (v5.8 Hybrid SIREN + WebP/PNG residual, bit-perfect)")
+    elif magic == b'BLK2':
+        print(f"[BLKH] Format: BLK2 (v5.19 Wavelet+INR v2, bit-perfect lossless OR lossy)")
+    elif magic == b'BKWF':
+        print(f"[BLKH] Format: BKWF (v5.20 Wavelet+INR v3, float16 bit-perfect)")
+        # Parse minimal header
+        version = recipe[4]
+        flags = recipe[5]
+        level = recipe[6]
+        wl_len = recipe[7]
+        wavelet = recipe[8:8+wl_len].decode('utf-8')
+        off = 8 + wl_len
+        H = struct.unpack('<H', recipe[off:off+2])[0]; off += 2
+        W = struct.unpack('<H', recipe[off:off+2])[0]; off += 2
+        C = recipe[off]; off += 1
+        lossless = bool(flags & 0x01)
+        combined = bool(flags & 0x02)
+        print(f"  version:    {version}")
+        print(f"  wavelet:    {wavelet}")
+        print(f"  level:      {level}")
+        print(f"  image:      {H}x{W}x{C}")
+        print(f"  lossless:   {lossless}")
+        print(f"  combined:   {combined}")
+    elif magic == b'BLKP':
+        print(f"[BLKH] Format: BLKP (v5.21 Photo YCbCr 4:2:0 + brotli, lossy)")
+        version = recipe[4]
+        flags = recipe[5]
+        quality_int = recipe[6]
+        H = struct.unpack('<H', recipe[7:9])[0]
+        W = struct.unpack('<H', recipe[9:11])[0]
+        print(f"  version:    {version}")
+        print(f"  quality:    {quality_int/100.0:.2f}")
+        print(f"  image:      {H}x{W}")
+        print(f"  subsampling: {'4:2:0' if flags & 0x01 else '4:4:4'}")
+    elif magic == b'BLKD':
+        print(f"[BLKH] Format: BLKD (v5.22 DCT-quantized, JPEG-like, lossy)")
+        version = recipe[4]
+        quality_int = recipe[5]
+        H = struct.unpack('<H', recipe[6:8])[0]
+        W = struct.unpack('<H', recipe[8:10])[0]
+        print(f"  version:    {version}")
+        print(f"  quality:    {quality_int/100.0:.2f}")
+        print(f"  image:      {H}x{W}")
+    elif magic == b'BLKW':
+        print(f"[BLKH] Format: BLKW (v5.18 Wavelet+INR — DEPRECATED, lossy not bit-perfect)")
     else:
-        print(f"[BLKH] Unknown format (magic: {recipe[:4]!r})")
+        print(f"[BLKH] Unknown format (magic: {magic!r})")
 
 
 def cmd_benchmark(args):
