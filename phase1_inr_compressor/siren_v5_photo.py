@@ -92,6 +92,110 @@ def _upsample_420(ch_sub: np.ndarray, target_h: int, target_w: int) -> np.ndarra
     return up[:target_h, :target_w]
 
 
+def _paeth_predictor(a: np.ndarray, b: np.ndarray, c: np.ndarray) -> np.ndarray:
+    """PNG Paeth predictor. a=left, b=above, c=upper-left."""
+    p = a.astype(np.int16) + b.astype(np.int16) - c.astype(np.int16)
+    pa = np.abs(p - a.astype(np.int16))
+    pb = np.abs(p - b.astype(np.int16))
+    pc = np.abs(p - c.astype(np.int16))
+    return np.where((pa <= pb) & (pa <= pc), a, np.where(pb <= pc, b, c)).astype(np.uint8)
+
+
+def _apply_filter(arr_u8: np.ndarray, filter_type: int) -> np.ndarray:
+    """Apply PNG filter. filter_type: 0=none, 1=sub, 2=up, 3=average, 4=paeth"""
+    H, W = arr_u8.shape
+    padded = np.zeros((H+1, W+1), dtype=np.uint8)
+    padded[1:, 1:] = arr_u8
+    a = padded[1:, :-1]  # left
+    b = padded[:-1, 1:]  # above
+    c = padded[:-1, :-1]  # upper-left
+
+    if filter_type == 0:  # None
+        return arr_u8.copy()
+    elif filter_type == 1:  # Sub
+        pred = a
+    elif filter_type == 2:  # Up
+        pred = b
+    elif filter_type == 3:  # Average
+        pred = ((a.astype(np.int16) + b.astype(np.int16)) // 2).astype(np.uint8)
+    elif filter_type == 4:  # Paeth
+        pred = _paeth_predictor(a, b, c)
+    else:
+        return arr_u8.copy()
+
+    return (arr_u8.astype(np.int16) - pred.astype(np.int16)).astype(np.uint8)
+
+
+def _undo_filter(filtered: np.ndarray, filter_type: int) -> np.ndarray:
+    """Undo PNG filter. filter_type: 0=none, 1=sub, 2=up, 3=average, 4=paeth"""
+    H, W = filtered.shape
+    out = np.zeros((H, W), dtype=np.uint8)
+    for r in range(H):
+        for c_idx in range(W):
+            a = out[r, c_idx-1] if c_idx > 0 else 0
+            b = out[r-1, c_idx] if r > 0 else 0
+            cc = out[r-1, c_idx-1] if r > 0 and c_idx > 0 else 0
+            if filter_type == 0:
+                pred = 0
+            elif filter_type == 1:
+                pred = a
+            elif filter_type == 2:
+                pred = b
+            elif filter_type == 3:
+                pred = (int(a) + int(b)) // 2
+            elif filter_type == 4:
+                p = int(a) + int(b) - int(cc)
+                pa, pb, pc = abs(p - int(a)), abs(p - int(b)), abs(p - int(cc))
+                if pa <= pb and pa <= pc:
+                    pred = a
+                elif pb <= pc:
+                    pred = b
+                else:
+                    pred = cc
+            else:
+                pred = 0
+            out[r, c_idx] = (int(filtered[r, c_idx]) + int(pred)) & 0xFF
+    return out
+
+
+def _undo_filter_vectorized(filtered: np.ndarray, filter_type: int) -> np.ndarray:
+    """Vectorized inverse PNG filter (much faster than per-pixel)."""
+    H, W = filtered.shape
+    # Convert to int16 for arithmetic
+    f = filtered.astype(np.int16)
+    out = np.zeros((H, W), dtype=np.int16)
+    if filter_type == 0:  # None
+        return filtered.copy()
+    elif filter_type == 1:  # Sub — cumulative sum along columns
+        out = np.cumsum(f, axis=1) & 0xFF
+    elif filter_type == 2:  # Up — cumulative sum along rows
+        out = np.cumsum(f, axis=0) & 0xFF
+    elif filter_type == 3:  # Average — need sequential
+        # Use Python loop for correctness (Average needs sequential)
+        return _undo_filter(filtered, filter_type)
+    elif filter_type == 4:  # Paeth — need sequential
+        return _undo_filter(filtered, filter_type)
+    return out.astype(np.uint8)
+
+
+def _compress_with_adaptive_filter(arr_u8: np.ndarray, codec: str
+                                     ) -> tuple[bytes, int, int]:
+    """Try all 5 PNG filters, return smallest compressed + filter ID + codec ID."""
+    best_size = float('inf')
+    best_filter = 0
+    best_compressed = None
+    best_codec = 0
+    for ftype in range(5):
+        filtered = _apply_filter(arr_u8, ftype)
+        compressed, codec_id = _compress_bytes(filtered.tobytes(), codec)
+        if len(compressed) < best_size:
+            best_size = len(compressed)
+            best_filter = ftype
+            best_compressed = compressed
+            best_codec = codec_id
+    return best_compressed, best_filter, best_codec
+
+
 class PhotoCompressor:
     """
     v5.21 Photo-optimized lossy compressor.
@@ -116,29 +220,33 @@ class PhotoCompressor:
         self.codec = codec
         self.quality = float(quality)
 
-    def _compress_y_channel(self, y: np.ndarray) -> tuple[bytes, int]:
-        """Compress Y channel. uint8 + codec (no wavelet — uint8+brotli is better for natural photos)."""
+    def _compress_y_channel(self, y: np.ndarray) -> tuple[bytes, int, int, int]:
+        """Compress Y channel with uint8 + adaptive filter + codec.
+        Returns (compressed, filter_id, codec_id, _)."""
         y_u8 = np.clip(np.round(y), 0, 255).astype(np.uint8)
-        compressed, codec_id = _compress_bytes(y_u8.tobytes(), self.codec)
-        return compressed, codec_id
+        compressed, filter_id, codec_id = _compress_with_adaptive_filter(y_u8, self.codec)
+        return compressed, filter_id, codec_id, 0
 
-    def _decompress_y_channel(self, y_comp: bytes, codec_id: int, H: int, W: int) -> np.ndarray:
+    def _decompress_y_channel(self, y_comp: bytes, filter_id: int, codec_id: int, H: int, W: int) -> np.ndarray:
         """Decompress Y channel."""
         y_bytes = _decompress_bytes(y_comp, codec_id)
-        y_u8 = np.frombuffer(y_bytes, dtype=np.uint8).astype(np.float32).reshape(H, W)
-        return y_u8
+        filtered = np.frombuffer(y_bytes, dtype=np.uint8).reshape(H, W)
+        y_u8 = _undo_filter_vectorized(filtered, filter_id)
+        return y_u8.astype(np.float32)
 
-    def _compress_chroma(self, ch: np.ndarray) -> tuple[bytes, int]:
-        """Compress chroma channel with uint8 + codec."""
+    def _compress_chroma(self, ch: np.ndarray) -> tuple[bytes, int, int, int]:
+        """Compress chroma channel with uint8 + adaptive filter + codec.
+        Returns (compressed, filter_id, codec_id, _)."""
         ch_u8 = np.clip(np.round(ch), 0, 255).astype(np.uint8)
-        compressed, codec_id = _compress_bytes(ch_u8.tobytes(), self.codec)
-        return compressed, codec_id
+        compressed, filter_id, codec_id = _compress_with_adaptive_filter(ch_u8, self.codec)
+        return compressed, filter_id, codec_id, 0
 
-    def _decompress_chroma(self, ch_comp: bytes, codec_id: int, shape: tuple) -> np.ndarray:
+    def _decompress_chroma(self, ch_comp: bytes, filter_id: int, codec_id: int, shape: tuple) -> np.ndarray:
         """Decompress chroma channel."""
         ch_bytes = _decompress_bytes(ch_comp, codec_id)
-        ch_u8 = np.frombuffer(ch_bytes, dtype=np.uint8).astype(np.float32).reshape(shape)
-        return ch_u8
+        filtered = np.frombuffer(ch_bytes, dtype=np.uint8).reshape(shape)
+        ch_u8 = _undo_filter_vectorized(filtered, filter_id)
+        return ch_u8.astype(np.float32)
 
     def compress(self, image: np.ndarray, verbose: bool = False) -> dict:
         """Compress RGB image with YCbCr + wavelet + brotli (LOSSY)."""
@@ -150,8 +258,8 @@ class PhotoCompressor:
         # Convert to YCbCr
         y, cb, cr = _rgb_to_ycbcr(image)
 
-        # Compress Y (full resolution, wavelet+float16)
-        y_comp, y_codec = self._compress_y_channel(y)
+        # Compress Y (full resolution, uint8 + adaptive filter + codec)
+        y_comp, y_filter, y_codec, _ = self._compress_y_channel(y)
 
         # Subsample chroma if 4:2:0
         if self.subsampling == '420':
@@ -163,15 +271,15 @@ class PhotoCompressor:
             cr_sub = cr
             flags = FLAG_444
 
-        # Compress chroma (uint8 + codec)
-        cb_comp, cb_codec = self._compress_chroma(cb_sub)
-        cr_comp, cr_codec = self._compress_chroma(cr_sub)
+        # Compress chroma (uint8 + adaptive filter + codec)
+        cb_comp, cb_filter, cb_codec, _ = self._compress_chroma(cb_sub)
+        cr_comp, cr_filter, cr_codec, _ = self._compress_chroma(cr_sub)
 
         # Pack recipe
         sha = hashlib.sha256(original_bytes).digest()
         recipe = self._pack_recipe(
             flags, int(self.quality * 100), H, W,
-            y_comp, y_codec, cb_comp, cb_codec, cr_comp, cr_codec,
+            y_comp, y_filter, y_codec, cb_comp, cb_filter, cb_codec, cr_comp, cr_filter, cr_codec,
             cb_sub.shape, cr_sub.shape, sha
         )
 
@@ -183,6 +291,9 @@ class PhotoCompressor:
             'y_compressed_size': len(y_comp),
             'cb_compressed_size': len(cb_comp),
             'cr_compressed_size': len(cr_comp),
+            'y_filter': y_filter,
+            'cb_filter': cb_filter,
+            'cr_filter': cr_filter,
             'subsampling': self.subsampling,
             'wavelet': self.wavelet,
             'level': self.level,
@@ -193,7 +304,9 @@ class PhotoCompressor:
         }
 
     def _pack_recipe(self, flags, quality_int, H, W,
-                     y_comp, y_codec, cb_comp, cb_codec, cr_comp, cr_codec,
+                     y_comp, y_filter, y_codec,
+                     cb_comp, cb_filter, cb_codec,
+                     cr_comp, cr_filter, cr_codec,
                      cb_shape, cr_shape, sha):
         out = bytearray()
         out += MAGIC_PHOTO
@@ -202,17 +315,20 @@ class PhotoCompressor:
         out += struct.pack('<B', quality_int)
         out += struct.pack('<H', H)
         out += struct.pack('<H', W)
-        # Y data
+        # Y data + filter + codec
+        out += struct.pack('<B', y_filter)
         out += struct.pack('<B', y_codec)
         out += struct.pack('<I', len(y_comp))
         out += y_comp
-        # Cb data
+        # Cb data + filter + codec
+        out += struct.pack('<B', cb_filter)
         out += struct.pack('<B', cb_codec)
         out += struct.pack('<I', len(cb_comp))
         out += cb_comp
         out += struct.pack('<H', cb_shape[0])  # Cb height
         out += struct.pack('<H', cb_shape[1])  # Cb width
-        # Cr data
+        # Cr data + filter + codec
+        out += struct.pack('<B', cr_filter)
         out += struct.pack('<B', cr_codec)
         out += struct.pack('<I', len(cr_comp))
         out += cr_comp
@@ -235,19 +351,22 @@ class PhotoCompressor:
         H = struct.unpack('<H', buf[off:off+2])[0]; off += 2
         W = struct.unpack('<H', buf[off:off+2])[0]; off += 2
 
-        # Y data
+        # Y data + filter + codec
+        y_filter = struct.unpack('<B', buf[off:off+1])[0]; off += 1
         y_codec = struct.unpack('<B', buf[off:off+1])[0]; off += 1
         y_size = struct.unpack('<I', buf[off:off+4])[0]; off += 4
         y_comp = buf[off:off+y_size]; off += y_size
 
-        # Cb data
+        # Cb data + filter + codec
+        cb_filter = struct.unpack('<B', buf[off:off+1])[0]; off += 1
         cb_codec = struct.unpack('<B', buf[off:off+1])[0]; off += 1
         cb_size = struct.unpack('<I', buf[off:off+4])[0]; off += 4
         cb_comp = buf[off:off+cb_size]; off += cb_size
         cb_h = struct.unpack('<H', buf[off:off+2])[0]; off += 2
         cb_w = struct.unpack('<H', buf[off:off+2])[0]; off += 2
 
-        # Cr data
+        # Cr data + filter + codec
+        cr_filter = struct.unpack('<B', buf[off:off+1])[0]; off += 1
         cr_codec = struct.unpack('<B', buf[off:off+1])[0]; off += 1
         cr_size = struct.unpack('<I', buf[off:off+4])[0]; off += 4
         cr_comp = buf[off:off+cr_size]; off += cr_size
@@ -257,11 +376,11 @@ class PhotoCompressor:
         sha_expected = buf[off:off+32]; off += 32
 
         # Decompress Y
-        y = PhotoCompressor()._decompress_y_channel(y_comp, y_codec, H, W)
+        y = PhotoCompressor()._decompress_y_channel(y_comp, y_filter, y_codec, H, W)
 
         # Decompress chroma
-        cb_sub = PhotoCompressor()._decompress_chroma(cb_comp, cb_codec, (cb_h, cb_w))
-        cr_sub = PhotoCompressor()._decompress_chroma(cr_comp, cr_codec, (cr_h, cr_w))
+        cb_sub = PhotoCompressor()._decompress_chroma(cb_comp, cb_filter, cb_codec, (cb_h, cb_w))
+        cr_sub = PhotoCompressor()._decompress_chroma(cr_comp, cr_filter, cr_codec, (cr_h, cr_w))
 
         # Upsample chroma if 4:2:0
         if flags & FLAG_420:
@@ -279,6 +398,9 @@ class PhotoCompressor:
             'H': H, 'W': W,
             'quality': quality_int / 100.0,
             'subsampling': '420' if flags & FLAG_420 else '444',
+            'y_filter': y_filter,
+            'cb_filter': cb_filter,
+            'cr_filter': cr_filter,
             'sha256_match': sha_got == sha_expected,  # Will be False (lossy)
             'mode': 'photo_v5_21',
             'lossy': True,
