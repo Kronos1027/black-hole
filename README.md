@@ -7,6 +7,9 @@
 
 > **"The data is not a static block of bytes waiting to be dragged. The data is a living mathematical function, kept in potential state and ejected instantly on demand."**
 
+> **Commercial use requires a separate license agreement.**  
+> **Contact:** darlan1027pc@gmail.com
+
 ---
 
 ## Author
