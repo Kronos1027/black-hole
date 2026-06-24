@@ -229,6 +229,50 @@ def cmd_batch(args):
     print(f"  Output:        {output_dir}")
 
 
+def cmd_wavelet(args):
+    """Compress with Wavelet+INR hybrid (best compression + speed)."""
+    import numpy as np
+    from siren_v5_wavelet import WaveletINRCompressor
+
+    kind, payload = load_any(args.input)
+    if kind == 'image':
+        img = payload
+    else:
+        img, _, _ = payload
+
+    orig = img.nbytes
+    zip_sz = len(zlib.compress(img.tobytes(), 9))
+    print(f"[BLKH] Wavelet+INR: {args.input} ({orig:,}B)")
+    print(f"[BLKH] ZIP: {zip_sz:,}B")
+
+    if args.instant:
+        epochs, lr, patience = 100, 4e-3, 3
+    elif args.turbo:
+        epochs, lr, patience = 200, 3e-3, 3
+    else:
+        epochs, lr, patience = 400, 2e-3, 5
+
+    comp = WaveletINRCompressor(hidden_features=args.hidden, hidden_layers=args.layers,
+                                 wavelet=args.wavelet, level=args.level,
+                                 residual_codec='png')
+    t0 = time.time()
+    res = comp.compress_bitperfect(img, epochs=epochs, lr=lr, bits=8,
+                                     batch_size=16384, use_amp=True,
+                                     patience=patience, verbose=True)
+    dt = time.time() - t0
+
+    Path(args.output).write_bytes(res['recipe_bytes'])
+    winner = "BLKH" if res['recipe_size'] < zip_sz else "ZIP"
+    print(f"\n[BLKH] Wavelet+INR result:")
+    print(f"  Original:    {orig:>10,} B")
+    print(f"  ZIP:         {zip_sz:>10,} B  (ratio {orig/zip_sz:.2f}x)")
+    print(f"  BLKH wave:   {res['recipe_size']:>10,} B  (ratio {orig/res['recipe_size']:.2f}x)")
+    print(f"    LL SIREN:  {res['ll_recipe_size']:,}B  Detail: {res['detail_compressed_size']:,}B")
+    print(f"  Winner:      {winner}  (BLKH/ZIP = {res['recipe_size']/zip_sz:.3f})")
+    print(f"  Time:        {dt:.2f}s")
+    print(f"  Output:      {args.output}")
+
+
 def cmd_audio(args):
     """Compress a WAV audio file with BLKH STFT spectrogram INR."""
     import numpy as np
@@ -1073,6 +1117,17 @@ Examples:
     p_audio.add_argument('--instant', action='store_true', help='Instant mode')
     p_audio.add_argument('--turbo', action='store_true', help='Turbo mode')
     p_audio.set_defaults(func=cmd_audio)
+
+    p_wave = sub.add_parser('wavelet', help='Wavelet+INR hybrid (best compression + speed)')
+    p_wave.add_argument('input')
+    p_wave.add_argument('output')
+    p_wave.add_argument('--hidden', type=int, default=32)
+    p_wave.add_argument('--layers', type=int, default=2)
+    p_wave.add_argument('--wavelet', default='haar', help='Wavelet type (haar, db2, db4, sym4)')
+    p_wave.add_argument('--level', type=int, default=2, help='Decomposition level (1-4)')
+    p_wave.add_argument('--instant', action='store_true')
+    p_wave.add_argument('--turbo', action='store_true')
+    p_wave.set_defaults(func=cmd_wavelet)
 
     p_gray = sub.add_parser('gray', help='Compress grayscale image (1 channel, MRI/CT optimized)')
     p_gray.add_argument('input')
