@@ -702,7 +702,7 @@ class ImageINRv5:
             indexing="ij",
         )
         coords = torch.stack([xs.reshape(-1), ys.reshape(-1)], dim=-1)
-        with torch.no_grad():
+        with torch.inference_mode():
             pred = model(coords).cpu().numpy()
         predicted = np.clip((pred + 1.0) * 127.5, 0, 255).astype(np.uint8).reshape(H, W, C)
 

@@ -322,14 +322,14 @@ class HybridCompressor:
         model.load_from_numpy(weights)
         model.eval()
 
-        # Inference
+        # Inference (use inference_mode for maximum speed — faster than no_grad)
         ys, xs = torch.meshgrid(
             torch.linspace(-1, 1, H, device=dev),
             torch.linspace(-1, 1, W, device=dev),
             indexing="ij",
         )
         coords = torch.stack([xs.reshape(-1), ys.reshape(-1)], dim=-1)
-        with torch.no_grad():
+        with torch.inference_mode():
             pred = model(coords).cpu().numpy()
         # pred has shape (H*W, 3) — reshape to (H, W, 3)
         predicted = np.clip((pred + 1.0) * 127.5, 0, 255).astype(np.uint8).reshape(H, W, C)
