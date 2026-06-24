@@ -87,6 +87,94 @@ def load_any(path: str):
     return ('binary', (arr, n, data))
 
 
+def cmd_doctor(args):
+    """Diagnose the BLKH environment and show recommendations."""
+    import torch
+    import platform
+
+    print("=" * 60)
+    print("  BLKH Doctor — Environment Diagnostics")
+    print("=" * 60)
+
+    # Python
+    print(f"\n  Python:       {platform.python_version()}")
+    print(f"  Platform:     {platform.platform()}")
+
+    # PyTorch
+    print(f"\n  PyTorch:      {torch.__version__}")
+    print(f"  CUDA:         {'available' if torch.cuda.is_available() else 'not available (CPU mode)'}")
+    if torch.cuda.is_available():
+        print(f"  GPU:          {torch.cuda.get_device_name(0)}")
+        gpu_mem = torch.cuda.get_device_properties(0).total_memory / 1e9
+        print(f"  GPU Memory:   {gpu_mem:.1f} GB")
+    print(f"  CPU threads:  {torch.get_num_threads()}")
+
+    # Dependencies
+    deps = []
+    try:
+        import numpy; deps.append(f'numpy {numpy.__version__}')
+    except ImportError:
+        deps.append('numpy MISSING')
+    try:
+        from PIL import Image; deps.append('Pillow OK')
+    except ImportError:
+        deps.append('Pillow MISSING (pip install Pillow)')
+    try:
+        import scipy; deps.append(f'scipy {scipy.__version__}')
+    except ImportError:
+        deps.append('scipy MISSING (pip install scipy)')
+    try:
+        import psutil; deps.append('psutil OK')
+    except ImportError:
+        deps.append('psutil MISSING (pip install psutil)')
+    try:
+        from PIL import Image
+        import io
+        buf = io.BytesIO()
+        Image.new('RGB', (10,10)).save(buf, format='WebP', lossless=True)
+        deps.append('WebP support OK')
+    except Exception:
+        deps.append('WebP support MISSING (install libwebp)')
+
+    print(f"\n  Dependencies:")
+    for d in deps:
+        print(f"    {d}")
+
+    # Recommendations
+    print(f"\n  Recommendations:")
+    if not torch.cuda.is_available():
+        print(f"    → CPU mode: use --amp for 1.5x speedup")
+        print(f"    → Use --patience 5 for 2x speedup (early stopping)")
+    else:
+        print(f"    → GPU detected: AMP auto-enabled, expect 10-50x speedup")
+    print(f"    → Use --auto-tune for optimal SIREN size (recommended)")
+    print(f"    → Use --patience 5 to cut encoding time in half")
+
+    # Quick test
+    print(f"\n  Quick test (16x16 gradient)...")
+    try:
+        import numpy as np
+        from siren_v5_hybrid import HybridCompressor
+        img = np.zeros((16, 16, 3), dtype=np.uint8)
+        for i in range(16):
+            for j in range(16):
+                img[i,j] = [i*15, j*15, (i+j)*8]
+        comp = HybridCompressor(hidden_features=16, hidden_layers=1, residual_codec='webp')
+        res = comp.compress_bitperfect(img, epochs=100, lr=1e-3, bits=8,
+                                         batch_size=64, verbose=False)
+        rec, meta = HybridCompressor.decompress(res['recipe_bytes'])
+        if meta['exact_match']:
+            print(f"    ✓ Roundtrip OK (SHA-256 verified)")
+        else:
+            print(f"    ✗ Roundtrip FAILED")
+    except Exception as e:
+        print(f"    ✗ Test failed: {e}")
+
+    print(f"\n{'=' * 60}")
+    print(f"  BLKH is {'ready' if all('MISSING' not in d for d in deps) else 'partially ready'}.")
+    print(f"{'=' * 60}")
+
+
 def cmd_compress(args):
     import numpy as np
     from siren_v5_torch import ImageINRv5
@@ -686,6 +774,9 @@ def main():
     p_c.add_argument('--no-bit-perfect', action='store_true',
                      help='Lossy mode (no residual, ~3x smaller but NOT exact)')
     p_c.set_defaults(func=cmd_compress)
+
+    p_doc = sub.add_parser('doctor', help='Diagnose environment and show recommendations')
+    p_doc.set_defaults(func=cmd_doctor)
 
     p_d = sub.add_parser('decompress', help='Recover original file from .blkh5')
     p_d.add_argument('input')
