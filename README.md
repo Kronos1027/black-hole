@@ -35,6 +35,8 @@
 | **Wavelet+INR v2** | 256×256 satellite (lossy q0.5 th5) | **56.6x smaller** | lossy 53dB | **0.2s** |
 | **Wavelet+INR v3** | 256×256 satellite (lossless) | **2.74x smaller** | ✅ | **0.4s parallel** |
 | **Wavelet+INR v3** | 512×512 satellite (lossless) | **2.08x smaller** | ✅ | **1.4s parallel** |
+| **Photo v5.21** | 128×128 marble photo | **2.68x smaller than PNG** | lossy 38dB | **0.02s** |
+| **Photo v5.21** | 128×128 wood photo | **2.01x smaller than PNG** | lossy 35dB | **0.02s** |
 | **Lossy** | 128×128 photos vs WebP | **wins 3/5** | lossy | ~2s |
 
 > ⚠️ **Honest correction (v5.19):** The v5.18 wavelet mode claimed "✅ bit-perfect" but was actually lossy
@@ -80,8 +82,10 @@ python blkh.py compress photo.png photo.blkh8 --auto-tune --amp --patience 5
 # Wavelet+INR (best compression + speed — RECOMMENDED for smooth images)
 python blkh.py wavelet photo.png photo.blkw --instant
 
-# Wavelet+INR v3 — TRUE bit-perfect + float16 + brotli + combined (RECOMMENDED)
+# Wavelet+INR v3 — TRUE bit-perfect + float16 + brotli + combined (RECOMMENDED for smooth)
 python blkh.py wavelet3 photo.png photo.blkw3 --parallel --combined
+# Photo v5.21 — YCbCr 4:2:0 + brotli (RECOMMENDED for natural photos, beats PNG 2x)
+python blkh.py photo photo.png photo.blkp
 # Wavelet+INR v2 — bit-perfect + lossy mode
 python blkh.py wavelet2 photo.png photo.blkw2                          # lossless
 python blkh.py wavelet2 photo.png photo.blkw2 --lossy --quality 0.5 --threshold 5  # 50x+ lossy
@@ -1445,6 +1449,7 @@ res = comp.compress_many(new_images, epochs=1000)
 - [x] v5.18: Wavelet+INR hybrid (DWT separates smooth/detail, 28% smaller, 10x faster)
 - [x] v5.19: Wavelet+INR v2 - CRITICAL fix (v5.18 was lossy not bit-perfect as claimed). TRUE bit-perfect lossless mode + lossy mode (5-60x compression, 38-56 dB PSNR). zstd level 22, adaptive wavelet/level selection, soft thresholding.
 - [x] v5.20: Wavelet+INR v3 - float16 breakthrough (30% smaller than v5.19, 2x faster). Brotli support (8% smaller than zstd). Parallel adaptive search (2-3x faster). Combined mode (single bytestream, 6% smaller). Beats ZIP 1.87-2.74x on smooth images with TRUE bit-perfect.
+- [x] v5.21: Photo mode - YCbCr 4:2:0 chroma subsampling + brotli. Beats PNG 2-2.7x on natural photos with 35-38 dB PSNR (visually lossless). 0.02s encoding.
 - [x] Game engine integration (Texture Streaming Server + Unity + Godot)
 - [x] LOD streaming (resolution-independent texture loading)
 - [x] Web demo (Gradio interactive compression)

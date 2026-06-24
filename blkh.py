@@ -383,6 +383,65 @@ def cmd_wavelet3(args):
     print(f"  Output:      {args.output}")
 
 
+def cmd_photo(args):
+    """Compress with v5.21 photo-optimized lossy mode (YCbCr 4:2:0 + brotli)."""
+    import numpy as np
+    from siren_v5_photo import PhotoCompressor
+
+    kind, payload = load_any(args.input)
+    if kind == 'image':
+        img = payload
+    else:
+        img, _, _ = payload
+
+    orig = img.nbytes
+    zip_sz = len(zlib.compress(img.tobytes(), 9))
+    # PNG size
+    try:
+        from PIL import Image as PILImage
+        import io
+        png_buf = io.BytesIO()
+        PILImage.fromarray(img).save(png_buf, format='PNG', optimize=True)
+        png_sz = png_buf.tell()
+    except ImportError:
+        png_sz = 0
+
+    print(f"[BLKH] Photo v5.21: {args.input} ({orig:,}B)")
+    print(f"[BLKH] ZIP: {zip_sz:,}B" + (f", PNG: {png_sz:,}B" if png_sz else ""))
+    print(f"[BLKH] Mode: LOSSY (YCbCr {args.subsampling}, codec={args.codec})")
+
+    comp = PhotoCompressor(
+        subsampling=args.subsampling,
+        codec=args.codec,
+        quality=args.quality,
+    )
+    t0 = time.time()
+    res = comp.compress(img, verbose=True)
+    dt = time.time() - t0
+
+    Path(args.output).write_bytes(res['recipe_bytes'])
+
+    # Verify roundtrip
+    rec, meta = PhotoCompressor.decompress(res['recipe_bytes'])
+    mse = np.mean((img.astype(float) - rec.astype(float))**2)
+    psnr = 10*np.log10(255**2 / max(mse, 1e-10))
+
+    winner_zip = "BLKH" if res['recipe_size'] < zip_sz else "ZIP"
+    winner_png = "BLKH" if png_sz and res['recipe_size'] < png_sz else "PNG"
+    print(f"\n[BLKH] Photo v5.21 result:")
+    print(f"  Original:    {orig:>10,} B")
+    print(f"  ZIP:         {zip_sz:>10,} B  (ratio {orig/zip_sz:.2f}x)")
+    if png_sz:
+        print(f"  PNG:         {png_sz:>10,} B  (ratio {orig/png_sz:.2f}x)")
+    print(f"  BLKH photo:  {res['recipe_size']:>10,} B  (ratio {orig/res['recipe_size']:.2f}x)")
+    print(f"  PSNR:        {psnr:.1f} dB")
+    print(f"  vs ZIP:      {winner_zip}  ({res['recipe_size']/zip_sz:.3f})")
+    if png_sz:
+        print(f"  vs PNG:      {winner_png}  ({res['recipe_size']/png_sz:.3f})")
+    print(f"  Time:        {dt:.2f}s")
+    print(f"  Output:      {args.output}")
+
+
 def cmd_audio(args):
     """Compress a WAV audio file with BLKH STFT spectrogram INR."""
     import numpy as np
@@ -661,6 +720,11 @@ def cmd_decompress(args):
         # Wavelet v3 format (.blkw3) — use WaveletINRCompressorV3
         from siren_v5_wavelet_v3 import WaveletINRCompressorV3
         img, meta = WaveletINRCompressorV3.decompress(recipe)
+    elif magic == b'BLKP':
+        # Photo v5.21 format (.blkp) — use PhotoCompressor
+        from siren_v5_photo import PhotoCompressor
+        img, meta = PhotoCompressor.decompress(recipe)
+        meta['exact_match'] = meta.get('sha256_match', False)  # lossy, will be False
     elif magic == b'BLK5':
         # v5 format (.blkh5) — use ImageINRv5
         img, meta = ImageINRv5.decompress(recipe)
@@ -1270,6 +1334,16 @@ Examples:
     p_wave3.add_argument('--parallel', action='store_true', help='Parallel adaptive search (2-3x faster)')
     p_wave3.add_argument('--workers', type=int, default=4, help='Number of parallel workers')
     p_wave3.set_defaults(func=cmd_wavelet3)
+
+    p_photo = sub.add_parser('photo', help='Photo v5.21 (YCbCr 4:2:0 + brotli, beats PNG 2x on photos)')
+    p_photo.add_argument('input')
+    p_photo.add_argument('output')
+    p_photo.add_argument('--subsampling', default='420', choices=['420', '444'],
+                          help='Chroma subsampling (420=default lossy, 444=higher quality)')
+    p_photo.add_argument('--codec', default='brotli', choices=['auto', 'zstd', 'brotli', 'zlib'],
+                          help='Codec (brotli=default best, zstd, zlib, auto)')
+    p_photo.add_argument('--quality', type=float, default=1.0, help='Quality 0.0-1.0 (currently informational)')
+    p_photo.set_defaults(func=cmd_photo)
 
     p_gray = sub.add_parser('gray', help='Compress grayscale image (1 channel, MRI/CT optimized)')
     p_gray.add_argument('input')
