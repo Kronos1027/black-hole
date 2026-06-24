@@ -79,6 +79,9 @@ python blkh.py lossy photo.png photo_lossy.blkh5 --amp
 
 # Game engine texture server
 python game_engine/server/blkh_texture_server.py --port 8080
+
+# Web demo (interactive compression in browser)
+python blkh_web_demo.py
 ```
 
 **Flags**: `--auto-tune` (pick SIREN size from image), `--amp` (mixed precision, 1.5x faster), `--patience 5` (early stopping, 2x faster).
@@ -1415,6 +1418,7 @@ res = comp.compress_many(new_images, epochs=1000)
 - [x] v5.15: Multi-scale SIREN (experimental — better accuracy, weight overhead)
 - [x] Game engine integration (Texture Streaming Server + Unity + Godot)
 - [x] LOD streaming (resolution-independent texture loading)
+- [x] Web demo (Gradio interactive compression)
 - [x] Paper draft (LaTeX, 10 pages, ready for arXiv)
 - [x] Authorship protection (CITATION.cff, SPDX watermarks, MIT + commercial)
 
@@ -1424,7 +1428,6 @@ res = comp.compress_many(new_images, epochs=1000)
 - [ ] GPU CUDA kernels (target: 50x speedup, real-time encoding)
 - [ ] Game engine native plugin (C++ BLKH decoder for Unity/Unreal)
 - [ ] WIRE/FINER activation functions (alternative to SIREN, research)
-- [ ] Web demo (Gradio/Streamlit) for interactive compression
 - [ ] Video compression with NeRV-style temporal INRs
 - [ ] io_uring / DirectStorage integration for zero-copy ejection
 
