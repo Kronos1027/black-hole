@@ -187,7 +187,7 @@ def cmd_compress(args):
     else:
         img, orig_nbytes, orig_bytes = payload
 
-    # Turbo mode overrides
+    # Turbo/instant mode overrides
     if getattr(args, 'turbo', False):
         args.epochs = 200
         args.batch_size = 16384
@@ -196,12 +196,25 @@ def cmd_compress(args):
         if not getattr(args, 'amp', False):
             args.amp = True
         args.lr_override = 3e-3
+        args.codec_override = 'webp'
+    elif getattr(args, 'instant', False):
+        args.epochs = 100
+        args.batch_size = 16384
+        if not getattr(args, 'auto_tune', False):
+            args.auto_tune = True
+        if not getattr(args, 'amp', False):
+            args.amp = True
+        args.lr_override = 4e-3
+        args.codec_override = 'png'  # PNG is 16x faster to encode than WebP
     else:
         args.lr_override = None
+        args.codec_override = None
 
     print(f"[BLKH] Input: {args.input}  ({kind}, {orig_nbytes:,} bytes)")
-    if getattr(args, 'turbo', False):
-        print(f"[BLKH] TURBO mode: 200 epochs, lr=3e-3, bs=16384, auto-tune, AMP")
+    if getattr(args, 'instant', False):
+        print(f"[BLKH] INSTANT mode: 100 epochs, lr=4e-3, bs=16384, PNG residual, AMP (~0.4-0.7s)")
+    elif getattr(args, 'turbo', False):
+        print(f"[BLKH] TURBO mode: 200 epochs, lr=3e-3, bs=16384, auto-tune, AMP (~1s)")
     elif getattr(args, 'auto_tune', False):
         print(f"[BLKH] Config: epochs={args.epochs} bits={args.bits} "
               f"auto-tune=ON (SIREN size picked from image dims) "
@@ -232,10 +245,11 @@ def cmd_compress(args):
         recipe = comp._pack_recipe(args.bits, packed, pm, b'', sha)
         print(f"[BLKH] Lossy mode: PSNR={meta['psnr']:.2f} dB  "
               f"(recipe will NOT roundtrip bit-perfect)")
-    elif getattr(args, 'auto_tune', False):
+    elif getattr(args, 'auto_tune', False) or getattr(args, 'instant', False) or getattr(args, 'turbo', False):
         # Hybrid mode with auto-tune (recommended for images)
+        codec = getattr(args, 'codec_override', None) or 'webp'
         comp = HybridCompressor(auto_tune=True, omega_0=args.omega,
-                                 residual_codec='webp')
+                                 residual_codec=codec)
         res = comp.compress_bitperfect(img, epochs=args.epochs, lr=getattr(args, "lr_override", None) or 1e-3,
                                         bits=args.bits, prune_threshold=0.0,
                                         batch_size=args.batch_size,
@@ -810,7 +824,9 @@ def main():
     p_c.add_argument('--patience', type=int, default=0,
                      help='Early stopping patience (try 5 for ~2x speedup, 0=disabled)')
     p_c.add_argument('--turbo', action='store_true',
-                     help='Turbo mode: 200 epochs, lr=3e-3, big batch (~1s encoding, slightly lower quality)')
+                     help='Turbo mode: 200 epochs, lr=3e-3, WebP residual (~1s encoding)')
+    p_c.add_argument('--instant', action='store_true',
+                     help='Instant mode: 100 epochs, lr=4e-3, PNG residual (~0.4-0.7s, fastest)')
     p_c.add_argument('--no-bit-perfect', action='store_true',
                      help='Lossy mode (no residual, ~3x smaller but NOT exact)')
     p_c.set_defaults(func=cmd_compress)

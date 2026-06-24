@@ -69,17 +69,20 @@ def compress_image(input_image, mode, use_amp):
     webp_size = len(buf.getvalue())
 
     # Configure based on mode
-    if mode == "Turbo (~1s)":
-        epochs, lr, bs, patience = 200, 3e-3, 16384, 3
-    elif mode == "Fast (~3s)":
-        epochs, lr, bs, patience = 400, 2e-3, 16384, 5
+    # Instant: PNG residual (16x faster encode than WebP), 100 epochs
+    # Turbo: WebP residual (best compression), 200 epochs
+    # Quality: WebP residual, 800 epochs
+    if mode == "Instant (~0.5s)":
+        epochs, lr, bs, patience, codec = 100, 4e-3, 16384, 3, 'png'
+    elif mode == "Turbo (~1s)":
+        epochs, lr, bs, patience, codec = 200, 3e-3, 16384, 3, 'webp'
     elif mode == "Quality (~6s)":
-        epochs, lr, bs, patience = 800, 1e-3, 8192, 5
+        epochs, lr, bs, patience, codec = 800, 1e-3, 8192, 5, 'webp'
     else:
-        epochs, lr, bs, patience = 200, 3e-3, 16384, 3
+        epochs, lr, bs, patience, codec = 100, 4e-3, 16384, 3, 'png'
 
     # BLKH compress
-    comp = HybridCompressor(auto_tune=True, residual_codec='webp')
+    comp = HybridCompressor(auto_tune=True, residual_codec=codec)
     t0 = time.time()
     try:
         res = comp.compress_bitperfect(
@@ -156,8 +159,8 @@ with gr.Blocks(title="Black Hole (BLKH) — Neural Compression") as demo:
         with gr.Column(scale=1):
             input_img = gr.Image(label="Upload Image", type='pil')
             mode = gr.Radio(
-                ["Turbo (~1s)", "Fast (~3s)", "Quality (~6s)"],
-                value="Turbo (~1s)",
+                ["Instant (~0.5s)", "Turbo (~1s)", "Quality (~6s)"],
+                value="Instant (~0.5s)",
                 label="Speed Mode"
             )
             use_amp = gr.Checkbox(value=True, label="AMP (mixed precision)")
