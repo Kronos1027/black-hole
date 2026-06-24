@@ -65,7 +65,7 @@ class BLKHTextureServer(BaseHTTPRequestHandler):
 
         # Health check
         if path == 'health':
-            self._send_json(200, {'status': 'ok', 'blkh': 'v5.14'})
+            self._send_json(200, {'status': 'ok', 'blkh': 'v5.14', 'features': ['lod', 'decode', 'stream']})
             return
 
         # List all textures
@@ -150,6 +150,80 @@ class BLKHTextureServer(BaseHTTPRequestHandler):
                     self.send_header('Content-Type', 'image/png')
                     self.send_header('Content-Length', str(len(png_data)))
                     self.send_header('X-BLKH-SHA256', meta.get('sha256_match', 'unknown'))
+                    self.end_headers()
+                    self.wfile.write(png_data)
+                    self.log_request_custom('GET', path, 200, len(png_data))
+                except Exception as e:
+                    self._send_json(500, {'error': str(e)})
+
+            elif action == 'lod':
+                # LOD streaming: reconstruct at custom resolution
+                # /texture/<name>/lod/<size>  (e.g. /texture/skybox.blkh8/lod/64)
+                try:
+                    lod_size = int(parts[3]) if len(parts) > 3 else 64
+                    data = tex_path.read_bytes()
+                    magic = data[:4]
+                    if magic == b'BLK5':
+                        from siren_v5_torch import ImageINRv5, SIREN
+                        meta_dict, bundle, resid = ImageINRv5._unpack_recipe_internal(data)
+                        model = SIREN(in_features=meta_dict['in_features'],
+                                      hidden_features=meta_dict['hidden_features'],
+                                      hidden_layers=meta_dict['hidden_layers'],
+                                      out_features=meta_dict['out_features'],
+                                      omega_0=meta_dict['omega_0'])
+                        from siren_v5_torch import dequantize_int8, dequantize_int4
+                        if meta_dict['bits'] == 8:
+                            weights = dequantize_int8(bundle['packed'], bundle['meta'])
+                        else:
+                            weights = dequantize_int4(bundle['packed'], bundle['meta'])
+                        model.load_from_numpy(weights)
+                        model.eval()
+                    elif magic == b'BLK8':
+                        from siren_v5_hybrid import HybridCompressor
+                        img_full, meta = HybridCompressor.decompress(data)
+                        # Just resize the decoded image
+                        from PIL import Image as PILImage
+                        pil = PILImage.fromarray(img_full).resize((lod_size, lod_size), PILImage.BILINEAR)
+                        import io
+                        buf = io.BytesIO()
+                        pil.save(buf, format='PNG')
+                        png_data = buf.getvalue()
+                        self.send_response(200)
+                        self.send_header('Content-Type', 'image/png')
+                        self.send_header('Content-Length', str(len(png_data)))
+                        self.send_header('X-BLKH-LOD', str(lod_size))
+                        self.end_headers()
+                        self.wfile.write(png_data)
+                        self.log_request_custom('GET', path, 200, len(png_data))
+                        return
+                    else:
+                        self._send_json(400, {'error': f'unsupported format: {magic}'})
+                        return
+
+                    # For BLK5: reconstruct SIREN at custom resolution
+                    import torch
+                    import numpy as np
+                    dev = torch.device('cpu')
+                    ys, xs = torch.meshgrid(
+                        torch.linspace(-1, 1, lod_size),
+                        torch.linspace(-1, 1, lod_size),
+                        indexing='ij',
+                    )
+                    coords = torch.stack([xs.reshape(-1), ys.reshape(-1)], dim=-1)
+                    with torch.no_grad():
+                        pred = model(coords).cpu().numpy()
+                    img = np.clip((pred + 1.0) * 127.5, 0, 255).astype(np.uint8).reshape(lod_size, lod_size, -1)
+
+                    import io
+                    from PIL import Image as PILImage
+                    buf = io.BytesIO()
+                    PILImage.fromarray(img).save(buf, format='PNG')
+                    png_data = buf.getvalue()
+
+                    self.send_response(200)
+                    self.send_header('Content-Type', 'image/png')
+                    self.send_header('Content-Length', str(len(png_data)))
+                    self.send_header('X-BLKH-LOD', str(lod_size))
                     self.end_headers()
                     self.wfile.write(png_data)
                     self.log_request_custom('GET', path, 200, len(png_data))
