@@ -178,31 +178,30 @@ class WaveletINRCompressor:
         # Reconstruct each channel
         reconstructed = np.zeros((H, W, C), dtype=np.float32)
         detail_offset = 0
+        
         for c in range(C):
             ll_channel = ll_img[:, :, c].astype(np.float32)
-            # Rebuild coefficient list
+            # Rebuild coefficient list using pywt's expected structure
+            # We need to know the exact shapes pywt expects for waverec2
+            # Use pywt to compute expected shapes from original size
+            coeffs_template = pywt.wavedec2(
+                np.zeros((H, W), dtype=np.float32), wavelet, level=level
+            )
+            
             coeffs = [ll_channel]
-            # Calculate detail sizes for each level
-            ch_h, ch_w = ll_channel.shape
-            detail_tuples = []
             for lv in range(level):
-                ch_h *= 2
-                ch_w *= 2
-                lh_hw = (ch_h, ch_w)
-                # Each level has 3 detail sub-bands: LH, HL, HH
                 detail_list = []
-                for _ in range(3):
-                    n_elem = ch_h * ch_w
+                for d_idx in range(3):
+                    expected_shape = coeffs_template[lv + 1][d_idx].shape
+                    n_elem = expected_shape[0] * expected_shape[1]
                     d_int8 = np.frombuffer(
                         detail_bytes[detail_offset:detail_offset + n_elem],
                         dtype=np.int8
-                    ).astype(np.float32).reshape(ch_h, ch_w)
+                    ).astype(np.float32).reshape(expected_shape)
                     detail_offset += n_elem
-                    detail_list.append(d)
-                detail_tuples.append(tuple(detail_list))
-                ch_h, ch_w = ch_h, ch_w  # keep for next level
-            coeffs[1:] = detail_tuples
-
+                    detail_list.append(d_int8)
+                coeffs.append(tuple(detail_list))
+            
             # Inverse wavelet transform
             reconstructed[:, :, c] = pywt.waverec2(coeffs, wavelet)[:H, :W]
 
