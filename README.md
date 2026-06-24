@@ -28,6 +28,7 @@
 | **Volume DCT** | 64³ MRI-like volume | **3.90x smaller** | lossy 51dB | ~6s |
 | **Grayscale** | 256×256 MRI-like (1ch) | **1.29x smaller** | ✅ | ~3s |
 | **Audio** | 5s music+noise @ 16kHz | **2.38x smaller** | lossy 37dB | ~9s |
+| **Wavelet+INR** | 256×256 satellite | **4.37x smaller** | ✅ | **0.5s** |
 | **Lossy** | 128×128 photos vs WebP | **wins 3/5** | lossy | ~2s |
 
 **BLKH beats ZIP on 7 out of 7 workload types tested** (gradients, blobs, satellite, sky, terrain, water, mandala).
@@ -1421,6 +1422,7 @@ res = comp.compress_many(new_images, epochs=1000)
 - [x] v5.15: Multi-scale SIREN (experimental — better accuracy, weight overhead)
 - [x] v5.16: Native grayscale support (59% smaller for MRI/CT, beats ZIP 1.29x)
 - [x] v5.17: Audio compression via STFT spectrogram INR (2.38-2.62x vs ZIP on realistic audio)
+- [x] v5.18: Wavelet+INR hybrid (DWT separates smooth/detail, 28% smaller, 10x faster)
 - [x] Game engine integration (Texture Streaming Server + Unity + Godot)
 - [x] LOD streaming (resolution-independent texture loading)
 - [x] Web demo (Gradio interactive compression)
