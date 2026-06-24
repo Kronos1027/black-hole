@@ -1509,4 +1509,17 @@ Contact: darlan1027pc@gmail.com
 
 ## Acknowledgments
 
-This project was architected and directed by **Darlan Pereira da Silva**. The implementation prototype was built with guidance from AI research assistants, grounded in the peer-reviewed scientific literature documented in `docs/RESEARCH.md`. The vision, terminology, and three-phase architecture (Singularity, Horizon of Events, Ejection) are original intellectual contributions of the author.
+This project was architected and directed by **Darlan Pereira da Silva**. The vision, terminology, and three-phase architecture (Singularity, Horizon of Events, Ejection) are original intellectual contributions of the author.
+
+### Transparency: AI-Assisted Development
+
+This project was developed with transparency as a core value. The author, Darlan Pereira da Silva, orchestrated multiple AI research assistants to accelerate development:
+
+- **Architecture & Vision**: All original concepts (Black Hole paradigm, three-phase architecture, hybrid residual coding, hypernetwork meta-learning) were conceived and directed by the author.
+- **Implementation**: Code was written collaboratively with AI assistants (GLM, Claude, Grok), who served as pair-programmers and research consultants. Every design decision was reviewed and approved by the author.
+- **Research & Testing**: AI assistants helped explore the scientific literature (SIREN, COIN++, NeRV, D'OH), design experiments, run benchmarks, and validate results. All results published here are reproducible via the included test suite.
+- **Peer Review**: The academic paper draft (`paper/paper.tex`) was reviewed by multiple AI systems (Claude) in a simulated peer-review process. Identified issues were corrected before publication.
+
+**The author takes full responsibility for all technical decisions, results, and limitations documented in this project.** AI assistants were tools — the intellectual contribution, direction, and ownership are entirely Darlan Pereira da Silva's.
+
+This transparency statement is included because honest science requires acknowledging how work is done, not just what is produced.

@@ -1,0 +1,72 @@
+[
+  {
+    "name": "gradient_256",
+    "orig": 196608,
+    "zip": 180219,
+    "blkh": 7930,
+    "vs_zip": 22.72622950819672,
+    "time_s": 11.01,
+    "sha": true,
+    "bit_pct": 85.7
+  },
+  {
+    "name": "blobs_256",
+    "orig": 196608,
+    "zip": 99587,
+    "blkh": 25078,
+    "vs_zip": 3.971090198580429,
+    "time_s": 2.93,
+    "sha": true,
+    "bit_pct": 86.5
+  },
+  {
+    "name": "satellite_256",
+    "orig": 196608,
+    "zip": 162229,
+    "blkh": 42416,
+    "vs_zip": 3.824712372689551,
+    "time_s": 2.87,
+    "sha": true,
+    "bit_pct": 74.1
+  },
+  {
+    "name": "sky_256",
+    "orig": 196608,
+    "zip": 135006,
+    "blkh": 91204,
+    "vs_zip": 1.480264023507741,
+    "time_s": 2.8,
+    "sha": true,
+    "bit_pct": 75.4
+  },
+  {
+    "name": "terrain_256",
+    "orig": 196608,
+    "zip": 114865,
+    "blkh": 31106,
+    "vs_zip": 3.6926959429049058,
+    "time_s": 2.89,
+    "sha": true,
+    "bit_pct": 80.8
+  },
+  {
+    "name": "water_256",
+    "orig": 196608,
+    "zip": 174283,
+    "blkh": 112198,
+    "vs_zip": 1.5533521096632739,
+    "time_s": 2.82,
+    "sha": true,
+    "bit_pct": 70.5
+  },
+  {
+    "name": "mandala_256",
+    "orig": 196608,
+    "zip": 179718,
+    "blkh": 49852,
+    "vs_zip": 3.6050308914386586,
+    "time_s": 2.84,
+    "sha": true,
+    "bit_pct": 68.7
+  }
+]
