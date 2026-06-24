@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "blackhole-blkh"
-version = "5.16.0"
+version = "5.20.0"
 description = "Black Hole (BLKH) — Bit-Perfect Neural Implicit Compression with SIREN"
 readme = "README.md"
 license = {text = "MIT"}
@@ -18,6 +18,9 @@ dependencies = [
     "Pillow>=10.0.0",
     "torch>=2.0.0",
     "scipy>=1.10.0",
+    "PyWavelets>=1.5.0",
+    "zstandard>=0.22.0",
+    "brotli>=1.0.0",
 ]
 keywords = [
     "compression", "neural compression", "SIREN", "INR",

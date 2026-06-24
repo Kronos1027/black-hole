@@ -59,6 +59,17 @@ except ImportError:
     _HAS_ZSTD = False
 
 try:
+    import brotli as _brotli
+    _HAS_BROTLI = True
+except ImportError:
+    _HAS_BROTLI = False
+
+# Codec IDs
+CODEC_ZLIB = 0
+CODEC_ZSTD = 1
+CODEC_BROTLI = 2
+
+try:
     import pywt as _pywt
 except ImportError:
     raise ImportError("PyWavelets (pywt) required. Install: pip install PyWavelets")
@@ -73,17 +84,34 @@ ADAPTIVE_CANDIDATES = [
 ]
 
 
-def _compress_bytes(data: bytes, use_zstd: bool = True) -> tuple[bytes, int]:
-    """Compress bytes. Returns (compressed, codec_id: 0=zlib, 1=zstd)."""
-    if use_zstd and _HAS_ZSTD:
+def _compress_bytes(data: bytes, codec: str = 'zstd') -> tuple[bytes, int]:
+    """Compress bytes. Returns (compressed, codec_id).
+    codec: 'zlib', 'zstd', 'brotli', 'auto' (picks best).
+    codec_id: 0=zlib, 1=zstd, 2=brotli."""
+    if codec == 'auto':
+        # Try all available codecs, pick smallest
+        candidates = []
+        candidates.append((zlib.compress(data, 9), CODEC_ZLIB))
+        if _HAS_ZSTD:
+            c = _zstd.ZstdCompressor(level=22, write_content_size=True)
+            candidates.append((c.compress(data), CODEC_ZSTD))
+        if _HAS_BROTLI:
+            candidates.append((_brotli.compress(data, quality=11), CODEC_BROTLI))
+        return min(candidates, key=lambda x: len(x[0]))
+    elif codec == 'zstd' and _HAS_ZSTD:
         c = _zstd.ZstdCompressor(level=22, write_content_size=True)
-        return c.compress(data), 1
-    return zlib.compress(data, 9), 0
+        return c.compress(data), CODEC_ZSTD
+    elif codec == 'brotli' and _HAS_BROTLI:
+        return _brotli.compress(data, quality=11), CODEC_BROTLI
+    else:
+        return zlib.compress(data, 9), CODEC_ZLIB
 
 
-def _decompress_bytes(data: bytes, codec_id: int = 1) -> bytes:
-    if codec_id == 1:
+def _decompress_bytes(data: bytes, codec_id: int) -> bytes:
+    if codec_id == CODEC_ZSTD:
         return _zstd.ZstdDecompressor().decompress(data)
+    elif codec_id == CODEC_BROTLI:
+        return _brotli.decompress(data)
     return zlib.decompress(data)
 
 
@@ -97,6 +125,31 @@ def _soft_threshold(arr: np.ndarray, threshold: float) -> np.ndarray:
     return sign * mag
 
 
+def _parallel_worker(args):
+    """Module-level worker for ProcessPoolExecutor (must be picklable)."""
+    img_bytes, H, W, C, wl, lvl, codec = args
+    ll_channels = []
+    all_detail = []
+    for c in range(C):
+        ch = np.frombuffer(img_bytes, dtype=np.uint8).reshape(H, W, C)[:, :, c].astype(np.float32)
+        coeffs = _pywt.wavedec2(ch, wl, level=lvl, mode='symmetric')
+        ll_channels.append(coeffs[0])
+        for dt_ in coeffs[1:]:
+            for d in dt_:
+                all_detail.append(d.astype(np.float32))
+    ll = np.stack(ll_channels, axis=-1)
+    ll_f16 = ll.astype(np.float16).tobytes()
+    ll_comp, ll_codec = _compress_bytes(ll_f16, codec)
+    total = len(ll_comp)
+    detail_results = []
+    for d in all_detail:
+        d_f16 = d.astype(np.float16).tobytes()
+        d_comp, d_codec = _compress_bytes(d_f16, codec)
+        detail_results.append((d_comp, d_codec))
+        total += len(d_comp)
+    return (wl, lvl, ll_comp, ll_codec, detail_results, total)
+
+
 class WaveletINRCompressorV3:
     """
     v5.20 Float16 Wavelet + zstd compressor.
@@ -107,19 +160,27 @@ class WaveletINRCompressorV3:
     def __init__(self, hidden_features=32, hidden_layers=2, omega_0=30.0,
                  wavelet='bior4.4', level=3,
                  device: str | None = None,
-                 use_zstd: bool = True,
+                 codec: str = 'auto',
                  lossless: bool = True,
-                 threshold: float = 0.0):
+                 threshold: float = 0.0,
+                 parallel: bool = False,
+                 n_workers: int = 4):
         self.wavelet = wavelet
         self.level = level
         self.device = device
-        self.use_zstd = use_zstd and _HAS_ZSTD
+        self.codec = codec
         self.lossless = lossless
         self.threshold = float(threshold)
+        self.parallel = parallel
+        self.n_workers = n_workers
 
     @staticmethod
     def is_zstd_available() -> bool:
         return _HAS_ZSTD
+
+    @staticmethod
+    def is_brotli_available() -> bool:
+        return _HAS_BROTLI
 
     def _decompose(self, image: np.ndarray, wavelet: str, level: int
                    ) -> tuple[np.ndarray, list]:
@@ -139,32 +200,29 @@ class WaveletINRCompressorV3:
         return ll, all_detail
 
     def _quantize_lossless(self, ll: np.ndarray, detail_list: list
-                            ) -> tuple[bytes, list[bytes]]:
-        """Lossless: store everything as float16 + zstd.
-        Returns (ll_compressed, list_of_detail_compressed)."""
+                            ) -> tuple[bytes, int, list[tuple[bytes, int]]]:
+        """Lossless: store everything as float16 + codec.
+        Returns (ll_compressed, ll_codec_id, list_of_(detail_compressed, detail_codec_id))."""
         # LL as float16
         ll_f16 = ll.astype(np.float16)
-        ll_comp, _ = _compress_bytes(ll_f16.tobytes(), self.use_zstd)
+        ll_comp, ll_codec = _compress_bytes(ll_f16.tobytes(), self.codec)
         # Each detail subband as float16
-        detail_comps = []
+        detail_results = []
         for d in detail_list:
             d_f16 = d.astype(np.float16)
-            d_comp, _ = _compress_bytes(d_f16.tobytes(), self.use_zstd)
-            detail_comps.append(d_comp)
-        return ll_comp, detail_comps
+            d_comp, d_codec = _compress_bytes(d_f16.tobytes(), self.codec)
+            detail_results.append((d_comp, d_codec))
+        return ll_comp, ll_codec, detail_results
 
     def _quantize_lossy(self, ll: np.ndarray, detail_list: list
-                         ) -> tuple[bytes, list[bytes]]:
+                         ) -> tuple[bytes, int, list[tuple[bytes, int]]]:
         """Lossy: uint8 LL + int8 detail with per-subband scaling.
-        Returns (ll_compressed, list_of_detail_compressed, scales_packed)."""
+        Returns (ll_compressed, ll_codec_id, list_of_(detail_compressed, detail_codec_id))."""
         # LL: uint8 with min/max
-        ll_min = float(ll.min()) if ll.size > 0 else 0.0
-        ll_max = float(ll.max()) if ll.size > 0 else 255.0
-        ll_range = ll_max - ll_min if ll_max > ll_min else 1.0
-        ll_uint8 = np.clip(np.round((ll - ll_min) / ll_range * 255), 0, 255).astype(np.uint8)
-        ll_comp, _ = _compress_bytes(ll_uint8.tobytes(), self.use_zstd)
+        ll_uint8 = np.clip(np.round((ll - float(ll.min())) / max(float(ll.max() - ll.min()), 1e-10) * 255), 0, 255).astype(np.uint8)
+        ll_comp, ll_codec = _compress_bytes(ll_uint8.tobytes(), self.codec)
         # Each detail subband as int8 with its own scale
-        detail_comps = []
+        detail_results = []
         for d in detail_list:
             d_max = float(np.abs(d).max()) if d.size > 0 else 0.0
             if d_max == 0:
@@ -172,24 +230,47 @@ class WaveletINRCompressorV3:
             else:
                 d_scale = d_max / 127.0
                 d_int8 = np.clip(np.round(d / d_scale), -128, 127).astype(np.int8)
-            d_comp, _ = _compress_bytes(d_int8.tobytes(), self.use_zstd)
-            detail_comps.append(d_comp)
-        # Store scales (ll_min, ll_range/255, then per-subband scales)
-        return ll_comp, detail_comps
+            d_comp, d_codec = _compress_bytes(d_int8.tobytes(), self.codec)
+            detail_results.append((d_comp, d_codec))
+        return ll_comp, ll_codec, detail_results
 
     def _try_candidate(self, image: np.ndarray, wavelet: str, level: int
-                       ) -> tuple[bytes, list[bytes], int]:
-        """Try a (wavelet, level). Returns (ll_comp, detail_comps, total_size)."""
+                       ) -> tuple[bytes, int, list[tuple[bytes, int]], int]:
+        """Try a (wavelet, level). Returns (ll_comp, ll_codec, detail_results, total_size)."""
         ll, detail_list = self._decompose(image, wavelet, level)
         if self.lossless:
-            ll_comp, detail_comps = self._quantize_lossless(ll, detail_list)
+            ll_comp, ll_codec, detail_results = self._quantize_lossless(ll, detail_list)
         else:
-            ll_comp, detail_comps = self._quantize_lossy(ll, detail_list)
-        total = len(ll_comp) + sum(len(d) for d in detail_comps)
-        return ll_comp, detail_comps, total
+            ll_comp, ll_codec, detail_results = self._quantize_lossy(ll, detail_list)
+        total = len(ll_comp) + sum(len(d) for d, _ in detail_results)
+        return ll_comp, ll_codec, detail_results, total
+
+    def _parallel_search(self, image: np.ndarray, candidates: list) -> tuple:
+        """Run adaptive search in parallel using ProcessPoolExecutor.
+        Returns (wavelet, level, ll_comp, ll_codec, detail_results, total)."""
+        from concurrent.futures import ProcessPoolExecutor, as_completed
+        H, W, C = image.shape
+        img_bytes = image.tobytes()
+        codec = self.codec
+
+        args_list = [(img_bytes, H, W, C, wl, lvl, codec) for wl, lvl in candidates]
+        best = None
+        with ProcessPoolExecutor(max_workers=self.n_workers) as executor:
+            futures = {executor.submit(_parallel_worker, args): args for args in args_list}
+            for fut in as_completed(futures):
+                try:
+                    result = fut.result()
+                    if best is None or result[-1] < best[-1]:
+                        best = result
+                except Exception as e:
+                    if False:  # for debugging
+                        import traceback
+                        traceback.print_exc()
+                    continue
+        return best
 
     def compress(self, image: np.ndarray, verbose: bool = False) -> dict:
-        """Compress RGB image with wavelet + float16 + zstd."""
+        """Compress RGB image with wavelet + float16 + codec."""
         assert image.dtype == np.uint8 and image.ndim == 3
         H, W, C = image.shape
         original_bytes = image.tobytes()
@@ -200,7 +281,6 @@ class WaveletINRCompressorV3:
 
         if self.wavelet == 'auto' or self.level == 'auto':
             t_search = time.time()
-            best = None
             candidates = []
             if self.wavelet == 'auto' and self.level == 'auto':
                 candidates = list(ADAPTIVE_CANDIDATES)
@@ -214,29 +294,37 @@ class WaveletINRCompressorV3:
                 for lvl in [2, 3, 4]:
                     candidates.append((self.wavelet, lvl))
 
-            for wl, lvl in candidates:
-                try:
-                    ll_comp, detail_comps, total = self._try_candidate(image, wl, lvl)
-                    if best is None or total < best[-1]:
-                        best = (wl, lvl, ll_comp, detail_comps, total)
-                except Exception:
-                    continue
+            if self.parallel and len(candidates) > 1:
+                best = self._parallel_search(image, candidates)
+                if best is None:
+                    raise RuntimeError("Parallel adaptive search failed")
+                chosen_wavelet, chosen_level, ll_comp, ll_codec, detail_results, _ = best
+            else:
+                best = None
+                for wl, lvl in candidates:
+                    try:
+                        ll_comp, ll_codec, detail_results, total = self._try_candidate(image, wl, lvl)
+                        if best is None or total < best[-1]:
+                            best = (wl, lvl, ll_comp, ll_codec, detail_results, total)
+                    except Exception:
+                        continue
+                if best is None:
+                    raise RuntimeError("Adaptive wavelet selection failed")
+                chosen_wavelet, chosen_level, ll_comp, ll_codec, detail_results, _ = best
 
-            if best is None:
-                raise RuntimeError("Adaptive wavelet selection failed")
-            chosen_wavelet, chosen_level, ll_comp, detail_comps, _ = best
             if verbose:
-                print(f"[wavelet_v3] adaptive: {len(candidates)} candidates in {time.time()-t_search:.2f}s, "
+                print(f"[wavelet_v3] adaptive ({'parallel' if self.parallel else 'sequential'}): "
+                      f"{len(candidates)} candidates in {time.time()-t_search:.2f}s, "
                       f"picked {chosen_wavelet}/L{chosen_level}")
         else:
-            ll_comp, detail_comps, _ = self._try_candidate(image, chosen_wavelet, chosen_level)
+            ll_comp, ll_codec, detail_results, _ = self._try_candidate(image, chosen_wavelet, chosen_level)
 
         # Pack recipe
         sha = hashlib.sha256(original_bytes).digest()
         flags = FLAG_LOSSLESS if self.lossless else 0
         recipe = self._pack_recipe(
             flags, H, W, C, chosen_wavelet, chosen_level,
-            ll_comp, detail_comps, sha
+            ll_comp, ll_codec, detail_results, sha
         )
 
         dt = time.time() - t0
@@ -245,7 +333,9 @@ class WaveletINRCompressorV3:
             'original_size': len(original_bytes),
             'recipe_size': len(recipe),
             'll_compressed_size': len(ll_comp),
-            'detail_compressed_sizes': [len(d) for d in detail_comps],
+            'll_codec': ll_codec,
+            'detail_compressed_sizes': [len(d) for d, _ in detail_results],
+            'detail_codecs': [c for _, c in detail_results],
             'wavelet': chosen_wavelet,
             'level': chosen_level,
             'train_time_s': dt,
@@ -260,7 +350,7 @@ class WaveletINRCompressorV3:
         return self.compress(image, **kwargs)
 
     def _pack_recipe(self, flags, H, W, C, wavelet, level,
-                     ll_comp, detail_comps, sha):
+                     ll_comp, ll_codec, detail_results, sha):
         out = bytearray()
         out += MAGIC_WAVELET_V3
         out += struct.pack('<B', VERSION_WAVELET_V3)
@@ -272,13 +362,15 @@ class WaveletINRCompressorV3:
         out += struct.pack('<H', H)
         out += struct.pack('<H', W)
         out += struct.pack('<B', C)
-        # LL data
+        # LL data + codec
+        out += struct.pack('<B', ll_codec)
         out += struct.pack('<I', len(ll_comp))
         out += ll_comp
-        # Detail subbands
-        n_subbands = len(detail_comps)
+        # Detail subbands (each with its own codec)
+        n_subbands = len(detail_results)
         out += struct.pack('<B', n_subbands)
-        for d_comp in detail_comps:
+        for d_comp, d_codec in detail_results:
+            out += struct.pack('<B', d_codec)
             out += struct.pack('<I', len(d_comp))
             out += d_comp
         out += sha
@@ -303,19 +395,22 @@ class WaveletINRCompressorV3:
 
         lossless = bool(flags & FLAG_LOSSLESS)
 
+        # LL data + codec
+        ll_codec = struct.unpack('<B', buf[off:off+1])[0]; off += 1
         ll_size = struct.unpack('<I', buf[off:off+4])[0]; off += 4
         ll_comp = buf[off:off+ll_size]; off += ll_size
 
         n_subbands = struct.unpack('<B', buf[off:off+1])[0]; off += 1
-        detail_comps = []
+        detail_results = []
         for _ in range(n_subbands):
+            d_codec = struct.unpack('<B', buf[off:off+1])[0]; off += 1
             d_size = struct.unpack('<I', buf[off:off+4])[0]; off += 4
-            detail_comps.append(buf[off:off+d_size]); off += d_size
+            detail_results.append((buf[off:off+d_size], d_codec)); off += d_size
 
         sha_expected = buf[off:off+32]; off += 32
 
         # Decompress LL
-        ll_bytes = _decompress_bytes(ll_comp, 1)
+        ll_bytes = _decompress_bytes(ll_comp, ll_codec)
         # Compute expected LL shape
         coeffs_template = _pywt.wavedec2(
             np.zeros((H, W), dtype=np.float32), wavelet, level=level, mode='symmetric'
@@ -324,15 +419,12 @@ class WaveletINRCompressorV3:
         if lossless:
             ll = np.frombuffer(ll_bytes, dtype=np.float16).astype(np.float32).reshape(ll_h, ll_w, C)
         else:
-            # lossy: uint8 LL — we don't have the scale info stored!
-            # For now, this is a known limitation: lossy mode in v3 doesn't store scales properly.
-            # Lossy mode should use v2 instead.
             raise NotImplementedError("Lossy mode not yet supported in v3 — use v2 for lossy")
 
         # Decompress detail subbands
         detail_arrays = []
-        for i, d_comp in enumerate(detail_comps):
-            d_bytes = _decompress_bytes(d_comp, 1)
+        for d_comp, d_codec in detail_results:
+            d_bytes = _decompress_bytes(d_comp, d_codec)
             if lossless:
                 d = np.frombuffer(d_bytes, dtype=np.float16).astype(np.float32)
             else:
@@ -340,7 +432,6 @@ class WaveletINRCompressorV3:
             detail_arrays.append(d)
 
         # Reconstruct image
-        detail_offset = 0
         reconstructed = np.zeros((H, W, C), dtype=np.float32)
         for c in range(C):
             ll_channel = ll[:, :, c]
@@ -349,17 +440,6 @@ class WaveletINRCompressorV3:
                 detail_list = []
                 for d_idx in range(3):
                     expected_shape = coeffs_template[lv + 1][d_idx].shape
-                    n_elem = expected_shape[0] * expected_shape[1]
-                    # Find next detail array
-                    # Detail arrays are stored in order: L1[0], L1[1], L1[2], L2[0], L2[1], L2[2], ...
-                    # Per channel: that's level * 3 subbands per channel
-                    # But we stored ALL channels' subbands together
-                    # Actually decomposition is per channel, so subbands list is:
-                    # [c0_L1_0, c0_L1_1, c0_L1_2, c0_L2_0, ..., c0_L{level}_2,
-                    #  c1_L1_0, ...]
-                    # Wait, no — _decompose puts ALL channels' details in one list
-                    # So order is: c0_L1[0], c0_L1[1], c0_L1[2], c0_L2[0], ..., c1_L1[0], ...
-                    # We need to track which channel we're in
                     subband_idx = c * level * 3 + lv * 3 + d_idx
                     d = detail_arrays[subband_idx].reshape(expected_shape)
                     detail_list.append(d)
@@ -401,7 +481,7 @@ def _self_test():
         print(f"\n[wavelet_v3] Image: {img.shape} = {img.nbytes:,}B, ZIP: {zip_sz:,}B")
 
         # v5.20 lossless adaptive
-        comp = WaveletINRCompressorV3(wavelet='auto', level='auto', lossless=True, use_zstd=True)
+        comp = WaveletINRCompressorV3(wavelet='auto', level='auto', lossless=True, codec='auto')
         t0 = time.time()
         res = comp.compress(img, verbose=True)
         dt = time.time() - t0

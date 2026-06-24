@@ -354,7 +354,9 @@ def cmd_wavelet3(args):
         wavelet=args.wavelet,
         level=level,
         lossless=True,
-        use_zstd=not args.no_zstd,
+        codec=args.codec,
+        parallel=args.parallel,
+        n_workers=args.workers,
     )
     t0 = time.time()
     res = comp.compress(img, verbose=True)
@@ -1260,7 +1262,10 @@ Examples:
     p_wave3.add_argument('output')
     p_wave3.add_argument('--wavelet', default='auto', help='Wavelet (auto, db4, db6, bior4.4, sym4, haar)')
     p_wave3.add_argument('--level', default='auto', help='Decomposition level (auto, 2, 3, 4)')
-    p_wave3.add_argument('--no-zstd', action='store_true', help='Use zlib instead of zstd')
+    p_wave3.add_argument('--codec', default='auto', choices=['auto', 'zstd', 'brotli', 'zlib'],
+                          help='Codec (auto picks best, default: auto)')
+    p_wave3.add_argument('--parallel', action='store_true', help='Parallel adaptive search (3-4x faster)')
+    p_wave3.add_argument('--workers', type=int, default=4, help='Number of parallel workers')
     p_wave3.set_defaults(func=cmd_wavelet3)
 
     p_gray = sub.add_parser('gray', help='Compress grayscale image (1 channel, MRI/CT optimized)')
