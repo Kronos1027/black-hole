@@ -102,6 +102,7 @@ class CudaOptimizedCompressor(ImageINRv5):
                  epochs: int = 2000, lr: float = 1e-3,
                  batch_size: int | None = None,
                  use_amp: bool = False,
+                 patience: int = 0,
                  verbose: bool = False) -> dict:
         """Train SIREN with CUDA optimizations."""
         # On GPU, use much larger batch sizes by default
@@ -119,13 +120,15 @@ class CudaOptimizedCompressor(ImageINRv5):
 
         return super().compress(image_array, epochs=epochs, lr=lr,
                                  batch_size=batch_size,
-                                 use_amp=use_amp, verbose=verbose)
+                                 use_amp=use_amp, patience=patience,
+                                 verbose=verbose)
 
     def compress_bitperfect(self, image_array: np.ndarray,
                             epochs: int = 2000, lr: float = 1e-3,
                             bits: int = 8, prune_threshold: float = 0.0,
                             batch_size: int | None = None,
                             use_amp: bool = False,
+                            patience: int = 0,
                             zlib_level: int = 9,
                             verbose: bool = False) -> dict:
         # Auto-tune for GPU
@@ -138,6 +141,7 @@ class CudaOptimizedCompressor(ImageINRv5):
                                              bits=bits, prune_threshold=prune_threshold,
                                              batch_size=batch_size,
                                              use_amp=use_amp,
+                                             patience=patience,
                                              zlib_level=zlib_level,
                                              verbose=verbose)
 

@@ -136,6 +136,99 @@ def cmd_gray(args):
     print(f"  Output:      {args.output}")
 
 
+def cmd_batch(args):
+    """Compress all images in a directory into individual .blkh8 files."""
+    import numpy as np
+    from siren_v5_hybrid import HybridCompressor
+    from PIL import Image
+
+    input_dir = Path(args.input)
+    output_dir = Path(args.output)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    if not input_dir.is_dir():
+        print(f"[BLKH] Input must be a directory: {args.input}")
+        sys.exit(1)
+
+    # Find all images
+    extensions = {'.png', '.jpg', '.jpeg', '.bmp', '.tiff', '.tif'}
+    images = sorted([f for f in input_dir.iterdir()
+                     if f.suffix.lower() in extensions])
+
+    if not images:
+        print(f"[BLKH] No images found in {input_dir}")
+        sys.exit(1)
+
+    print(f"[BLKH] Batch: {len(images)} images from {input_dir}")
+    print(f"[BLKH] Output: {output_dir}")
+    print(f"[BLKH] Mode: {'instant' if args.instant else 'turbo' if args.turbo else 'auto-tune'}")
+    print()
+
+    total_orig = 0
+    total_blkh = 0
+    total_zip = 0
+    total_time = 0
+    all_ok = True
+
+    for i, img_path in enumerate(images):
+        try:
+            img = np.array(Image.open(img_path).convert('RGB'), dtype=np.uint8)
+        except Exception as e:
+            print(f"  [{i+1}/{len(images)}] SKIP {img_path.name}: {e}")
+            continue
+
+        orig = img.nbytes
+        zip_sz = len(zlib.compress(img.tobytes(), 9))
+
+        # Configure mode
+        if args.instant:
+            epochs, lr, bs, patience, codec = 100, 4e-3, 16384, 3, 'png'
+        elif args.turbo:
+            epochs, lr, bs, patience, codec = 200, 3e-3, 16384, 3, 'webp'
+        else:
+            epochs, lr, bs, patience, codec = 600, 2e-3, 16384, 5, 'webp'
+
+        comp = HybridCompressor(auto_tune=True, residual_codec=codec)
+        t0 = time.time()
+        res = comp.compress_bitperfect(img, epochs=epochs, lr=lr, bits=8,
+                                         batch_size=bs, use_amp=True,
+                                         patience=patience, verbose=False)
+        dt = time.time() - t0
+
+        # Verify
+        rec, meta = HybridCompressor.decompress(res['recipe_bytes'])
+        ok = meta['exact_match']
+        if not ok:
+            all_ok = False
+
+        # Save recipe
+        out_path = output_dir / (img_path.stem + '.blkh8')
+        out_path.write_bytes(res['recipe_bytes'])
+
+        total_orig += orig
+        total_blkh += res['recipe_size']
+        total_zip += zip_sz
+        total_time += dt
+
+        vs_zip = zip_sz / res['recipe_size']
+        status = "OK" if ok else "FAIL"
+        print(f"  [{i+1}/{len(images)}] {img_path.name:<30} {orig:>8,}B → {res['recipe_size']:>7,}B  "
+              f"vs ZIP={vs_zip:.2f}x  {dt:.1f}s  {status}")
+
+    # Summary
+    print(f"\n{'=' * 70}")
+    print(f"  BATCH SUMMARY")
+    print(f"{'=' * 70}")
+    print(f"  Images:        {len(images)}")
+    print(f"  Total orig:    {total_orig:>10,} B")
+    print(f"  Total ZIP:     {total_zip:>10,} B  ({total_orig/total_zip:.2f}x)")
+    print(f"  Total BLKH:    {total_blkh:>10,} B  ({total_orig/total_blkh:.2f}x)")
+    print(f"  BLKH vs ZIP:   {total_zip/total_blkh:.2f}x {'(BLKH wins!)' if total_blkh < total_zip else '(ZIP wins)'}")
+    print(f"  All SHA-256:   {'VERIFIED' if all_ok else 'FAILED'}")
+    print(f"  Total time:    {total_time:.1f}s ({total_time/len(images):.2f}s/image)")
+    print(f"  Output:        {output_dir}")
+
+
 def cmd_doctor(args):
     """Diagnose the BLKH environment and show recommendations."""
     import torch
@@ -886,6 +979,13 @@ def main():
 
     p_doc = sub.add_parser('doctor', help='Diagnose environment and show recommendations')
     p_doc.set_defaults(func=cmd_doctor)
+
+    p_batch = sub.add_parser('batch', help='Compress all images in a directory')
+    p_batch.add_argument('input', help='Input directory with images')
+    p_batch.add_argument('output', help='Output directory for .blkh8 files')
+    p_batch.add_argument('--instant', action='store_true', help='Instant mode (~0.5s/image)')
+    p_batch.add_argument('--turbo', action='store_true', help='Turbo mode (~1s/image)')
+    p_batch.set_defaults(func=cmd_batch)
 
     p_gray = sub.add_parser('gray', help='Compress grayscale image (1 channel, MRI/CT optimized)')
     p_gray.add_argument('input')
