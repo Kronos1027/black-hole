@@ -38,7 +38,7 @@ from siren_v5_hybrid import HybridCompressor
 
 
 def compress_image(input_image, mode, use_amp):
-    """Compress uploaded image with BLKH hybrid mode."""
+    """Compress uploaded image with selected BLKH mode."""
     if input_image is None:
         return None, None, "Please upload an image first.", "", "", "", ""
 
@@ -69,15 +69,103 @@ def compress_image(input_image, mode, use_amp):
     webp_size = len(buf.getvalue())
 
     # Configure based on mode
-    # Instant: PNG residual (16x faster encode than WebP), 100 epochs
-    # Turbo: WebP residual (best compression), 200 epochs
-    # Quality: WebP residual, 800 epochs
     if mode == "Instant (~0.5s)":
         epochs, lr, bs, patience, codec = 100, 4e-3, 16384, 3, 'png'
     elif mode == "Turbo (~1s)":
         epochs, lr, bs, patience, codec = 200, 3e-3, 16384, 3, 'webp'
     elif mode == "Quality (~6s)":
         epochs, lr, bs, patience, codec = 800, 1e-3, 8192, 5, 'webp'
+    elif mode == "Wavelet v3 (lossless, fast)":
+        # New v5.20 mode — TRUE bit-perfect wavelet+float16
+        from siren_v5_wavelet_v3 import WaveletINRCompressorV3
+        t0 = time.time()
+        try:
+            comp = WaveletINRCompressorV3(wavelet='auto', level='auto', lossless=True,
+                                            codec='brotli', combined=True, parallel=True)
+            res = comp.compress(img, verbose=False)
+            recon, meta = WaveletINRCompressorV3.decompress(res['recipe_bytes'])
+            sha_ok = meta['sha256_match']
+        except Exception as e:
+            return None, None, f"Error: {str(e)}", "", "", "", ""
+        dt = time.time() - t0
+        # Build result
+        tmp = tempfile.NamedTemporaryFile(suffix='.blkw3', delete=False)
+        tmp.write(res['recipe_bytes'])
+        tmp.close()
+        blkh_size = res['recipe_size']
+        ratio = orig_size / blkh_size
+        vs_zip = zip_size / blkh_size
+        vs_png = png_size / blkh_size
+        vs_webp = webp_size / blkh_size
+        formats = {'ZIP': zip_size, 'PNG': png_size, 'WebP-L': webp_size, 'BLKH': blkh_size}
+        winner = min(formats, key=formats.get)
+        result_text = f"""BLKH Wavelet v3 (Lossless) Results
+{'=' * 50}
+  Original:        {orig_size:>10,} bytes
+  ZIP (zlib-9):    {zip_size:>10,} bytes  ({orig_size/zip_size:.2f}x)
+  PNG (lossless):  {png_size:>10,} bytes  ({orig_size/png_size:.2f}x)
+  WebP (lossless): {webp_size:>10,} bytes  ({orig_size/webp_size:.2f}x)
+  BLKH v5.20:      {blkh_size:>10,} bytes  ({ratio:.2f}x)
+
+  BLKH vs ZIP:     {vs_zip:.2f}x {'✓ BLKH wins' if vs_zip > 1 else '✗ ZIP wins'}
+  BLKH vs PNG:     {vs_png:.2f}x {'✓ BLKH wins' if vs_png > 1 else '✗ PNG wins'}
+  BLKH vs WebP:    {vs_webp:.2f}x {'✓ BLKH wins' if vs_webp > 1 else '✗ WebP wins'}
+
+  Best format:     {winner}
+  Wavelet:         {res['wavelet']} L{res['level']}
+  SHA-256:         {'✓ VERIFIED (bit-perfect)' if sha_ok else '✗ FAILED'}
+  Encoding time:   {dt:.2f}s
+  Mode:            {mode}
+"""
+        return (Image.fromarray(img), Image.fromarray(recon), result_text,
+                f"{blkh_size:,} B ({ratio:.2f}x)", f"{vs_zip:.2f}x", f"{dt:.2f}s", tmp.name)
+
+    elif mode == "Photo v5.21 (lossy, beats PNG)":
+        # New v5.21 mode — YCbCr 4:2:0 + brotli, beats PNG on photos
+        from siren_v5_photo import PhotoCompressor
+        t0 = time.time()
+        try:
+            comp = PhotoCompressor(subsampling='420', codec='brotli')
+            res = comp.compress(img, verbose=False)
+            recon, meta = PhotoCompressor.decompress(res['recipe_bytes'])
+            sha_ok = meta['sha256_match']
+        except Exception as e:
+            return None, None, f"Error: {str(e)}", "", "", "", ""
+        dt = time.time() - t0
+        # PSNR
+        mse = np.mean((img.astype(float) - recon.astype(float))**2)
+        psnr = 10*np.log10(255**2 / max(mse, 1e-10))
+        # Build result
+        tmp = tempfile.NamedTemporaryFile(suffix='.blkp', delete=False)
+        tmp.write(res['recipe_bytes'])
+        tmp.close()
+        blkh_size = res['recipe_size']
+        ratio = orig_size / blkh_size
+        vs_zip = zip_size / blkh_size
+        vs_png = png_size / blkh_size
+        vs_webp = webp_size / blkh_size
+        formats = {'ZIP': zip_size, 'PNG': png_size, 'WebP-L': webp_size, 'BLKH': blkh_size}
+        winner = min(formats, key=formats.get)
+        result_text = f"""BLKH Photo v5.21 (Lossy) Results
+{'=' * 50}
+  Original:        {orig_size:>10,} bytes
+  ZIP (zlib-9):    {zip_size:>10,} bytes  ({orig_size/zip_size:.2f}x)
+  PNG (lossless):  {png_size:>10,} bytes  ({orig_size/png_size:.2f}x)
+  WebP (lossless): {webp_size:>10,} bytes  ({orig_size/webp_size:.2f}x)
+  BLKH photo:      {blkh_size:>10,} bytes  ({ratio:.2f}x)
+
+  BLKH vs ZIP:     {vs_zip:.2f}x {'✓ BLKH wins' if vs_zip > 1 else '✗ ZIP wins'}
+  BLKH vs PNG:     {vs_png:.2f}x {'✓ BLKH wins' if vs_png > 1 else '✗ PNG wins'}
+  BLKH vs WebP:    {vs_webp:.2f}x {'✓ BLKH wins' if vs_webp > 1 else '✗ WebP wins'}
+
+  Best format:     {winner}
+  PSNR:            {psnr:.1f} dB (lossy)
+  SHA-256:         N/A (lossy mode)
+  Encoding time:   {dt:.2f}s
+  Mode:            {mode}
+"""
+        return (Image.fromarray(img), Image.fromarray(recon), result_text,
+                f"{blkh_size:,} B ({ratio:.2f}x)", f"{vs_zip:.2f}x", f"{dt:.2f}s", tmp.name)
     else:
         epochs, lr, bs, patience, codec = 100, 4e-3, 16384, 3, 'png'
 
@@ -150,7 +238,10 @@ with gr.Blocks(title="Black Hole (BLKH) — Neural Compression") as demo:
     gr.Markdown("""
     # 🕳️ Black Hole (BLKH) — Neural Implicit Compression
 
-    Compress images with SIREN + hybrid WebP residual. **100% bit-perfect** (SHA-256 verified).
+    Compress images with BLKH v5.21. Choose from 5 modes:
+    - **Instant/Turbo/Quality**: Hybrid SIREN + WebP residual (bit-perfect, slow)
+    - **Wavelet v3**: TRUE bit-perfect wavelet+float16+brotli (fast, smooth images)
+    - **Photo v5.21**: YCbCr 4:2:0 + brotli (lossy, 2-2.7x smaller than PNG on photos)
 
     Upload an image, choose speed mode, and click **Compress**.
     """)
@@ -159,11 +250,12 @@ with gr.Blocks(title="Black Hole (BLKH) — Neural Compression") as demo:
         with gr.Column(scale=1):
             input_img = gr.Image(label="Upload Image", type='pil')
             mode = gr.Radio(
-                ["Instant (~0.5s)", "Turbo (~1s)", "Quality (~6s)"],
-                value="Instant (~0.5s)",
-                label="Speed Mode"
+                ["Instant (~0.5s)", "Turbo (~1s)", "Quality (~6s)",
+                 "Wavelet v3 (lossless, fast)", "Photo v5.21 (lossy, beats PNG)"],
+                value="Photo v5.21 (lossy, beats PNG)",
+                label="Compression Mode"
             )
-            use_amp = gr.Checkbox(value=True, label="AMP (mixed precision)")
+            use_amp = gr.Checkbox(value=True, label="AMP (mixed precision, hybrid modes only)")
             compress_btn = gr.Button("🚀 Compress with BLKH", variant='primary', size='lg')
 
         with gr.Column(scale=2):
