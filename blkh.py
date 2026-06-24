@@ -383,6 +383,55 @@ def cmd_wavelet3(args):
     print(f"  Output:      {args.output}")
 
 
+def cmd_avif(args):
+    """Compress with v5.26 AVIF/HEIF wrapper."""
+    import numpy as np
+    from siren_v5_avif import AVIFCompressor
+
+    kind, payload = load_any(args.input)
+    if kind == 'image':
+        img = payload
+    else:
+        img, _, _ = payload
+
+    orig = img.nbytes
+    zip_sz = len(zlib.compress(img.tobytes(), 9))
+    try:
+        from PIL import Image as PILImage
+        import io
+        png_buf = io.BytesIO()
+        PILImage.fromarray(img).save(png_buf, format='PNG', optimize=True)
+        png_sz = png_buf.tell()
+    except ImportError:
+        png_sz = 0
+
+    print(f"[BLKH] AVIF v5.26: {args.input} ({orig:,}B)")
+    print(f"[BLKH] ZIP: {zip_sz:,}B" + (f", PNG: {png_sz:,}B" if png_sz else ""))
+    print(f"[BLKH] Mode: LOSSY (AVIF q={args.quality})")
+
+    comp = AVIFCompressor(quality=args.quality, format=args.format)
+    t0 = time.time()
+    res = comp.compress(img, verbose=True)
+    dt = time.time() - t0
+
+    Path(args.output).write_bytes(res['recipe_bytes'])
+
+    rec, meta = AVIFCompressor.decompress(res['recipe_bytes'])
+    mse = np.mean((img.astype(float) - rec.astype(float))**2)
+    psnr = 10*np.log10(255**2 / max(mse, 1e-10))
+
+    print(f"\n[BLKH] AVIF v5.26 result:")
+    print(f"  Original:    {orig:>10,} B")
+    print(f"  ZIP:         {zip_sz:>10,} B  ({orig/zip_sz:.2f}x)")
+    if png_sz:
+        print(f"  PNG:         {png_sz:>10,} B  ({orig/png_sz:.2f}x)")
+    print(f"  BLKH AVIF:   {res['recipe_size']:>10,} B  ({orig/res['recipe_size']:.2f}x)")
+    print(f"  PSNR:        {psnr:.1f} dB")
+    print(f"  Quality:     {args.quality} (AVIF quality={res['avif_quality']})")
+    print(f"  Time:        {dt:.2f}s ({res.get('throughput_mbs', 0):.1f} MB/s)")
+    print(f"  Output:      {args.output}")
+
+
 def cmd_batch_compress(args):
     """Batch compress directory with v5.24 async parallel processing."""
     from siren_v5_async import AsyncBatchCompressor
@@ -864,6 +913,11 @@ def cmd_decompress(args):
         # Fast DCT v5.23 format (.blkf) — use FastDCTCompressor
         from siren_v5_fast import FastDCTCompressor
         img, meta = FastDCTCompressor.decompress(recipe)
+        meta['exact_match'] = meta.get('sha256_match', False)
+    elif magic == b'BLHV':
+        # AVIF v5.26 format (.blhav) — use AVIFCompressor
+        from siren_v5_avif import AVIFCompressor
+        img, meta = AVIFCompressor.decompress(recipe)
         meta['exact_match'] = meta.get('sha256_match', False)
     elif magic == b'BLK5':
         # v5 format (.blkh5) — use ImageINRv5
@@ -1568,6 +1622,13 @@ Examples:
     p_fast.add_argument('--speed', default='balanced', choices=['fast', 'balanced', 'best'],
                          help='fast=zstd L3 (fastest), balanced=brotli q=6, best=brotli q=11 (smallest)')
     p_fast.set_defaults(func=cmd_fast)
+
+    p_avif = sub.add_parser('avif', help='AVIF v5.26 (modern standard, max compatibility)')
+    p_avif.add_argument('input')
+    p_avif.add_argument('output')
+    p_avif.add_argument('--quality', type=float, default=0.9, help='Quality 0.1-1.0')
+    p_avif.add_argument('--format', default='AVIF', choices=['AVIF', 'HEIF'], help='Format (AVIF or HEIF)')
+    p_avif.set_defaults(func=cmd_avif)
 
     p_gray = sub.add_parser('gray', help='Compress grayscale image (1 channel, MRI/CT optimized)')
     p_gray.add_argument('input')
