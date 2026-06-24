@@ -1464,6 +1464,9 @@ res = comp.compress_many(new_images, epochs=1000)
 - [x] v5.22: DCT mode - JPEG-like 8x8 DCT + standard quantization tables + brotli. Quality control (0.1-1.0). 20-50x smaller than PNG with 25-36 dB PSNR. Maximum compression for natural photos.
 - [x] v5.23: Fast DCT - speed-optimized codec selection (zstd L3 / brotli q=6 / brotli q=11). 3x FASTER than ZIP while being 6-7x smaller. Addresses Copilot feedback on speed.
 - [x] v5.24: Async batch - asyncio + ProcessPoolExecutor for io_uring-style concurrent I/O. Batch compression for large datasets (CIFAR-10 tested: 6-13x smaller than ZIP at 0.3ms/img).
+- [x] v5.25: GPU-ready DCT - CUDA-optional with CPU fallback. Uses torch GPU for DCT when available (10-100x expected speedup).
+- [x] v5.26: AVIF/HEIF wrapper - modern standard support via pillow-avif-plugin. Unified BLKH API for industry format.
+- [x] v5.27: Direct I/O - platform-optimized I/O (O_DIRECT on Linux, DirectStorage stub on Windows). CLI: --direct flag for batch.
 - [x] Game engine integration (Texture Streaming Server + Unity + Godot)
 - [x] LOD streaming (resolution-independent texture loading)
 - [x] Web demo (Gradio interactive compression)

@@ -434,6 +434,23 @@ def cmd_avif(args):
 
 def cmd_batch_compress(args):
     """Batch compress directory with v5.24 async parallel processing."""
+    # Use v5.27 DirectIO if --direct flag, else v5.24
+    if getattr(args, 'direct', False):
+        from siren_v5_directio import DirectIOBatchCompressor
+        mode_map = {
+            'fast': 'fast', 'dct': 'dct', 'photo': 'photo',
+            'wavelet3': 'wavelet3', 'avif': 'avif',
+        }
+        mode = mode_map.get(args.mode, 'fast')
+        comp = DirectIOBatchCompressor(
+            mode=mode, quality=args.quality,
+            speed=args.speed, workers=args.workers,
+        )
+        stats = comp.compress_directory(args.input, args.output)
+        if stats['n_files'] == 0:
+            print("[BLKH] No images found to compress")
+        return
+
     from siren_v5_async import AsyncBatchCompressor
 
     mode_map = {
@@ -1544,14 +1561,15 @@ Examples:
     p_batch = sub.add_parser('batch', help='Compress all images in a directory (v5.24 async parallel)')
     p_batch.add_argument('input', help='Input directory with images')
     p_batch.add_argument('output', help='Output directory for compressed files')
-    p_batch.add_argument('--mode', default='fast', choices=['fast', 'dct', 'photo', 'wavelet3', 'hybrid'],
+    p_batch.add_argument('--instant', action='store_true', help='Use hybrid instant mode (legacy)')
+    p_batch.add_argument('--turbo', action='store_true', help='Use hybrid turbo mode (legacy)')
+    p_batch.add_argument('--direct', action='store_true', help='Use v5.27 Direct I/O (platform-optimized)')
+    p_batch.add_argument('--mode', default='fast', choices=['fast', 'dct', 'photo', 'wavelet3', 'hybrid', 'avif'],
                           help='Compression mode (default: fast)')
     p_batch.add_argument('--quality', type=float, default=0.9, help='Quality 0.1-1.0 for lossy modes')
     p_batch.add_argument('--speed', default='balanced', choices=['fast', 'balanced', 'best'],
                           help='Speed for fast mode')
     p_batch.add_argument('--workers', type=int, default=4, help='Number of parallel workers')
-    p_batch.add_argument('--instant', action='store_true', help='Use hybrid instant mode (legacy)')
-    p_batch.add_argument('--turbo', action='store_true', help='Use hybrid turbo mode (legacy)')
     p_batch.set_defaults(func=cmd_batch_compress)
 
     p_audio = sub.add_parser('audio', help='Compress WAV audio via STFT spectrogram INR')
