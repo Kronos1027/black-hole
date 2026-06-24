@@ -87,6 +87,55 @@ def load_any(path: str):
     return ('binary', (arr, n, data))
 
 
+def cmd_gray(args):
+    """Compress a grayscale image (1 channel) with native BLKH grayscale mode."""
+    import numpy as np
+    from siren_v5_grayscale import GrayscaleCompressor
+
+    try:
+        from PIL import Image
+        pil_img = Image.open(args.input)
+        if pil_img.mode != 'L':
+            pil_img = pil_img.convert('L')
+        img = np.array(pil_img, dtype=np.uint8)
+    except Exception as e:
+        print(f"[BLKH] Failed to load {args.input}: {e}")
+        sys.exit(1)
+
+    orig = img.nbytes
+    zip_size = len(zlib.compress(img.tobytes(), 9))
+    print(f"[BLKH] Grayscale: {args.input} ({img.shape}, {orig:,}B)")
+    print(f"[BLKH] ZIP: {zip_size:,}B")
+
+    codec = 'png' if getattr(args, 'instant', False) else 'webp'
+    if getattr(args, 'instant', False):
+        epochs, lr, bs, patience = 100, 4e-3, 16384, 3
+    elif getattr(args, 'turbo', False):
+        epochs, lr, bs, patience, codec = 200, 3e-3, 16384, 3, 'webp'
+    else:
+        epochs, lr, bs, patience = args.epochs, 1e-3, args.batch_size, 0
+
+    comp = GrayscaleCompressor(hidden_features=args.hidden, hidden_layers=args.layers,
+                                omega_0=args.omega, residual_codec=codec)
+    t0 = time.time()
+    res = comp.compress_bitperfect(img, epochs=epochs, lr=lr, bits=8,
+                                     batch_size=bs, use_amp=True,
+                                     patience=patience, verbose=True)
+    dt = time.time() - t0
+
+    Path(args.output).write_bytes(res['recipe_bytes'])
+    rec, meta = GrayscaleCompressor.decompress(res['recipe_bytes'])
+    winner = "BLKH" if res['recipe_size'] < zip_size else "ZIP"
+    print(f"\n[BLKH] Grayscale result:")
+    print(f"  Original:    {orig:>10,} B")
+    print(f"  ZIP:         {zip_size:>10,} B  (ratio {orig/zip_size:.2f}x)")
+    print(f"  BLKH gray:   {res['recipe_size']:>10,} B  (ratio {orig/res['recipe_size']:.2f}x)")
+    print(f"  SHA-256:     {meta['exact_match']}")
+    print(f"  Winner:      {winner}  (BLKH/ZIP = {res['recipe_size']/zip_size:.3f})")
+    print(f"  Time:        {dt:.2f}s")
+    print(f"  Output:      {args.output}")
+
+
 def cmd_doctor(args):
     """Diagnose the BLKH environment and show recommendations."""
     import torch
@@ -309,6 +358,10 @@ def cmd_decompress(args):
     elif magic == b'BLK5':
         # v5 format (.blkh5) — use ImageINRv5
         img, meta = ImageINRv5.decompress(recipe)
+    elif magic == b'BLKG':
+        # Grayscale format (.blkg) — use GrayscaleCompressor
+        from siren_v5_grayscale import GrayscaleCompressor
+        img, meta = GrayscaleCompressor.decompress(recipe)
     elif magic == b'BLKV':
         # Video format — not supported via CLI decompress (use video-decompress)
         print("[BLKH] Error: this is a video recipe. Use 'blkh video-decompress' instead.")
@@ -833,6 +886,18 @@ def main():
 
     p_doc = sub.add_parser('doctor', help='Diagnose environment and show recommendations')
     p_doc.set_defaults(func=cmd_doctor)
+
+    p_gray = sub.add_parser('gray', help='Compress grayscale image (1 channel, MRI/CT optimized)')
+    p_gray.add_argument('input')
+    p_gray.add_argument('output')
+    p_gray.add_argument('--epochs', type=int, default=200)
+    p_gray.add_argument('--hidden', type=int, default=32)
+    p_gray.add_argument('--layers', type=int, default=2)
+    p_gray.add_argument('--omega', type=float, default=30.0)
+    p_gray.add_argument('--batch-size', type=int, default=16384)
+    p_gray.add_argument('--instant', action='store_true', help='Instant mode (~0.5s)')
+    p_gray.add_argument('--turbo', action='store_true', help='Turbo mode (~1s)')
+    p_gray.set_defaults(func=cmd_gray)
 
     p_d = sub.add_parser('decompress', help='Recover original file from .blkh5')
     p_d.add_argument('input')
