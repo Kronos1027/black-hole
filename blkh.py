@@ -187,8 +187,22 @@ def cmd_compress(args):
     else:
         img, orig_nbytes, orig_bytes = payload
 
+    # Turbo mode overrides
+    if getattr(args, 'turbo', False):
+        args.epochs = 200
+        args.batch_size = 16384
+        if not getattr(args, 'auto_tune', False):
+            args.auto_tune = True
+        if not getattr(args, 'amp', False):
+            args.amp = True
+        args.lr_override = 3e-3
+    else:
+        args.lr_override = None
+
     print(f"[BLKH] Input: {args.input}  ({kind}, {orig_nbytes:,} bytes)")
-    if getattr(args, 'auto_tune', False):
+    if getattr(args, 'turbo', False):
+        print(f"[BLKH] TURBO mode: 200 epochs, lr=3e-3, bs=16384, auto-tune, AMP")
+    elif getattr(args, 'auto_tune', False):
         print(f"[BLKH] Config: epochs={args.epochs} bits={args.bits} "
               f"auto-tune=ON (SIREN size picked from image dims) "
               f"amp={getattr(args, 'amp', False)}")
@@ -203,7 +217,7 @@ def cmd_compress(args):
         comp = ImageINRv5(hidden_features=args.hidden,
                           hidden_layers=args.layers,
                           omega_0=args.omega)
-        meta = comp.compress(img, epochs=args.epochs, lr=1e-3,
+        meta = comp.compress(img, epochs=args.epochs, lr=getattr(args, "lr_override", None) or 1e-3,
                              batch_size=args.batch_size,
                              use_amp=getattr(args, 'amp', False),
                              patience=getattr(args, 'patience', 0),
@@ -222,7 +236,7 @@ def cmd_compress(args):
         # Hybrid mode with auto-tune (recommended for images)
         comp = HybridCompressor(auto_tune=True, omega_0=args.omega,
                                  residual_codec='webp')
-        res = comp.compress_bitperfect(img, epochs=args.epochs, lr=1e-3,
+        res = comp.compress_bitperfect(img, epochs=args.epochs, lr=getattr(args, "lr_override", None) or 1e-3,
                                         bits=args.bits, prune_threshold=0.0,
                                         batch_size=args.batch_size,
                                         use_amp=getattr(args, 'amp', False),
@@ -235,7 +249,7 @@ def cmd_compress(args):
         comp = ImageINRv5(hidden_features=args.hidden,
                           hidden_layers=args.layers,
                           omega_0=args.omega)
-        res = comp.compress_bitperfect(img, epochs=args.epochs, lr=1e-3,
+        res = comp.compress_bitperfect(img, epochs=args.epochs, lr=getattr(args, "lr_override", None) or 1e-3,
                                         bits=args.bits, prune_threshold=0.0,
                                         batch_size=args.batch_size,
                                         use_amp=getattr(args, 'amp', False),
@@ -771,6 +785,8 @@ def main():
                      help='Auto-pick SIREN size from image dims + use hybrid WebP residual (recommended)')
     p_c.add_argument('--patience', type=int, default=0,
                      help='Early stopping patience (try 5 for ~2x speedup, 0=disabled)')
+    p_c.add_argument('--turbo', action='store_true',
+                     help='Turbo mode: 200 epochs, lr=3e-3, big batch (~1s encoding, slightly lower quality)')
     p_c.add_argument('--no-bit-perfect', action='store_true',
                      help='Lossy mode (no residual, ~3x smaller but NOT exact)')
     p_c.set_defaults(func=cmd_compress)
