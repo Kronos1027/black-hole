@@ -407,7 +407,7 @@ def compress_image(input_image, mode, use_amp):
 
 
 # Gradio UI
-with gr.Blocks(title="Black Hole (BLKH) — Neural Compression v5.27", theme=gr.Soft()) as demo:
+with gr.Blocks(title="Black Hole (BLKH) — Neural Compression v5.27") as demo:
     gr.Markdown("""
     # 🕳️ Black Hole (BLKH) v5.27 — Neural Implicit Compression
 
