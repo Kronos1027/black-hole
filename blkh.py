@@ -383,6 +383,61 @@ def cmd_wavelet3(args):
     print(f"  Output:      {args.output}")
 
 
+def cmd_auto(args):
+    """Compress with v5.30 Auto mode (intelligent mode selector)."""
+    import numpy as np
+    from siren_v5_auto import AutoCompressor
+
+    kind, payload = load_any(args.input)
+    if kind == 'image':
+        img = payload
+    else:
+        img, _, _ = payload
+
+    orig = img.nbytes
+    zip_sz = len(zlib.compress(img.tobytes(), 9))
+    try:
+        from PIL import Image as PILImage
+        import io
+        png_buf = io.BytesIO()
+        PILImage.fromarray(img).save(png_buf, format='PNG', optimize=True)
+        png_sz = png_buf.tell()
+    except ImportError:
+        png_sz = 0
+
+    print(f"[BLKH] Auto v5.30: {args.input} ({orig:,}B)")
+    print(f"[BLKH] ZIP: {zip_sz:,}B" + (f", PNG: {png_sz:,}B" if png_sz else ""))
+    print(f"[BLKH] Mode: AUTO (quality={args.quality}, lossless={args.lossless}, budget={args.budget}s)")
+
+    comp = AutoCompressor(
+        quality=args.quality,
+        lossless=args.lossless,
+        time_budget_s=args.budget,
+        speed=args.speed,
+    )
+    t0 = time.time()
+    res = comp.compress(img, verbose=True)
+    dt = time.time() - t0
+
+    Path(args.output).write_bytes(res['recipe_bytes'])
+
+    winner_zip = "BLKH" if res['recipe_size'] < zip_sz else "ZIP"
+    winner_png = "BLKH" if png_sz and res['recipe_size'] < png_sz else "PNG"
+    print(f"\n[BLKH] Auto v5.30 result:")
+    print(f"  Original:    {orig:>10,} B")
+    print(f"  ZIP:         {zip_sz:>10,} B  ({orig/zip_sz:.2f}x)")
+    if png_sz:
+        print(f"  PNG:         {png_sz:>10,} B  ({orig/png_sz:.2f}x)")
+    print(f"  BLKH auto:   {res['recipe_size']:>10,} B  ({orig/res['recipe_size']:.2f}x)")
+    print(f"  Best mode:   {res['mode']}")
+    print(f"  Modes tried: {res.get('modes_tried', 0)}")
+    print(f"  Time:        {dt:.2f}s (budget: {args.budget}s)")
+    print(f"  vs ZIP:      {winner_zip}  ({res['recipe_size']/zip_sz:.3f})")
+    if png_sz:
+        print(f"  vs PNG:      {winner_png}  ({res['recipe_size']/png_sz:.3f})")
+    print(f"  Output:      {args.output}")
+
+
 def cmd_palette(args):
     """Compress with v5.29 Palette mode (lossless, for images with few colors)."""
     import numpy as np
@@ -1815,6 +1870,15 @@ Examples:
     p_palette.add_argument('--max-colors', type=int, default=256, help='Max unique colors (1-256)')
     p_palette.add_argument('--speed', default='balanced', choices=['fast', 'balanced', 'best'])
     p_palette.set_defaults(func=cmd_palette)
+
+    p_auto = sub.add_parser('auto', help='Auto v5.30 (intelligent mode selector, picks best mode)')
+    p_auto.add_argument('input')
+    p_auto.add_argument('output')
+    p_auto.add_argument('--quality', type=float, default=0.9, help='Quality 0.1-1.0 for lossy modes')
+    p_auto.add_argument('--lossless', action='store_true', help='Only try lossless modes')
+    p_auto.add_argument('--budget', type=float, default=5.0, help='Time budget in seconds')
+    p_auto.add_argument('--speed', default='fast', choices=['fast', 'balanced', 'best'])
+    p_auto.set_defaults(func=cmd_auto)
 
     p_gray = sub.add_parser('gray', help='Compress grayscale image (1 channel, MRI/CT optimized)')
     p_gray.add_argument('input')
