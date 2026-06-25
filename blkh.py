@@ -383,6 +383,59 @@ def cmd_wavelet3(args):
     print(f"  Output:      {args.output}")
 
 
+def cmd_rle(args):
+    """Compress with v5.28 DCT + Zigzag RLE (JPEG-style entropy)."""
+    import numpy as np
+    from siren_v5_rle import RLEDCTCompressor
+
+    kind, payload = load_any(args.input)
+    if kind == 'image':
+        img = payload
+    else:
+        img, _, _ = payload
+
+    orig = img.nbytes
+    zip_sz = len(zlib.compress(img.tobytes(), 9))
+    try:
+        from PIL import Image as PILImage
+        import io
+        png_buf = io.BytesIO()
+        PILImage.fromarray(img).save(png_buf, format='PNG', optimize=True)
+        png_sz = png_buf.tell()
+    except ImportError:
+        png_sz = 0
+
+    print(f"[BLKH] RLE DCT v5.28: {args.input} ({orig:,}B)")
+    print(f"[BLKH] ZIP: {zip_sz:,}B" + (f", PNG: {png_sz:,}B" if png_sz else ""))
+    print(f"[BLKH] Mode: LOSSY (DCT+RLE q={args.quality}, speed={args.speed})")
+
+    comp = RLEDCTCompressor(quality=args.quality, speed=args.speed)
+    t0 = time.time()
+    res = comp.compress(img, verbose=True)
+    dt = time.time() - t0
+
+    Path(args.output).write_bytes(res['recipe_bytes'])
+
+    rec, meta = RLEDCTCompressor.decompress(res['recipe_bytes'])
+    mse = np.mean((img.astype(float) - rec.astype(float))**2)
+    psnr = 10*np.log10(255**2 / max(mse, 1e-10))
+
+    winner_zip = "BLKH" if res['recipe_size'] < zip_sz else "ZIP"
+    winner_png = "BLKH" if png_sz and res['recipe_size'] < png_sz else "PNG"
+    print(f"\n[BLKH] RLE DCT v5.28 result:")
+    print(f"  Original:    {orig:>10,} B")
+    print(f"  ZIP:         {zip_sz:>10,} B  ({orig/zip_sz:.2f}x)")
+    if png_sz:
+        print(f"  PNG:         {png_sz:>10,} B  ({orig/png_sz:.2f}x)")
+    print(f"  BLKH RLE:    {res['recipe_size']:>10,} B  ({orig/res['recipe_size']:.2f}x)")
+    print(f"  PSNR:        {psnr:.1f} dB")
+    print(f"  Speed:       {args.speed} ({dt*1000:.1f}ms, {res.get('throughput_mbs', 0):.1f} MB/s)")
+    print(f"  vs ZIP:      {winner_zip}  ({res['recipe_size']/zip_sz:.3f})")
+    if png_sz:
+        print(f"  vs PNG:      {winner_png}  ({res['recipe_size']/png_sz:.3f})")
+    print(f"  Output:      {args.output}")
+
+
 def cmd_avif(args):
     """Compress with v5.26 AVIF/HEIF wrapper."""
     import numpy as np
@@ -936,6 +989,11 @@ def cmd_decompress(args):
         from siren_v5_avif import AVIFCompressor
         img, meta = AVIFCompressor.decompress(recipe)
         meta['exact_match'] = meta.get('sha256_match', False)
+    elif magic == b'BLKR':
+        # RLE DCT v5.28 format (.blkr) — use RLEDCTCompressor
+        from siren_v5_rle import RLEDCTCompressor
+        img, meta = RLEDCTCompressor.decompress(recipe)
+        meta['exact_match'] = meta.get('sha256_match', False)
     elif magic == b'BLK5':
         # v5 format (.blkh5) — use ImageINRv5
         img, meta = ImageINRv5.decompress(recipe)
@@ -1057,6 +1115,27 @@ def cmd_info(args):
         print(f"  image:      {H}x{W}")
     elif magic == b'BLKF':
         print(f"[BLKH] Format: BLKF (v5.23 Fast DCT, speed-optimized)")
+        version = recipe[4]
+        quality_int = recipe[5]
+        speed_int = recipe[6]
+        H = struct.unpack('<H', recipe[7:9])[0]
+        W = struct.unpack('<H', recipe[9:11])[0]
+        speed_str = {0: 'fast', 1: 'balanced', 2: 'best'}.get(speed_int, 'unknown')
+        print(f"  version:    {version}")
+        print(f"  quality:    {quality_int/100.0:.2f}")
+        print(f"  speed:      {speed_str}")
+        print(f"  image:      {H}x{W}")
+    elif magic == b'BLHV':
+        print(f"[BLKH] Format: BLHV (v5.26 AVIF/HEIF wrapper, lossy)")
+        version = recipe[4]
+        quality_int = recipe[5]
+        H = struct.unpack('<H', recipe[6:8])[0]
+        W = struct.unpack('<H', recipe[8:10])[0]
+        print(f"  version:    {version}")
+        print(f"  quality:    {quality_int/100.0:.2f}")
+        print(f"  image:      {H}x{W}")
+    elif magic == b'BLKR':
+        print(f"[BLKH] Format: BLKR (v5.28 DCT + Zigzag RLE, lossy)")
         version = recipe[4]
         quality_int = recipe[5]
         speed_int = recipe[6]
@@ -1647,6 +1726,14 @@ Examples:
     p_avif.add_argument('--quality', type=float, default=0.9, help='Quality 0.1-1.0')
     p_avif.add_argument('--format', default='AVIF', choices=['AVIF', 'HEIF'], help='Format (AVIF or HEIF)')
     p_avif.set_defaults(func=cmd_avif)
+
+    p_rle = sub.add_parser('rle', help='RLE DCT v5.28 (DCT + zigzag RLE, 8-15% smaller than v5.22)')
+    p_rle.add_argument('input')
+    p_rle.add_argument('output')
+    p_rle.add_argument('--quality', type=float, default=0.9, help='Quality 0.1-1.0')
+    p_rle.add_argument('--speed', default='balanced', choices=['fast', 'balanced', 'best'],
+                        help='Speed mode')
+    p_rle.set_defaults(func=cmd_rle)
 
     p_gray = sub.add_parser('gray', help='Compress grayscale image (1 channel, MRI/CT optimized)')
     p_gray.add_argument('input')

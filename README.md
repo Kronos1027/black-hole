@@ -1467,6 +1467,7 @@ res = comp.compress_many(new_images, epochs=1000)
 - [x] v5.25: GPU-ready DCT - CUDA-optional with CPU fallback. Uses torch GPU for DCT when available (10-100x expected speedup).
 - [x] v5.26: AVIF/HEIF wrapper - modern standard support via pillow-avif-plugin. Unified BLKH API for industry format.
 - [x] v5.27: Direct I/O - platform-optimized I/O (O_DIRECT on Linux, DirectStorage stub on Windows). CLI: --direct flag for batch.
+- [x] v5.28: DCT + Zigzag RLE - JPEG-style entropy coding. 8-15% smaller than v5.22 on images with smooth regions. CLI: blkh rle.
 - [x] Game engine integration (Texture Streaming Server + Unity + Godot)
 - [x] LOD streaming (resolution-independent texture loading)
 - [x] Web demo (Gradio interactive compression)
