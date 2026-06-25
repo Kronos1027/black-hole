@@ -264,6 +264,71 @@ def compress_image(input_image, mode, use_amp):
                 "%d B (%.2fx)" % (blkh_size, ratio), "%.2fx" % vs_zip,
                 "%.2fs" % dt, tmp.name)
 
+    elif mode == "Auto v5.30 (smart pick)":
+        from siren_v5_auto import AutoCompressor
+        t0 = time.time()
+        try:
+            comp = AutoCompressor(quality=0.9, lossless=False, time_budget_s=5.0, speed='fast')
+            res = comp.compress(img, verbose=False)
+            mode_name = res['mode']
+            recon = None
+            if 'palette' in mode_name:
+                from siren_v5_palette import PaletteCompressor
+                recon, _ = PaletteCompressor.decompress(res['recipe_bytes'])
+            elif 'fast' in mode_name:
+                from siren_v5_fast import FastDCTCompressor
+                recon, _ = FastDCTCompressor.decompress(res['recipe_bytes'])
+            elif 'dct' in mode_name:
+                from siren_v5_dct import DCTCompressor
+                recon, _ = DCTCompressor.decompress(res['recipe_bytes'])
+            elif 'photo' in mode_name:
+                from siren_v5_photo import PhotoCompressor
+                recon, _ = PhotoCompressor.decompress(res['recipe_bytes'])
+            else:
+                recon = img
+        except Exception as e:
+            return None, None, "Error: %s" % str(e), "", "", "", ""
+        dt = time.time() - t0
+        mse = np.mean((img.astype(float) - recon.astype(float))**2)
+        psnr = 10*np.log10(255**2 / max(mse, 1e-10)) if mse > 0 else 99
+        tmp = tempfile.NamedTemporaryFile(suffix='.blkh', delete=False)
+        tmp.write(res['recipe_bytes'])
+        tmp.close()
+        blkh_size = res['recipe_size']
+        ratio = orig_size / blkh_size
+        vs_zip = zip_size / blkh_size
+        vs_png = png_size / blkh_size
+        vs_webp = webp_size / blkh_size
+        formats = {'ZIP': zip_size, 'PNG': png_size, 'WebP-L': webp_size, 'BLKH': blkh_size}
+        winner = min(formats, key=formats.get)
+        psnr_str = "bit-perfect" if psnr >= 99 else "%.1f dB" % psnr
+        result_text = """BLKH Auto v5.30 (Smart Mode Selection) Results
+==================================================
+  Original:        %10d bytes
+  ZIP (zlib-9):    %10d bytes  (%.2fx)
+  PNG (lossless):  %10d bytes  (%.2fx)
+  WebP (lossless): %10d bytes  (%.2fx)
+  BLKH auto:       %10d bytes  (%.2fx)
+
+  BLKH vs ZIP:     %.2fx %s
+  BLKH vs PNG:     %.2fx %s
+  BLKH vs WebP:    %.2fx %s
+
+  Best format:     %s
+  Picked mode:     %s
+  Modes tried:     %d
+  PSNR:            %s
+  Encoding time:   %.2fs
+""" % (orig_size, zip_size, orig_size/zip_size, png_size, orig_size/png_size,
+       webp_size, orig_size/webp_size, blkh_size, ratio,
+       vs_zip, '✓ BLKH wins' if vs_zip > 1 else '✗ ZIP wins',
+       vs_png, '✓ BLKH wins' if vs_png > 1 else '✗ PNG wins',
+       vs_webp, '✓ BLKH wins' if vs_webp > 1 else '✗ WebP wins',
+       winner, res['mode'], res.get('modes_tried', 0), psnr_str, dt)
+        return (Image.fromarray(img), Image.fromarray(recon), result_text,
+                "%d B (%.2fx)" % (blkh_size, ratio), "%.2fx" % vs_zip,
+                "%.2fs" % dt, tmp.name)
+
     else:
         # Hybrid modes (Instant/Turbo/Quality)
         _ensure_hybrid()
@@ -362,14 +427,15 @@ with gr.Blocks(title="Black Hole (BLKH) — Neural Compression v5.27", theme=gr.
         with gr.Column(scale=1):
             input_img = gr.Image(label="Upload Image", type='pil')
             mode = gr.Radio(
-                ["Fast v5.23 (fastest)",
+                ["Auto v5.30 (smart pick)",
+                 "Fast v5.23 (fastest)",
                  "DCT v5.22 (max compression)",
                  "Photo v5.21 (lossy, beats PNG)",
                  "Wavelet v3 (lossless, fast)",
                  "Instant (~0.5s)",
                  "Turbo (~1s)",
                  "Quality (~6s)"],
-                value="Fast v5.23 (fastest)",
+                value="Auto v5.30 (smart pick)",
                 label="Compression Mode"
             )
             use_amp = gr.Checkbox(value=True, label="AMP (mixed precision, hybrid modes only)")
