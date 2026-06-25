@@ -4,11 +4,29 @@
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)
 ![PyTorch](https://img.shields.io/badge/backend-PyTorch-ee4c2c.svg)
+![HuggingFace](https://img.shields.io/badge/%F0%9F%A4%97%20HuggingFace-Space-yellow.svg)
 
 > **"The data is not a static block of bytes waiting to be dragged. The data is a living mathematical function, kept in potential state and ejected instantly on demand."**
 
 > **Commercial use requires a separate license agreement.**  
 > **Contact:** darlan1027pc@gmail.com
+
+---
+
+## 🚀 Live Demo — Try BLKH in your browser!
+
+**No installation required!** Click below to open the interactive web demo:
+
+### 🌐 [**BLKH v5.30 Live on HuggingFace Spaces**](https://huggingface.co/spaces/onatskyo/black-hole-blkh)
+
+Features:
+- 📤 Upload any image (PNG, JPG, WebP)
+- 🎛️ 8 compression modes (Auto, Fast, DCT, Photo, Wavelet, Hybrid)
+- 📊 Side-by-side comparison with ZIP, PNG, WebP
+- 💾 Download compressed recipe files
+- ⚡ Real-time PSNR and compression ratio display
+
+**Default mode: Auto v5.30** — automatically picks the best compression mode for your image!
 
 ---
 
