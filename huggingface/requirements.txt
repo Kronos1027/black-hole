@@ -1,5 +1,7 @@
 # HuggingFace Spaces requirements.txt for BLKH v5.30
-# Fixed Python 3.13 compatibility (pyaudioop replaces removed audioop)
+# Fixed Python 3.13 compatibility:
+# - audioop-lts is the official LTS backport of removed audioop module
+# - Required by pydub (used by Gradio for audio processing)
 numpy>=1.24.0
 Pillow>=10.0.0
 torch>=2.0.0
@@ -9,4 +11,4 @@ zstandard>=0.22.0
 brotli>=1.0.0
 gradio>=4.0.0
 pillow-avif-plugin>=1.0.0
-pyaudioop>=0.1.0
+audioop-lts>=0.2.1
