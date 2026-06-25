@@ -1468,6 +1468,7 @@ res = comp.compress_many(new_images, epochs=1000)
 - [x] v5.26: AVIF/HEIF wrapper - modern standard support via pillow-avif-plugin. Unified BLKH API for industry format.
 - [x] v5.27: Direct I/O - platform-optimized I/O (O_DIRECT on Linux, DirectStorage stub on Windows). CLI: --direct flag for batch.
 - [x] v5.28: DCT + Zigzag RLE - JPEG-style entropy coding. 8-15% smaller than v5.22 on images with smooth regions. CLI: blkh rle.
+- [x] v5.29: Palette mode - lossless palette+indices for images with few colors (logos, icons, UI). 2-5x smaller than ZIP, TRUE bit-perfect. CLI: blkh palette.
 - [x] Game engine integration (Texture Streaming Server + Unity + Godot)
 - [x] LOD streaming (resolution-independent texture loading)
 - [x] Web demo (Gradio interactive compression)

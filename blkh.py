@@ -383,6 +383,65 @@ def cmd_wavelet3(args):
     print(f"  Output:      {args.output}")
 
 
+def cmd_palette(args):
+    """Compress with v5.29 Palette mode (lossless, for images with few colors)."""
+    import numpy as np
+    from siren_v5_palette import PaletteCompressor
+
+    kind, payload = load_any(args.input)
+    if kind == 'image':
+        img = payload
+    else:
+        img, _, _ = payload
+
+    orig = img.nbytes
+    zip_sz = len(zlib.compress(img.tobytes(), 9))
+    try:
+        from PIL import Image as PILImage
+        import io
+        png_buf = io.BytesIO()
+        PILImage.fromarray(img).save(png_buf, format='PNG', optimize=True)
+        png_sz = png_buf.tell()
+    except ImportError:
+        png_sz = 0
+
+    print(f"[BLKH] Palette v5.29: {args.input} ({orig:,}B)")
+    print(f"[BLKH] ZIP: {zip_sz:,}B" + (f", PNG: {png_sz:,}B" if png_sz else ""))
+    print(f"[BLKH] Mode: LOSSLESS (palette + indices, max_colors={args.max_colors})")
+
+    comp = PaletteCompressor(max_colors=args.max_colors, speed=args.speed)
+    try:
+        t0 = time.time()
+        res = comp.compress(img, verbose=True)
+        dt = time.time() - t0
+    except ValueError as e:
+        print(f"\n[BLKH] ERROR: {e}")
+        print("[BLKH] Image has too many unique colors for palette mode.")
+        print("[BLKH] Use 'blkh dct' or 'blkh photo' for natural photos.")
+        sys.exit(1)
+
+    Path(args.output).write_bytes(res['recipe_bytes'])
+
+    rec, meta = PaletteCompressor.decompress(res['recipe_bytes'])
+    sha_ok = "✅ bit-perfect" if meta['sha256_match'] else "❌ FAILED"
+
+    winner_zip = "BLKH" if res['recipe_size'] < zip_sz else "ZIP"
+    winner_png = "BLKH" if png_sz and res['recipe_size'] < png_sz else "PNG"
+    print(f"\n[BLKH] Palette v5.29 result:")
+    print(f"  Original:    {orig:>10,} B")
+    print(f"  ZIP:         {zip_sz:>10,} B  ({orig/zip_sz:.2f}x)")
+    if png_sz:
+        print(f"  PNG:         {png_sz:>10,} B  ({orig/png_sz:.2f}x)")
+    print(f"  BLKH palette:{res['recipe_size']:>10,} B  ({orig/res['recipe_size']:.2f}x)")
+    print(f"  Colors:      {res['n_colors']}")
+    print(f"  SHA-256:     {sha_ok}")
+    print(f"  Speed:       {args.speed} ({dt*1000:.1f}ms, {res.get('throughput_mbs', 0):.1f} MB/s)")
+    print(f"  vs ZIP:      {winner_zip}  ({res['recipe_size']/zip_sz:.3f})")
+    if png_sz:
+        print(f"  vs PNG:      {winner_png}  ({res['recipe_size']/png_sz:.3f})")
+    print(f"  Output:      {args.output}")
+
+
 def cmd_rle(args):
     """Compress with v5.28 DCT + Zigzag RLE (JPEG-style entropy)."""
     import numpy as np
@@ -994,6 +1053,11 @@ def cmd_decompress(args):
         from siren_v5_rle import RLEDCTCompressor
         img, meta = RLEDCTCompressor.decompress(recipe)
         meta['exact_match'] = meta.get('sha256_match', False)
+    elif magic == b'BLKQ':
+        # Palette v5.29 format (.blkq) — use PaletteCompressor
+        from siren_v5_palette import PaletteCompressor
+        img, meta = PaletteCompressor.decompress(recipe)
+        meta['exact_match'] = meta.get('sha256_match', False)
     elif magic == b'BLK5':
         # v5 format (.blkh5) — use ImageINRv5
         img, meta = ImageINRv5.decompress(recipe)
@@ -1146,6 +1210,16 @@ def cmd_info(args):
         print(f"  quality:    {quality_int/100.0:.2f}")
         print(f"  speed:      {speed_str}")
         print(f"  image:      {H}x{W}")
+    elif magic == b'BLKQ':
+        print(f"[BLKH] Format: BLKQ (v5.29 Palette, lossless)")
+        version = recipe[4]
+        H = struct.unpack('<H', recipe[5:7])[0]
+        W = struct.unpack('<H', recipe[7:9])[0]
+        n_colors = struct.unpack('<H', recipe[9:11])[0]
+        print(f"  version:    {version}")
+        print(f"  image:      {H}x{W}")
+        print(f"  colors:     {n_colors}")
+        print(f"  lossless:   True")
     elif magic == b'BLKW':
         print(f"[BLKH] Format: BLKW (v5.18 Wavelet+INR — DEPRECATED, lossy not bit-perfect)")
     else:
@@ -1734,6 +1808,13 @@ Examples:
     p_rle.add_argument('--speed', default='balanced', choices=['fast', 'balanced', 'best'],
                         help='Speed mode')
     p_rle.set_defaults(func=cmd_rle)
+
+    p_palette = sub.add_parser('palette', help='Palette v5.29 (lossless, for logos/icons/UI, few colors)')
+    p_palette.add_argument('input')
+    p_palette.add_argument('output')
+    p_palette.add_argument('--max-colors', type=int, default=256, help='Max unique colors (1-256)')
+    p_palette.add_argument('--speed', default='balanced', choices=['fast', 'balanced', 'best'])
+    p_palette.set_defaults(func=cmd_palette)
 
     p_gray = sub.add_parser('gray', help='Compress grayscale image (1 channel, MRI/CT optimized)')
     p_gray.add_argument('input')

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "blackhole-blkh"
-version = "5.28.0"
+version = "5.29.0"
 description = "Black Hole (BLKH) — Bit-Perfect Neural Implicit Compression with SIREN"
 readme = "README.md"
 license = {text = "MIT"}
