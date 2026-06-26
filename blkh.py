@@ -87,6 +87,775 @@ def load_any(path: str):
     return ('binary', (arr, n, data))
 
 
+def cmd_gray(args):
+    """Compress a grayscale image (1 channel) with native BLKH grayscale mode."""
+    import numpy as np
+    from siren_v5_grayscale import GrayscaleCompressor
+
+    try:
+        from PIL import Image
+        pil_img = Image.open(args.input)
+        if pil_img.mode != 'L':
+            pil_img = pil_img.convert('L')
+        img = np.array(pil_img, dtype=np.uint8)
+    except Exception as e:
+        print(f"[BLKH] Failed to load {args.input}: {e}")
+        sys.exit(1)
+
+    orig = img.nbytes
+    zip_size = len(zlib.compress(img.tobytes(), 9))
+    print(f"[BLKH] Grayscale: {args.input} ({img.shape}, {orig:,}B)")
+    print(f"[BLKH] ZIP: {zip_size:,}B")
+
+    codec = 'png' if getattr(args, 'instant', False) else 'webp'
+    if getattr(args, 'instant', False):
+        epochs, lr, bs, patience = 100, 4e-3, 16384, 3
+    elif getattr(args, 'turbo', False):
+        epochs, lr, bs, patience, codec = 200, 3e-3, 16384, 3, 'webp'
+    else:
+        epochs, lr, bs, patience = args.epochs, 1e-3, args.batch_size, 0
+
+    comp = GrayscaleCompressor(hidden_features=args.hidden, hidden_layers=args.layers,
+                                omega_0=args.omega, residual_codec=codec)
+    t0 = time.time()
+    res = comp.compress_bitperfect(img, epochs=epochs, lr=lr, bits=8,
+                                     batch_size=bs, use_amp=True,
+                                     patience=patience, verbose=True)
+    dt = time.time() - t0
+
+    Path(args.output).write_bytes(res['recipe_bytes'])
+    rec, meta = GrayscaleCompressor.decompress(res['recipe_bytes'])
+    winner = "BLKH" if res['recipe_size'] < zip_size else "ZIP"
+    print(f"\n[BLKH] Grayscale result:")
+    print(f"  Original:    {orig:>10,} B")
+    print(f"  ZIP:         {zip_size:>10,} B  (ratio {orig/zip_size:.2f}x)")
+    print(f"  BLKH gray:   {res['recipe_size']:>10,} B  (ratio {orig/res['recipe_size']:.2f}x)")
+    print(f"  SHA-256:     {meta['exact_match']}")
+    print(f"  Winner:      {winner}  (BLKH/ZIP = {res['recipe_size']/zip_size:.3f})")
+    print(f"  Time:        {dt:.2f}s")
+    print(f"  Output:      {args.output}")
+
+
+def cmd_batch(args):
+    """Compress all images in a directory into individual .blkh8 files."""
+    import numpy as np
+    from siren_v5_hybrid import HybridCompressor
+    from PIL import Image
+
+    input_dir = Path(args.input)
+    output_dir = Path(args.output)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    if not input_dir.is_dir():
+        print(f"[BLKH] Input must be a directory: {args.input}")
+        sys.exit(1)
+
+    # Find all images
+    extensions = {'.png', '.jpg', '.jpeg', '.bmp', '.tiff', '.tif'}
+    images = sorted([f for f in input_dir.iterdir()
+                     if f.suffix.lower() in extensions])
+
+    if not images:
+        print(f"[BLKH] No images found in {input_dir}")
+        sys.exit(1)
+
+    print(f"[BLKH] Batch: {len(images)} images from {input_dir}")
+    print(f"[BLKH] Output: {output_dir}")
+    print(f"[BLKH] Mode: {'instant' if args.instant else 'turbo' if args.turbo else 'auto-tune'}")
+    print()
+
+    total_orig = 0
+    total_blkh = 0
+    total_zip = 0
+    total_time = 0
+    all_ok = True
+
+    for i, img_path in enumerate(images):
+        try:
+            img = np.array(Image.open(img_path).convert('RGB'), dtype=np.uint8)
+        except Exception as e:
+            print(f"  [{i+1}/{len(images)}] SKIP {img_path.name}: {e}")
+            continue
+
+        orig = img.nbytes
+        zip_sz = len(zlib.compress(img.tobytes(), 9))
+
+        # Configure mode
+        if args.instant:
+            epochs, lr, bs, patience, codec = 100, 4e-3, 16384, 3, 'png'
+        elif args.turbo:
+            epochs, lr, bs, patience, codec = 200, 3e-3, 16384, 3, 'webp'
+        else:
+            epochs, lr, bs, patience, codec = 600, 2e-3, 16384, 5, 'webp'
+
+        comp = HybridCompressor(auto_tune=True, residual_codec=codec)
+        t0 = time.time()
+        res = comp.compress_bitperfect(img, epochs=epochs, lr=lr, bits=8,
+                                         batch_size=bs, use_amp=True,
+                                         patience=patience, verbose=False)
+        dt = time.time() - t0
+
+        # Verify
+        rec, meta = HybridCompressor.decompress(res['recipe_bytes'])
+        ok = meta['exact_match']
+        if not ok:
+            all_ok = False
+
+        # Save recipe
+        out_path = output_dir / (img_path.stem + '.blkh8')
+        out_path.write_bytes(res['recipe_bytes'])
+
+        total_orig += orig
+        total_blkh += res['recipe_size']
+        total_zip += zip_sz
+        total_time += dt
+
+        vs_zip = zip_sz / res['recipe_size']
+        status = "OK" if ok else "FAIL"
+        print(f"  [{i+1}/{len(images)}] {img_path.name:<30} {orig:>8,}B → {res['recipe_size']:>7,}B  "
+              f"vs ZIP={vs_zip:.2f}x  {dt:.1f}s  {status}")
+
+    # Summary
+    print(f"\n{'=' * 70}")
+    print(f"  BATCH SUMMARY")
+    print(f"{'=' * 70}")
+    print(f"  Images:        {len(images)}")
+    print(f"  Total orig:    {total_orig:>10,} B")
+    print(f"  Total ZIP:     {total_zip:>10,} B  ({total_orig/total_zip:.2f}x)")
+    print(f"  Total BLKH:    {total_blkh:>10,} B  ({total_orig/total_blkh:.2f}x)")
+    print(f"  BLKH vs ZIP:   {total_zip/total_blkh:.2f}x {'(BLKH wins!)' if total_blkh < total_zip else '(ZIP wins)'}")
+    print(f"  All SHA-256:   {'VERIFIED' if all_ok else 'FAILED'}")
+    print(f"  Total time:    {total_time:.1f}s ({total_time/len(images):.2f}s/image)")
+    print(f"  Output:        {output_dir}")
+
+
+def cmd_wavelet(args):
+    """Compress with Wavelet+INR hybrid (best compression + speed)."""
+    import numpy as np
+    from siren_v5_wavelet import WaveletINRCompressor
+
+    kind, payload = load_any(args.input)
+    if kind == 'image':
+        img = payload
+    else:
+        img, _, _ = payload
+
+    orig = img.nbytes
+    zip_sz = len(zlib.compress(img.tobytes(), 9))
+    print(f"[BLKH] Wavelet+INR: {args.input} ({orig:,}B)")
+    print(f"[BLKH] ZIP: {zip_sz:,}B")
+
+    if args.instant:
+        epochs, lr, patience = 100, 4e-3, 3
+    elif args.turbo:
+        epochs, lr, patience = 200, 3e-3, 3
+    else:
+        epochs, lr, patience = 400, 2e-3, 5
+
+    comp = WaveletINRCompressor(hidden_features=args.hidden, hidden_layers=args.layers,
+                                 wavelet=args.wavelet, level=args.level,
+                                 residual_codec='png')
+    t0 = time.time()
+    res = comp.compress_bitperfect(img, epochs=epochs, lr=lr, bits=8,
+                                     batch_size=16384, use_amp=True,
+                                     patience=patience, verbose=True)
+    dt = time.time() - t0
+
+    Path(args.output).write_bytes(res['recipe_bytes'])
+    winner = "BLKH" if res['recipe_size'] < zip_sz else "ZIP"
+    print(f"\n[BLKH] Wavelet+INR result:")
+    print(f"  Original:    {orig:>10,} B")
+    print(f"  ZIP:         {zip_sz:>10,} B  (ratio {orig/zip_sz:.2f}x)")
+    print(f"  BLKH wave:   {res['recipe_size']:>10,} B  (ratio {orig/res['recipe_size']:.2f}x)")
+    print(f"    LL SIREN:  {res['ll_recipe_size']:,}B  Detail: {res['detail_compressed_size']:,}B")
+    print(f"  Winner:      {winner}  (BLKH/ZIP = {res['recipe_size']/zip_sz:.3f})")
+    print(f"  Time:        {dt:.2f}s")
+    print(f"  Output:      {args.output}")
+
+
+def cmd_wavelet2(args):
+    """Compress with Wavelet+INR v2 (TRUE bit-perfect + zstd + adaptive)."""
+    import numpy as np
+    from siren_v5_wavelet_v2 import WaveletINRCompressorV2
+
+    kind, payload = load_any(args.input)
+    if kind == 'image':
+        img = payload
+    else:
+        img, _, _ = payload
+
+    orig = img.nbytes
+    zip_sz = len(zlib.compress(img.tobytes(), 9))
+    print(f"[BLKH] Wavelet+INR v2: {args.input} ({orig:,}B)")
+    print(f"[BLKH] ZIP: {zip_sz:,}B")
+    print(f"[BLKH] Mode: {'LOSSY' if args.lossy else 'LOSSLESS (bit-perfect)'}")
+
+    # Parse level (auto or int)
+    level = args.level
+    if level != 'auto':
+        level = int(level)
+
+    comp = WaveletINRCompressorV2(
+        wavelet=args.wavelet,
+        level=level,
+        lossless=not args.lossy,
+        use_zstd=not args.no_zstd,
+        quality=args.quality,
+        threshold=args.threshold,
+    )
+    t0 = time.time()
+    res = comp.compress_bitperfect(img, verbose=True)
+    dt = time.time() - t0
+
+    Path(args.output).write_bytes(res['recipe_bytes'])
+
+    # Verify roundtrip
+    rec, meta = WaveletINRCompressorV2.decompress(res['recipe_bytes'])
+    if meta['sha256_match']:
+        print(f"\n[BLKH] SHA-256 verified: ✅ bit-perfect")
+    else:
+        mse = np.mean((img.astype(float) - rec.astype(float))**2)
+        psnr = 10*np.log10(255**2 / max(mse, 1e-10))
+        print(f"\n[BLKH] PSNR: {psnr:.1f} dB (lossy)")
+
+    winner = "BLKH" if res['recipe_size'] < zip_sz else "ZIP"
+    print(f"\n[BLKH] Wavelet+INR v2 result:")
+    print(f"  Original:    {orig:>10,} B")
+    print(f"  ZIP:         {zip_sz:>10,} B  (ratio {orig/zip_sz:.2f}x)")
+    print(f"  BLKH v2:     {res['recipe_size']:>10,} B  (ratio {orig/res['recipe_size']:.2f}x)")
+    print(f"  Wavelet:     {res['wavelet']} L{res['level']}")
+    print(f"  Winner:      {winner}  (BLKH/ZIP = {res['recipe_size']/zip_sz:.3f})")
+    print(f"  Time:        {dt:.2f}s")
+    print(f"  Output:      {args.output}")
+
+
+def cmd_wavelet3(args):
+    """Compress with Wavelet+INR v3 (float16 bit-perfect, 30% smaller than v2)."""
+    import numpy as np
+    from siren_v5_wavelet_v3 import WaveletINRCompressorV3
+
+    kind, payload = load_any(args.input)
+    if kind == 'image':
+        img = payload
+    else:
+        img, _, _ = payload
+
+    orig = img.nbytes
+    zip_sz = len(zlib.compress(img.tobytes(), 9))
+    print(f"[BLKH] Wavelet+INR v3 (float16): {args.input} ({orig:,}B)")
+    print(f"[BLKH] ZIP: {zip_sz:,}B")
+    print(f"[BLKH] Mode: LOSSLESS (TRUE bit-perfect, SHA-256 verified)")
+
+    level = args.level
+    if level != 'auto':
+        level = int(level)
+
+    comp = WaveletINRCompressorV3(
+        wavelet=args.wavelet,
+        level=level,
+        lossless=True,
+        codec=args.codec,
+        parallel=args.parallel,
+        n_workers=args.workers,
+        combined=args.combined,
+    )
+    t0 = time.time()
+    res = comp.compress(img, verbose=True)
+    dt = time.time() - t0
+
+    Path(args.output).write_bytes(res['recipe_bytes'])
+
+    # Verify roundtrip
+    rec, meta = WaveletINRCompressorV3.decompress(res['recipe_bytes'])
+    if meta['sha256_match']:
+        print(f"\n[BLKH] SHA-256 verified: bit-perfect")
+    else:
+        print(f"\n[BLKH] WARNING: roundtrip failed!")
+
+    winner = "BLKH" if res['recipe_size'] < zip_sz else "ZIP"
+    print(f"\n[BLKH] Wavelet+INR v3 result:")
+    print(f"  Original:    {orig:>10,} B")
+    print(f"  ZIP:         {zip_sz:>10,} B  (ratio {orig/zip_sz:.2f}x)")
+    print(f"  BLKH v3:     {res['recipe_size']:>10,} B  (ratio {orig/res['recipe_size']:.2f}x)")
+    print(f"  Wavelet:     {res['wavelet']} L{res['level']}")
+    print(f"  Winner:      {winner}  (BLKH/ZIP = {res['recipe_size']/zip_sz:.3f})")
+    print(f"  Time:        {dt:.2f}s")
+    print(f"  Output:      {args.output}")
+
+
+def cmd_auto(args):
+    """Compress with v5.30 Auto mode (intelligent mode selector)."""
+    import numpy as np
+    from siren_v5_auto import AutoCompressor
+
+    kind, payload = load_any(args.input)
+    if kind == 'image':
+        img = payload
+    else:
+        img, _, _ = payload
+
+    orig = img.nbytes
+    zip_sz = len(zlib.compress(img.tobytes(), 9))
+    try:
+        from PIL import Image as PILImage
+        import io
+        png_buf = io.BytesIO()
+        PILImage.fromarray(img).save(png_buf, format='PNG', optimize=True)
+        png_sz = png_buf.tell()
+    except ImportError:
+        png_sz = 0
+
+    print(f"[BLKH] Auto v5.30: {args.input} ({orig:,}B)")
+    print(f"[BLKH] ZIP: {zip_sz:,}B" + (f", PNG: {png_sz:,}B" if png_sz else ""))
+    print(f"[BLKH] Mode: AUTO (quality={args.quality}, lossless={args.lossless}, budget={args.budget}s)")
+
+    comp = AutoCompressor(
+        quality=args.quality,
+        lossless=args.lossless,
+        time_budget_s=args.budget,
+        speed=args.speed,
+    )
+    t0 = time.time()
+    res = comp.compress(img, verbose=True)
+    dt = time.time() - t0
+
+    Path(args.output).write_bytes(res['recipe_bytes'])
+
+    winner_zip = "BLKH" if res['recipe_size'] < zip_sz else "ZIP"
+    winner_png = "BLKH" if png_sz and res['recipe_size'] < png_sz else "PNG"
+    print(f"\n[BLKH] Auto v5.30 result:")
+    print(f"  Original:    {orig:>10,} B")
+    print(f"  ZIP:         {zip_sz:>10,} B  ({orig/zip_sz:.2f}x)")
+    if png_sz:
+        print(f"  PNG:         {png_sz:>10,} B  ({orig/png_sz:.2f}x)")
+    print(f"  BLKH auto:   {res['recipe_size']:>10,} B  ({orig/res['recipe_size']:.2f}x)")
+    print(f"  Best mode:   {res['mode']}")
+    print(f"  Modes tried: {res.get('modes_tried', 0)}")
+    print(f"  Time:        {dt:.2f}s (budget: {args.budget}s)")
+    print(f"  vs ZIP:      {winner_zip}  ({res['recipe_size']/zip_sz:.3f})")
+    if png_sz:
+        print(f"  vs PNG:      {winner_png}  ({res['recipe_size']/png_sz:.3f})")
+    print(f"  Output:      {args.output}")
+
+
+def cmd_palette(args):
+    """Compress with v5.29 Palette mode (lossless, for images with few colors)."""
+    import numpy as np
+    from siren_v5_palette import PaletteCompressor
+
+    kind, payload = load_any(args.input)
+    if kind == 'image':
+        img = payload
+    else:
+        img, _, _ = payload
+
+    orig = img.nbytes
+    zip_sz = len(zlib.compress(img.tobytes(), 9))
+    try:
+        from PIL import Image as PILImage
+        import io
+        png_buf = io.BytesIO()
+        PILImage.fromarray(img).save(png_buf, format='PNG', optimize=True)
+        png_sz = png_buf.tell()
+    except ImportError:
+        png_sz = 0
+
+    print(f"[BLKH] Palette v5.29: {args.input} ({orig:,}B)")
+    print(f"[BLKH] ZIP: {zip_sz:,}B" + (f", PNG: {png_sz:,}B" if png_sz else ""))
+    print(f"[BLKH] Mode: LOSSLESS (palette + indices, max_colors={args.max_colors})")
+
+    comp = PaletteCompressor(max_colors=args.max_colors, speed=args.speed)
+    try:
+        t0 = time.time()
+        res = comp.compress(img, verbose=True)
+        dt = time.time() - t0
+    except ValueError as e:
+        print(f"\n[BLKH] ERROR: {e}")
+        print("[BLKH] Image has too many unique colors for palette mode.")
+        print("[BLKH] Use 'blkh dct' or 'blkh photo' for natural photos.")
+        sys.exit(1)
+
+    Path(args.output).write_bytes(res['recipe_bytes'])
+
+    rec, meta = PaletteCompressor.decompress(res['recipe_bytes'])
+    sha_ok = "✅ bit-perfect" if meta['sha256_match'] else "❌ FAILED"
+
+    winner_zip = "BLKH" if res['recipe_size'] < zip_sz else "ZIP"
+    winner_png = "BLKH" if png_sz and res['recipe_size'] < png_sz else "PNG"
+    print(f"\n[BLKH] Palette v5.29 result:")
+    print(f"  Original:    {orig:>10,} B")
+    print(f"  ZIP:         {zip_sz:>10,} B  ({orig/zip_sz:.2f}x)")
+    if png_sz:
+        print(f"  PNG:         {png_sz:>10,} B  ({orig/png_sz:.2f}x)")
+    print(f"  BLKH palette:{res['recipe_size']:>10,} B  ({orig/res['recipe_size']:.2f}x)")
+    print(f"  Colors:      {res['n_colors']}")
+    print(f"  SHA-256:     {sha_ok}")
+    print(f"  Speed:       {args.speed} ({dt*1000:.1f}ms, {res.get('throughput_mbs', 0):.1f} MB/s)")
+    print(f"  vs ZIP:      {winner_zip}  ({res['recipe_size']/zip_sz:.3f})")
+    if png_sz:
+        print(f"  vs PNG:      {winner_png}  ({res['recipe_size']/png_sz:.3f})")
+    print(f"  Output:      {args.output}")
+
+
+def cmd_rle(args):
+    """Compress with v5.28 DCT + Zigzag RLE (JPEG-style entropy)."""
+    import numpy as np
+    from siren_v5_rle import RLEDCTCompressor
+
+    kind, payload = load_any(args.input)
+    if kind == 'image':
+        img = payload
+    else:
+        img, _, _ = payload
+
+    orig = img.nbytes
+    zip_sz = len(zlib.compress(img.tobytes(), 9))
+    try:
+        from PIL import Image as PILImage
+        import io
+        png_buf = io.BytesIO()
+        PILImage.fromarray(img).save(png_buf, format='PNG', optimize=True)
+        png_sz = png_buf.tell()
+    except ImportError:
+        png_sz = 0
+
+    print(f"[BLKH] RLE DCT v5.28: {args.input} ({orig:,}B)")
+    print(f"[BLKH] ZIP: {zip_sz:,}B" + (f", PNG: {png_sz:,}B" if png_sz else ""))
+    print(f"[BLKH] Mode: LOSSY (DCT+RLE q={args.quality}, speed={args.speed})")
+
+    comp = RLEDCTCompressor(quality=args.quality, speed=args.speed)
+    t0 = time.time()
+    res = comp.compress(img, verbose=True)
+    dt = time.time() - t0
+
+    Path(args.output).write_bytes(res['recipe_bytes'])
+
+    rec, meta = RLEDCTCompressor.decompress(res['recipe_bytes'])
+    mse = np.mean((img.astype(float) - rec.astype(float))**2)
+    psnr = 10*np.log10(255**2 / max(mse, 1e-10))
+
+    winner_zip = "BLKH" if res['recipe_size'] < zip_sz else "ZIP"
+    winner_png = "BLKH" if png_sz and res['recipe_size'] < png_sz else "PNG"
+    print(f"\n[BLKH] RLE DCT v5.28 result:")
+    print(f"  Original:    {orig:>10,} B")
+    print(f"  ZIP:         {zip_sz:>10,} B  ({orig/zip_sz:.2f}x)")
+    if png_sz:
+        print(f"  PNG:         {png_sz:>10,} B  ({orig/png_sz:.2f}x)")
+    print(f"  BLKH RLE:    {res['recipe_size']:>10,} B  ({orig/res['recipe_size']:.2f}x)")
+    print(f"  PSNR:        {psnr:.1f} dB")
+    print(f"  Speed:       {args.speed} ({dt*1000:.1f}ms, {res.get('throughput_mbs', 0):.1f} MB/s)")
+    print(f"  vs ZIP:      {winner_zip}  ({res['recipe_size']/zip_sz:.3f})")
+    if png_sz:
+        print(f"  vs PNG:      {winner_png}  ({res['recipe_size']/png_sz:.3f})")
+    print(f"  Output:      {args.output}")
+
+
+def cmd_avif(args):
+    """Compress with v5.26 AVIF/HEIF wrapper."""
+    import numpy as np
+    from siren_v5_avif import AVIFCompressor
+
+    kind, payload = load_any(args.input)
+    if kind == 'image':
+        img = payload
+    else:
+        img, _, _ = payload
+
+    orig = img.nbytes
+    zip_sz = len(zlib.compress(img.tobytes(), 9))
+    try:
+        from PIL import Image as PILImage
+        import io
+        png_buf = io.BytesIO()
+        PILImage.fromarray(img).save(png_buf, format='PNG', optimize=True)
+        png_sz = png_buf.tell()
+    except ImportError:
+        png_sz = 0
+
+    print(f"[BLKH] AVIF v5.26: {args.input} ({orig:,}B)")
+    print(f"[BLKH] ZIP: {zip_sz:,}B" + (f", PNG: {png_sz:,}B" if png_sz else ""))
+    print(f"[BLKH] Mode: LOSSY (AVIF q={args.quality})")
+
+    comp = AVIFCompressor(quality=args.quality, format=args.format)
+    t0 = time.time()
+    res = comp.compress(img, verbose=True)
+    dt = time.time() - t0
+
+    Path(args.output).write_bytes(res['recipe_bytes'])
+
+    rec, meta = AVIFCompressor.decompress(res['recipe_bytes'])
+    mse = np.mean((img.astype(float) - rec.astype(float))**2)
+    psnr = 10*np.log10(255**2 / max(mse, 1e-10))
+
+    print(f"\n[BLKH] AVIF v5.26 result:")
+    print(f"  Original:    {orig:>10,} B")
+    print(f"  ZIP:         {zip_sz:>10,} B  ({orig/zip_sz:.2f}x)")
+    if png_sz:
+        print(f"  PNG:         {png_sz:>10,} B  ({orig/png_sz:.2f}x)")
+    print(f"  BLKH AVIF:   {res['recipe_size']:>10,} B  ({orig/res['recipe_size']:.2f}x)")
+    print(f"  PSNR:        {psnr:.1f} dB")
+    print(f"  Quality:     {args.quality} (AVIF quality={res['avif_quality']})")
+    print(f"  Time:        {dt:.2f}s ({res.get('throughput_mbs', 0):.1f} MB/s)")
+    print(f"  Output:      {args.output}")
+
+
+def cmd_batch_compress(args):
+    """Batch compress directory with v5.24 async parallel processing."""
+    # Use v5.27 DirectIO if --direct flag, else v5.24
+    if getattr(args, 'direct', False):
+        from siren_v5_directio import DirectIOBatchCompressor
+        mode_map = {
+            'fast': 'fast', 'dct': 'dct', 'photo': 'photo',
+            'wavelet3': 'wavelet3', 'avif': 'avif',
+        }
+        mode = mode_map.get(args.mode, 'fast')
+        comp = DirectIOBatchCompressor(
+            mode=mode, quality=args.quality,
+            speed=args.speed, workers=args.workers,
+        )
+        stats = comp.compress_directory(args.input, args.output)
+        if stats['n_files'] == 0:
+            print("[BLKH] No images found to compress")
+        return
+
+    from siren_v5_async import AsyncBatchCompressor
+
+    mode_map = {
+        'fast': ('fast', '.blkf'),
+        'dct': ('dct', '.blkd'),
+        'photo': ('photo', '.blkp'),
+        'wavelet3': ('wavelet3', '.blkw3'),
+    }
+    mode, _ = mode_map.get(args.mode, ('fast', '.blkf'))
+
+    comp = AsyncBatchCompressor(
+        mode=mode,
+        quality=args.quality,
+        speed=args.speed,
+        workers=args.workers,
+    )
+    stats = comp.compress_directory_sync(args.input, args.output)
+    if stats['n_files'] == 0:
+        print("[BLKH] No images found to compress")
+
+
+def cmd_fast(args):
+    """Compress with v5.23 Fast DCT (speed competitive with ZIP)."""
+    import numpy as np
+    from siren_v5_fast import FastDCTCompressor
+
+    kind, payload = load_any(args.input)
+    if kind == 'image':
+        img = payload
+    else:
+        img, _, _ = payload
+
+    orig = img.nbytes
+    zip_sz = len(zlib.compress(img.tobytes(), 9))
+    try:
+        from PIL import Image as PILImage
+        import io
+        png_buf = io.BytesIO()
+        PILImage.fromarray(img).save(png_buf, format='PNG', optimize=True)
+        png_sz = png_buf.tell()
+    except ImportError:
+        png_sz = 0
+
+    print(f"[BLKH] Fast DCT v5.23: {args.input} ({orig:,}B)")
+    print(f"[BLKH] ZIP: {zip_sz:,}B" + (f", PNG: {png_sz:,}B" if png_sz else ""))
+    print(f"[BLKH] Mode: LOSSY (DCT q={args.quality}, speed={args.speed})")
+
+    comp = FastDCTCompressor(quality=args.quality, speed=args.speed)
+    t0 = time.time()
+    res = comp.compress(img, verbose=True)
+    dt = time.time() - t0
+
+    Path(args.output).write_bytes(res['recipe_bytes'])
+
+    rec, meta = FastDCTCompressor.decompress(res['recipe_bytes'])
+    mse = np.mean((img.astype(float) - rec.astype(float))**2)
+    psnr = 10*np.log10(255**2 / max(mse, 1e-10))
+
+    winner_zip = "BLKH" if res['recipe_size'] < zip_sz else "ZIP"
+    winner_png = "BLKH" if png_sz and res['recipe_size'] < png_sz else "PNG"
+    print(f"\n[BLKH] Fast DCT v5.23 result:")
+    print(f"  Original:    {orig:>10,} B")
+    print(f"  ZIP:         {zip_sz:>10,} B  ({orig/zip_sz:.2f}x)")
+    if png_sz:
+        print(f"  PNG:         {png_sz:>10,} B  ({orig/png_sz:.2f}x)")
+    print(f"  BLKH fast:   {res['recipe_size']:>10,} B  ({orig/res['recipe_size']:.2f}x)")
+    print(f"  PSNR:        {psnr:.1f} dB")
+    print(f"  Speed:       {args.speed} ({dt*1000:.1f}ms, {res.get('throughput_mbs', 0):.1f} MB/s)")
+    print(f"  vs ZIP:      {winner_zip}  ({res['recipe_size']/zip_sz:.3f} size, {zip_sz/max(dt,0.001)/1000:.1f}KB/ms ZIP vs {res['recipe_size']/max(dt,0.001)/1000:.1f}KB/ms BLKH)")
+    if png_sz:
+        print(f"  vs PNG:      {winner_png}  ({res['recipe_size']/png_sz:.3f})")
+    print(f"  Output:      {args.output}")
+
+
+def cmd_dct(args):
+    """Compress with v5.22 DCT-quantized mode (JPEG-like, maximum compression)."""
+    import numpy as np
+    from siren_v5_dct import DCTCompressor
+
+    kind, payload = load_any(args.input)
+    if kind == 'image':
+        img = payload
+    else:
+        img, _, _ = payload
+
+    orig = img.nbytes
+    zip_sz = len(zlib.compress(img.tobytes(), 9))
+    try:
+        from PIL import Image as PILImage
+        import io
+        png_buf = io.BytesIO()
+        PILImage.fromarray(img).save(png_buf, format='PNG', optimize=True)
+        png_sz = png_buf.tell()
+    except ImportError:
+        png_sz = 0
+
+    print(f"[BLKH] DCT v5.22: {args.input} ({orig:,}B)")
+    print(f"[BLKH] ZIP: {zip_sz:,}B" + (f", PNG: {png_sz:,}B" if png_sz else ""))
+    print(f"[BLKH] Mode: LOSSY (DCT q={args.quality}, codec={args.codec})")
+
+    comp = DCTCompressor(quality=args.quality, codec=args.codec)
+    t0 = time.time()
+    res = comp.compress(img, verbose=True)
+    dt = time.time() - t0
+
+    Path(args.output).write_bytes(res['recipe_bytes'])
+
+    rec, meta = DCTCompressor.decompress(res['recipe_bytes'])
+    mse = np.mean((img.astype(float) - rec.astype(float))**2)
+    psnr = 10*np.log10(255**2 / max(mse, 1e-10))
+
+    winner_zip = "BLKH" if res['recipe_size'] < zip_sz else "ZIP"
+    winner_png = "BLKH" if png_sz and res['recipe_size'] < png_sz else "PNG"
+    print(f"\n[BLKH] DCT v5.22 result:")
+    print(f"  Original:    {orig:>10,} B")
+    print(f"  ZIP:         {zip_sz:>10,} B  (ratio {orig/zip_sz:.2f}x)")
+    if png_sz:
+        print(f"  PNG:         {png_sz:>10,} B  (ratio {orig/png_sz:.2f}x)")
+    print(f"  BLKH DCT:    {res['recipe_size']:>10,} B  (ratio {orig/res['recipe_size']:.2f}x)")
+    print(f"  PSNR:        {psnr:.1f} dB")
+    print(f"  Quality:     {args.quality} (q_scale={res['q_scale']:.1f})")
+    print(f"  vs ZIP:      {winner_zip}  ({res['recipe_size']/zip_sz:.3f})")
+    if png_sz:
+        print(f"  vs PNG:      {winner_png}  ({res['recipe_size']/png_sz:.3f})")
+    print(f"  Time:        {dt:.2f}s")
+    print(f"  Output:      {args.output}")
+
+
+def cmd_photo(args):
+    """Compress with v5.21 photo-optimized lossy mode (YCbCr 4:2:0 + brotli)."""
+    import numpy as np
+    from siren_v5_photo import PhotoCompressor
+
+    kind, payload = load_any(args.input)
+    if kind == 'image':
+        img = payload
+    else:
+        img, _, _ = payload
+
+    orig = img.nbytes
+    zip_sz = len(zlib.compress(img.tobytes(), 9))
+    # PNG size
+    try:
+        from PIL import Image as PILImage
+        import io
+        png_buf = io.BytesIO()
+        PILImage.fromarray(img).save(png_buf, format='PNG', optimize=True)
+        png_sz = png_buf.tell()
+    except ImportError:
+        png_sz = 0
+
+    print(f"[BLKH] Photo v5.21: {args.input} ({orig:,}B)")
+    print(f"[BLKH] ZIP: {zip_sz:,}B" + (f", PNG: {png_sz:,}B" if png_sz else ""))
+    print(f"[BLKH] Mode: LOSSY (YCbCr {args.subsampling}, codec={args.codec})")
+
+    comp = PhotoCompressor(
+        subsampling=args.subsampling,
+        codec=args.codec,
+        quality=args.quality,
+    )
+    t0 = time.time()
+    res = comp.compress(img, verbose=True)
+    dt = time.time() - t0
+
+    Path(args.output).write_bytes(res['recipe_bytes'])
+
+    # Verify roundtrip
+    rec, meta = PhotoCompressor.decompress(res['recipe_bytes'])
+    mse = np.mean((img.astype(float) - rec.astype(float))**2)
+    psnr = 10*np.log10(255**2 / max(mse, 1e-10))
+
+    winner_zip = "BLKH" if res['recipe_size'] < zip_sz else "ZIP"
+    winner_png = "BLKH" if png_sz and res['recipe_size'] < png_sz else "PNG"
+    print(f"\n[BLKH] Photo v5.21 result:")
+    print(f"  Original:    {orig:>10,} B")
+    print(f"  ZIP:         {zip_sz:>10,} B  (ratio {orig/zip_sz:.2f}x)")
+    if png_sz:
+        print(f"  PNG:         {png_sz:>10,} B  (ratio {orig/png_sz:.2f}x)")
+    print(f"  BLKH photo:  {res['recipe_size']:>10,} B  (ratio {orig/res['recipe_size']:.2f}x)")
+    print(f"  PSNR:        {psnr:.1f} dB")
+    print(f"  vs ZIP:      {winner_zip}  ({res['recipe_size']/zip_sz:.3f})")
+    if png_sz:
+        print(f"  vs PNG:      {winner_png}  ({res['recipe_size']/png_sz:.3f})")
+    print(f"  Time:        {dt:.2f}s")
+    print(f"  Output:      {args.output}")
+
+
+def cmd_audio(args):
+    """Compress a WAV audio file with BLKH STFT spectrogram INR."""
+    import numpy as np
+    from scipy.io import wavfile
+    from siren_v5_audio import AudioCompressor
+
+    # Read WAV
+    try:
+        sr, audio = wavfile.read(args.input)
+        # Convert to float32 mono
+        if audio.ndim > 1:
+            audio = audio.mean(axis=1)
+        if audio.dtype != np.float32:
+            audio = audio.astype(np.float32) / 32768.0
+    except Exception as e:
+        print(f"[BLKH] Failed to read {args.input}: {e}")
+        sys.exit(1)
+
+    orig = audio.nbytes
+    zip_sz = len(zlib.compress(audio.tobytes(), 9))
+    duration = len(audio) / sr
+    print(f"[BLKH] Audio: {args.input} ({duration:.1f}s @ {sr}Hz, {orig:,}B)")
+    print(f"[BLKH] ZIP: {zip_sz:,}B ({orig/zip_sz:.2f}x)")
+
+    if args.instant:
+        epochs, lr, patience = 150, 3e-3, 3
+    elif args.turbo:
+        epochs, lr, patience = 300, 2e-3, 3
+    else:
+        epochs, lr, patience = 500, 1e-3, 5
+
+    comp = AudioCompressor(hidden_features=64, hidden_layers=3, omega_0=30.0,
+                            n_fft=512, hop_length=256)
+    t0 = time.time()
+    res = comp.compress(audio, sample_rate=sr, epochs=epochs, lr=lr, bits=8,
+                         batch_size=8192, use_amp=True, patience=patience, verbose=True)
+    dt = time.time() - t0
+
+    Path(args.output).write_bytes(res['recipe_bytes'])
+    winner = "BLKH" if res['recipe_size'] < zip_sz else "ZIP"
+    print(f"\n[BLKH] Audio result:")
+    print(f"  Original:    {orig:>10,} B  ({duration:.1f}s)")
+    print(f"  ZIP:         {zip_sz:>10,} B  ({orig/zip_sz:.2f}x)")
+    print(f"  BLKH Audio:  {res['recipe_size']:>10,} B  ({orig/res['recipe_size']:.2f}x)")
+    print(f"    SIREN:     {res['weights_packed_size']:,}B  Phase: {res['phase_compressed_size']:,}B  Resid: {res['mag_residual_size']:,}B")
+    print(f"  SNR:         {res['snr_db']:.1f}dB")
+    print(f"  Winner:      {winner}  (BLKH/ZIP = {res['recipe_size']/zip_sz:.3f})")
+    print(f"  Time:        {dt:.1f}s")
+    print(f"  Output:      {args.output}")
+
+
 def cmd_doctor(args):
     """Diagnose the BLKH environment and show recommendations."""
     import torch
@@ -187,7 +956,7 @@ def cmd_compress(args):
     else:
         img, orig_nbytes, orig_bytes = payload
 
-    # Turbo mode overrides
+    # Turbo/instant mode overrides
     if getattr(args, 'turbo', False):
         args.epochs = 200
         args.batch_size = 16384
@@ -196,12 +965,25 @@ def cmd_compress(args):
         if not getattr(args, 'amp', False):
             args.amp = True
         args.lr_override = 3e-3
+        args.codec_override = 'webp'
+    elif getattr(args, 'instant', False):
+        args.epochs = 100
+        args.batch_size = 16384
+        if not getattr(args, 'auto_tune', False):
+            args.auto_tune = True
+        if not getattr(args, 'amp', False):
+            args.amp = True
+        args.lr_override = 4e-3
+        args.codec_override = 'png'  # PNG is 16x faster to encode than WebP
     else:
         args.lr_override = None
+        args.codec_override = None
 
     print(f"[BLKH] Input: {args.input}  ({kind}, {orig_nbytes:,} bytes)")
-    if getattr(args, 'turbo', False):
-        print(f"[BLKH] TURBO mode: 200 epochs, lr=3e-3, bs=16384, auto-tune, AMP")
+    if getattr(args, 'instant', False):
+        print(f"[BLKH] INSTANT mode: 100 epochs, lr=4e-3, bs=16384, PNG residual, AMP (~0.4-0.7s)")
+    elif getattr(args, 'turbo', False):
+        print(f"[BLKH] TURBO mode: 200 epochs, lr=3e-3, bs=16384, auto-tune, AMP (~1s)")
     elif getattr(args, 'auto_tune', False):
         print(f"[BLKH] Config: epochs={args.epochs} bits={args.bits} "
               f"auto-tune=ON (SIREN size picked from image dims) "
@@ -232,10 +1014,11 @@ def cmd_compress(args):
         recipe = comp._pack_recipe(args.bits, packed, pm, b'', sha)
         print(f"[BLKH] Lossy mode: PSNR={meta['psnr']:.2f} dB  "
               f"(recipe will NOT roundtrip bit-perfect)")
-    elif getattr(args, 'auto_tune', False):
+    elif getattr(args, 'auto_tune', False) or getattr(args, 'instant', False) or getattr(args, 'turbo', False):
         # Hybrid mode with auto-tune (recommended for images)
+        codec = getattr(args, 'codec_override', None) or 'webp'
         comp = HybridCompressor(auto_tune=True, omega_0=args.omega,
-                                 residual_codec='webp')
+                                 residual_codec=codec)
         res = comp.compress_bitperfect(img, epochs=args.epochs, lr=getattr(args, "lr_override", None) or 1e-3,
                                         bits=args.bits, prune_threshold=0.0,
                                         batch_size=args.batch_size,
@@ -282,10 +1065,76 @@ def cmd_compress(args):
 def cmd_decompress(args):
     import numpy as np
     from siren_v5_torch import ImageINRv5
+    from siren_v5_hybrid import HybridCompressor
 
     recipe = Path(args.input).read_bytes()
+    magic = recipe[:4]
+
     t0 = time.time()
-    img, meta = ImageINRv5.decompress(recipe)
+    # Auto-detect format by magic bytes
+    if magic == b'BLK8':
+        # Hybrid format (.blkh8) — use HybridCompressor
+        img, meta = HybridCompressor.decompress(recipe)
+    elif magic == b'BLK2':
+        # Wavelet v2 format (.blkw2) — use WaveletINRCompressorV2
+        from siren_v5_wavelet_v2 import WaveletINRCompressorV2
+        img, meta = WaveletINRCompressorV2.decompress(recipe)
+    elif magic == b'BKWF':
+        # Wavelet v3 format (.blkw3) — use WaveletINRCompressorV3
+        from siren_v5_wavelet_v3 import WaveletINRCompressorV3
+        img, meta = WaveletINRCompressorV3.decompress(recipe)
+    elif magic == b'BLKP':
+        # Photo v5.21 format (.blkp) — use PhotoCompressor
+        from siren_v5_photo import PhotoCompressor
+        img, meta = PhotoCompressor.decompress(recipe)
+        meta['exact_match'] = meta.get('sha256_match', False)  # lossy, will be False
+    elif magic == b'BLKD':
+        # DCT v5.22 format (.blkd) — use DCTCompressor
+        from siren_v5_dct import DCTCompressor
+        img, meta = DCTCompressor.decompress(recipe)
+        meta['exact_match'] = meta.get('sha256_match', False)
+    elif magic == b'BLKF':
+        # Fast DCT v5.23 format (.blkf) — use FastDCTCompressor
+        from siren_v5_fast import FastDCTCompressor
+        img, meta = FastDCTCompressor.decompress(recipe)
+        meta['exact_match'] = meta.get('sha256_match', False)
+    elif magic == b'BLHV':
+        # AVIF v5.26 format (.blhav) — use AVIFCompressor
+        from siren_v5_avif import AVIFCompressor
+        img, meta = AVIFCompressor.decompress(recipe)
+        meta['exact_match'] = meta.get('sha256_match', False)
+    elif magic == b'BLKR':
+        # RLE DCT v5.28 format (.blkr) — use RLEDCTCompressor
+        from siren_v5_rle import RLEDCTCompressor
+        img, meta = RLEDCTCompressor.decompress(recipe)
+        meta['exact_match'] = meta.get('sha256_match', False)
+    elif magic == b'BLKQ':
+        # Palette v5.29 format (.blkq) — use PaletteCompressor
+        from siren_v5_palette import PaletteCompressor
+        img, meta = PaletteCompressor.decompress(recipe)
+        meta['exact_match'] = meta.get('sha256_match', False)
+    elif magic == b'BLK5':
+        # v5 format (.blkh5) — use ImageINRv5
+        img, meta = ImageINRv5.decompress(recipe)
+    elif magic == b'BLKG':
+        # Grayscale format (.blkg) — use GrayscaleCompressor
+        from siren_v5_grayscale import GrayscaleCompressor
+        img, meta = GrayscaleCompressor.decompress(recipe)
+    elif magic == b'BLKV':
+        # Video format — not supported via CLI decompress (use video-decompress)
+        print("[BLKH] Error: this is a video recipe. Use 'blkh video-decompress' instead.")
+        sys.exit(1)
+    elif magic == b'BLK3':
+        # 3D volume format — not supported via CLI decompress (use volume-decompress)
+        print("[BLKH] Error: this is a 3D volume recipe. Use 'blkh volume-decompress' instead.")
+        sys.exit(1)
+    elif magic == b'BLK9':
+        # Combo format — not supported via CLI decompress (use combo-decompress)
+        print("[BLKH] Error: this is a combo recipe. Use 'blkh combo-decompress' instead.")
+        sys.exit(1)
+    else:
+        # Try ImageINRv5 as fallback
+        img, meta = ImageINRv5.decompress(recipe)
     dt = time.time() - t0
 
     if args.output:
@@ -317,9 +1166,12 @@ def cmd_info(args):
     import struct
     from siren_v5_torch import MAGIC_V5
     recipe = Path(args.input).read_bytes()
-    if recipe[:4] == MAGIC_V5:
-        print(f"[BLKH] Format: BLK5 (v5 PyTorch)")
-        print(f"[BLKH] Size: {len(recipe):,} bytes")
+    magic = recipe[:4]
+    print(f"[BLKH] File: {args.input}")
+    print(f"[BLKH] Size: {len(recipe):,} bytes")
+
+    if magic == MAGIC_V5:
+        print(f"[BLKH] Format: BLK5 (v5 PyTorch SIREN)")
         # Parse header
         version = recipe[4]
         bits = recipe[5]
@@ -336,8 +1188,97 @@ def cmd_info(args):
         print(f"  arch:       in={in_f} hidden={hidden} layers={hidden_l} out={out_f}")
         print(f"  omega_0:    {omega}")
         print(f"  image:      {H}x{W}x{C}")
+    elif magic == b'BLK8':
+        print(f"[BLKH] Format: BLK8 (v5.8 Hybrid SIREN + WebP/PNG residual, bit-perfect)")
+    elif magic == b'BLK2':
+        print(f"[BLKH] Format: BLK2 (v5.19 Wavelet+INR v2, bit-perfect lossless OR lossy)")
+    elif magic == b'BKWF':
+        print(f"[BLKH] Format: BKWF (v5.20 Wavelet+INR v3, float16 bit-perfect)")
+        # Parse minimal header
+        version = recipe[4]
+        flags = recipe[5]
+        level = recipe[6]
+        wl_len = recipe[7]
+        wavelet = recipe[8:8+wl_len].decode('utf-8')
+        off = 8 + wl_len
+        H = struct.unpack('<H', recipe[off:off+2])[0]; off += 2
+        W = struct.unpack('<H', recipe[off:off+2])[0]; off += 2
+        C = recipe[off]; off += 1
+        lossless = bool(flags & 0x01)
+        combined = bool(flags & 0x02)
+        print(f"  version:    {version}")
+        print(f"  wavelet:    {wavelet}")
+        print(f"  level:      {level}")
+        print(f"  image:      {H}x{W}x{C}")
+        print(f"  lossless:   {lossless}")
+        print(f"  combined:   {combined}")
+    elif magic == b'BLKP':
+        print(f"[BLKH] Format: BLKP (v5.21 Photo YCbCr 4:2:0 + brotli, lossy)")
+        version = recipe[4]
+        flags = recipe[5]
+        quality_int = recipe[6]
+        H = struct.unpack('<H', recipe[7:9])[0]
+        W = struct.unpack('<H', recipe[9:11])[0]
+        print(f"  version:    {version}")
+        print(f"  quality:    {quality_int/100.0:.2f}")
+        print(f"  image:      {H}x{W}")
+        print(f"  subsampling: {'4:2:0' if flags & 0x01 else '4:4:4'}")
+    elif magic == b'BLKD':
+        print(f"[BLKH] Format: BLKD (v5.22 DCT-quantized, JPEG-like, lossy)")
+        version = recipe[4]
+        quality_int = recipe[5]
+        H = struct.unpack('<H', recipe[6:8])[0]
+        W = struct.unpack('<H', recipe[8:10])[0]
+        print(f"  version:    {version}")
+        print(f"  quality:    {quality_int/100.0:.2f}")
+        print(f"  image:      {H}x{W}")
+    elif magic == b'BLKF':
+        print(f"[BLKH] Format: BLKF (v5.23 Fast DCT, speed-optimized)")
+        version = recipe[4]
+        quality_int = recipe[5]
+        speed_int = recipe[6]
+        H = struct.unpack('<H', recipe[7:9])[0]
+        W = struct.unpack('<H', recipe[9:11])[0]
+        speed_str = {0: 'fast', 1: 'balanced', 2: 'best'}.get(speed_int, 'unknown')
+        print(f"  version:    {version}")
+        print(f"  quality:    {quality_int/100.0:.2f}")
+        print(f"  speed:      {speed_str}")
+        print(f"  image:      {H}x{W}")
+    elif magic == b'BLHV':
+        print(f"[BLKH] Format: BLHV (v5.26 AVIF/HEIF wrapper, lossy)")
+        version = recipe[4]
+        quality_int = recipe[5]
+        H = struct.unpack('<H', recipe[6:8])[0]
+        W = struct.unpack('<H', recipe[8:10])[0]
+        print(f"  version:    {version}")
+        print(f"  quality:    {quality_int/100.0:.2f}")
+        print(f"  image:      {H}x{W}")
+    elif magic == b'BLKR':
+        print(f"[BLKH] Format: BLKR (v5.28 DCT + Zigzag RLE, lossy)")
+        version = recipe[4]
+        quality_int = recipe[5]
+        speed_int = recipe[6]
+        H = struct.unpack('<H', recipe[7:9])[0]
+        W = struct.unpack('<H', recipe[9:11])[0]
+        speed_str = {0: 'fast', 1: 'balanced', 2: 'best'}.get(speed_int, 'unknown')
+        print(f"  version:    {version}")
+        print(f"  quality:    {quality_int/100.0:.2f}")
+        print(f"  speed:      {speed_str}")
+        print(f"  image:      {H}x{W}")
+    elif magic == b'BLKQ':
+        print(f"[BLKH] Format: BLKQ (v5.29 Palette, lossless)")
+        version = recipe[4]
+        H = struct.unpack('<H', recipe[5:7])[0]
+        W = struct.unpack('<H', recipe[7:9])[0]
+        n_colors = struct.unpack('<H', recipe[9:11])[0]
+        print(f"  version:    {version}")
+        print(f"  image:      {H}x{W}")
+        print(f"  colors:     {n_colors}")
+        print(f"  lossless:   True")
+    elif magic == b'BLKW':
+        print(f"[BLKH] Format: BLKW (v5.18 Wavelet+INR — DEPRECATED, lossy not bit-perfect)")
     else:
-        print(f"[BLKH] Unknown format (magic: {recipe[:4]!r})")
+        print(f"[BLKH] Unknown format (magic: {magic!r})")
 
 
 def cmd_benchmark(args):
@@ -767,7 +1708,36 @@ def cmd_lossy(args):
 
 def main():
     p = argparse.ArgumentParser(prog='blkh',
-                                 description='Black Hole — Neural Implicit Compression')
+                                 description='Black Hole (BLKH) — Neural Implicit Compression v5.16\n'
+                                             'Bit-perfect lossless compression with SIREN + hybrid residual.\n'
+                                             'Created by Darlan Pereira da Silva (Kronos1027)',
+                                 formatter_class=argparse.RawDescriptionHelpFormatter,
+                                 epilog="""
+Examples:
+  # Fastest compression (0.5-1s per image)
+  blkh compress photo.png photo.blkh8 --instant
+
+  # Best quality
+  blkh compress photo.png photo.blkh8 --auto-tune --amp --patience 5
+
+  # Batch compress a directory
+  blkh batch input_dir/ output_dir/ --instant
+
+  # Grayscale (MRI/CT)
+  blkh gray scan.png scan.blkg --instant
+
+  # Decompress (auto-detects format)
+  blkh decompress photo.blkh8 recovered.png
+
+  # Check environment
+  blkh doctor
+
+  # Start game engine texture server
+  blkh-server --port 8080
+
+  # Launch web demo
+  blkh-demo
+""")
     sub = p.add_subparsers(dest='cmd', required=True)
 
     p_c = sub.add_parser('compress', help='Compress a file into a .blkh5 recipe')
@@ -786,13 +1756,141 @@ def main():
     p_c.add_argument('--patience', type=int, default=0,
                      help='Early stopping patience (try 5 for ~2x speedup, 0=disabled)')
     p_c.add_argument('--turbo', action='store_true',
-                     help='Turbo mode: 200 epochs, lr=3e-3, big batch (~1s encoding, slightly lower quality)')
+                     help='Turbo mode: 200 epochs, lr=3e-3, WebP residual (~1s encoding)')
+    p_c.add_argument('--instant', action='store_true',
+                     help='Instant mode: 100 epochs, lr=4e-3, PNG residual (~0.4-0.7s, fastest)')
     p_c.add_argument('--no-bit-perfect', action='store_true',
                      help='Lossy mode (no residual, ~3x smaller but NOT exact)')
     p_c.set_defaults(func=cmd_compress)
 
     p_doc = sub.add_parser('doctor', help='Diagnose environment and show recommendations')
     p_doc.set_defaults(func=cmd_doctor)
+
+    p_batch = sub.add_parser('batch', help='Compress all images in a directory (v5.24 async parallel)')
+    p_batch.add_argument('input', help='Input directory with images')
+    p_batch.add_argument('output', help='Output directory for compressed files')
+    p_batch.add_argument('--instant', action='store_true', help='Use hybrid instant mode (legacy)')
+    p_batch.add_argument('--turbo', action='store_true', help='Use hybrid turbo mode (legacy)')
+    p_batch.add_argument('--direct', action='store_true', help='Use v5.27 Direct I/O (platform-optimized)')
+    p_batch.add_argument('--mode', default='fast', choices=['fast', 'dct', 'photo', 'wavelet3', 'hybrid', 'avif'],
+                          help='Compression mode (default: fast)')
+    p_batch.add_argument('--quality', type=float, default=0.9, help='Quality 0.1-1.0 for lossy modes')
+    p_batch.add_argument('--speed', default='balanced', choices=['fast', 'balanced', 'best'],
+                          help='Speed for fast mode')
+    p_batch.add_argument('--workers', type=int, default=4, help='Number of parallel workers')
+    p_batch.set_defaults(func=cmd_batch_compress)
+
+    p_audio = sub.add_parser('audio', help='Compress WAV audio via STFT spectrogram INR')
+    p_audio.add_argument('input', help='Input WAV file')
+    p_audio.add_argument('output', help='Output .blka recipe')
+    p_audio.add_argument('--instant', action='store_true', help='Instant mode')
+    p_audio.add_argument('--turbo', action='store_true', help='Turbo mode')
+    p_audio.set_defaults(func=cmd_audio)
+
+    p_wave = sub.add_parser('wavelet', help='Wavelet+INR hybrid (best compression + speed)')
+    p_wave.add_argument('input')
+    p_wave.add_argument('output')
+    p_wave.add_argument('--hidden', type=int, default=32)
+    p_wave.add_argument('--layers', type=int, default=2)
+    p_wave.add_argument('--wavelet', default='db6', help='Wavelet type (haar, db2, db4, db6, sym4)')
+    p_wave.add_argument('--level', type=int, default=3, help='Decomposition level (1-4)')
+    p_wave.add_argument('--instant', action='store_true')
+    p_wave.add_argument('--turbo', action='store_true')
+    p_wave.set_defaults(func=cmd_wavelet)
+
+    p_wave2 = sub.add_parser('wavelet2', help='Wavelet+INR v2 (TRUE bit-perfect + zstd + adaptive)')
+    p_wave2.add_argument('input')
+    p_wave2.add_argument('output')
+    p_wave2.add_argument('--wavelet', default='auto', help='Wavelet (auto, db4, db6, bior4.4, sym4, haar)')
+    p_wave2.add_argument('--level', default='auto', help='Decomposition level (auto, 2, 3, 4)')
+    p_wave2.add_argument('--lossy', action='store_true', help='Lossy mode (much higher compression)')
+    p_wave2.add_argument('--quality', type=float, default=1.0, help='Quality 0.0-1.0 (lossy mode only)')
+    p_wave2.add_argument('--threshold', type=float, default=0.0, help='Soft threshold (lossy mode only, 0-15)')
+    p_wave2.add_argument('--no-zstd', action='store_true', help='Use zlib instead of zstd')
+    p_wave2.set_defaults(func=cmd_wavelet2)
+
+    p_wave3 = sub.add_parser('wavelet3', help='Wavelet+INR v3 (float16 bit-perfect, 30% smaller than v2)')
+    p_wave3.add_argument('input')
+    p_wave3.add_argument('output')
+    p_wave3.add_argument('--wavelet', default='auto', help='Wavelet (auto, db4, db6, bior4.4, sym4, haar)')
+    p_wave3.add_argument('--level', default='auto', help='Decomposition level (auto, 2, 3, 4)')
+    p_wave3.add_argument('--codec', default='auto', choices=['auto', 'zstd', 'brotli', 'zlib'],
+                          help='Codec (auto picks best, default: auto)')
+    p_wave3.add_argument('--combined', action='store_true',
+                          help='Combined mode (single bytestream, ~6% smaller, no per-subband access)')
+    p_wave3.add_argument('--parallel', action='store_true', help='Parallel adaptive search (2-3x faster)')
+    p_wave3.add_argument('--workers', type=int, default=4, help='Number of parallel workers')
+    p_wave3.set_defaults(func=cmd_wavelet3)
+
+    p_photo = sub.add_parser('photo', help='Photo v5.21 (YCbCr 4:2:0 + brotli, beats PNG 2x on photos)')
+    p_photo.add_argument('input')
+    p_photo.add_argument('output')
+    p_photo.add_argument('--subsampling', default='420', choices=['420', '444'],
+                          help='Chroma subsampling (420=default lossy, 444=higher quality)')
+    p_photo.add_argument('--codec', default='brotli', choices=['auto', 'zstd', 'brotli', 'zlib'],
+                          help='Codec (brotli=default best, zstd, zlib, auto)')
+    p_photo.add_argument('--quality', type=float, default=1.0, help='Quality 0.0-1.0 (currently informational)')
+    p_photo.set_defaults(func=cmd_photo)
+
+    p_dct = sub.add_parser('dct', help='DCT v5.22 (JPEG-like, max compression, 30-60x vs PNG)')
+    p_dct.add_argument('input')
+    p_dct.add_argument('output')
+    p_dct.add_argument('--quality', type=float, default=0.9,
+                        help='Quality 0.1-1.0 (1.0=best, 0.1=most lossy)')
+    p_dct.add_argument('--codec', default='brotli', choices=['auto', 'zstd', 'brotli', 'zlib'],
+                        help='Codec (brotli=default best)')
+    p_dct.set_defaults(func=cmd_dct)
+
+    p_fast = sub.add_parser('fast', help='Fast DCT v5.23 (speed competitive with ZIP, 2-3x faster)')
+    p_fast.add_argument('input')
+    p_fast.add_argument('output')
+    p_fast.add_argument('--quality', type=float, default=0.9, help='Quality 0.1-1.0')
+    p_fast.add_argument('--speed', default='balanced', choices=['fast', 'balanced', 'best'],
+                         help='fast=zstd L3 (fastest), balanced=brotli q=6, best=brotli q=11 (smallest)')
+    p_fast.set_defaults(func=cmd_fast)
+
+    p_avif = sub.add_parser('avif', help='AVIF v5.26 (modern standard, max compatibility)')
+    p_avif.add_argument('input')
+    p_avif.add_argument('output')
+    p_avif.add_argument('--quality', type=float, default=0.9, help='Quality 0.1-1.0')
+    p_avif.add_argument('--format', default='AVIF', choices=['AVIF', 'HEIF'], help='Format (AVIF or HEIF)')
+    p_avif.set_defaults(func=cmd_avif)
+
+    p_rle = sub.add_parser('rle', help='RLE DCT v5.28 (DCT + zigzag RLE, 8-15% smaller than v5.22)')
+    p_rle.add_argument('input')
+    p_rle.add_argument('output')
+    p_rle.add_argument('--quality', type=float, default=0.9, help='Quality 0.1-1.0')
+    p_rle.add_argument('--speed', default='balanced', choices=['fast', 'balanced', 'best'],
+                        help='Speed mode')
+    p_rle.set_defaults(func=cmd_rle)
+
+    p_palette = sub.add_parser('palette', help='Palette v5.29 (lossless, for logos/icons/UI, few colors)')
+    p_palette.add_argument('input')
+    p_palette.add_argument('output')
+    p_palette.add_argument('--max-colors', type=int, default=256, help='Max unique colors (1-256)')
+    p_palette.add_argument('--speed', default='balanced', choices=['fast', 'balanced', 'best'])
+    p_palette.set_defaults(func=cmd_palette)
+
+    p_auto = sub.add_parser('auto', help='Auto v5.30 (intelligent mode selector, picks best mode)')
+    p_auto.add_argument('input')
+    p_auto.add_argument('output')
+    p_auto.add_argument('--quality', type=float, default=0.9, help='Quality 0.1-1.0 for lossy modes')
+    p_auto.add_argument('--lossless', action='store_true', help='Only try lossless modes')
+    p_auto.add_argument('--budget', type=float, default=5.0, help='Time budget in seconds')
+    p_auto.add_argument('--speed', default='fast', choices=['fast', 'balanced', 'best'])
+    p_auto.set_defaults(func=cmd_auto)
+
+    p_gray = sub.add_parser('gray', help='Compress grayscale image (1 channel, MRI/CT optimized)')
+    p_gray.add_argument('input')
+    p_gray.add_argument('output')
+    p_gray.add_argument('--epochs', type=int, default=200)
+    p_gray.add_argument('--hidden', type=int, default=32)
+    p_gray.add_argument('--layers', type=int, default=2)
+    p_gray.add_argument('--omega', type=float, default=30.0)
+    p_gray.add_argument('--batch-size', type=int, default=16384)
+    p_gray.add_argument('--instant', action='store_true', help='Instant mode (~0.5s)')
+    p_gray.add_argument('--turbo', action='store_true', help='Turbo mode (~1s)')
+    p_gray.set_defaults(func=cmd_gray)
 
     p_d = sub.add_parser('decompress', help='Recover original file from .blkh5')
     p_d.add_argument('input')

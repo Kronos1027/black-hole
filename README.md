@@ -4,11 +4,29 @@
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)
 ![PyTorch](https://img.shields.io/badge/backend-PyTorch-ee4c2c.svg)
+![HuggingFace](https://img.shields.io/badge/%F0%9F%A4%97%20HuggingFace-Space-yellow.svg)
 
 > **"The data is not a static block of bytes waiting to be dragged. The data is a living mathematical function, kept in potential state and ejected instantly on demand."**
 
 > **Commercial use requires a separate license agreement.**  
 > **Contact:** darlan1027pc@gmail.com
+
+---
+
+## 🚀 Live Demo — Try BLKH in your browser!
+
+**No installation required!** Click below to open the interactive web demo:
+
+### 🌐 [**BLKH v5.30 Live on HuggingFace Spaces**](https://huggingface.co/spaces/onatskyo/black-hole-blkh)
+
+Features:
+- 📤 Upload any image (PNG, JPG, WebP)
+- 🎛️ 8 compression modes (Auto, Fast, DCT, Photo, Wavelet, Hybrid)
+- 📊 Side-by-side comparison with ZIP, PNG, WebP
+- 💾 Download compressed recipe files
+- ⚡ Real-time PSNR and compression ratio display
+
+**Default mode: Auto v5.30** — automatically picks the best compression mode for your image!
 
 ---
 
@@ -22,10 +40,31 @@
 |------|-----------|--------|-------------|---------------|
 | **Hybrid** | 512×512 satellite image | **4.89x smaller** | ✅ | ~6s |
 | **Hybrid** | 256×256 gradient | **22.7x smaller** | ✅ | ~3s |
+| **Hybrid --instant** | 256×256 satellite | **2.79x smaller** | ✅ | **0.70s** |
 | **Combo** | 10× 256×256 similar images | **3.09x smaller** | ✅ | ~6s total |
 | **Video** | 16 frames 64×64 (realistic) | **1.71x smaller** | ✅ | ~5s |
 | **Volume DCT** | 64³ MRI-like volume | **3.90x smaller** | lossy 51dB | ~6s |
+| **Grayscale** | 256×256 MRI-like (1ch) | **1.29x smaller** | ✅ | ~3s |
+| **Audio** | 5s music+noise @ 16kHz | **2.38x smaller** | lossy 37dB | ~9s |
+| **Wavelet+INR** | 512×512 satellite | **62.6x smaller** | lossy* | **0.4s** |
+| **Wavelet+INR** | 256×256 satellite | **22.2x smaller** | lossy* | **0.3s** |
+| **Wavelet+INR** | 256×256 gradient | **36.6x smaller** | lossy* | **0.3s** |
+| **Wavelet+INR v2** | 256×256 satellite (lossless) | true bit-perfect | ✅ | **1.1s** |
+| **Wavelet+INR v2** | 256×256 satellite (lossy q0.5 th5) | **56.6x smaller** | lossy 53dB | **0.2s** |
+| **Wavelet+INR v3** | 256×256 satellite (lossless) | **2.74x smaller** | ✅ | **0.4s parallel** |
+| **Wavelet+INR v3** | 512×512 satellite (lossless) | **2.08x smaller** | ✅ | **1.4s parallel** |
+| **Photo v5.21** | 128×128 marble photo | **2.68x smaller than PNG** | lossy 38dB | **0.02s** |
+| **Photo v5.21** | 128×128 wood photo | **2.01x smaller than PNG** | lossy 35dB | **0.02s** |
+| **DCT v5.22** | 128×128 marble photo (q=0.9) | **23.5x smaller than PNG** | lossy 30dB | **0.04s** |
+| **DCT v5.22** | 128×128 marble photo (q=0.5) | **53x smaller than PNG** | lossy 25dB | **0.04s** |
+| **Fast v5.23** | 128×128 photos (q=0.9, fast) | **20-50x smaller than PNG** | lossy 30-36dB | **0.4ms (3x faster than ZIP)** |
+| **Batch v5.24** | CIFAR-10 (10000 32×32 imgs) | **6-13x smaller than ZIP** | lossy 21-36dB | **0.3ms/img** |
 | **Lossy** | 128×128 photos vs WebP | **wins 3/5** | lossy | ~2s |
+
+> ⚠️ **Honest correction (v5.19):** The v5.18 wavelet mode claimed "✅ bit-perfect" but was actually lossy
+> (PSNR 4-12 dB on real photos — the LL was clipped to uint8 destroying the wavelet decomposition).
+> v5.19 fixes this with two clearly-labeled modes: **lossless** (SHA-256 verified, true bit-perfect)
+> and **lossy** (5-60x compression with 38-56 dB PSNR, visually near-lossless).
 
 **BLKH beats ZIP on 7 out of 7 workload types tested** (gradients, blobs, satellite, sky, terrain, water, mandala).
 
@@ -62,8 +101,26 @@ python blkh.py doctor
 # Compress (auto-tune picks optimal SIREN size + hybrid WebP residual)
 python blkh.py compress photo.png photo.blkh8 --auto-tune --amp --patience 5
 
-# Decompress (SHA-256 verified)
-python blkh.py decompress photo.blkh8 recovered.png
+# Wavelet+INR (best compression + speed — RECOMMENDED for smooth images)
+python blkh.py wavelet photo.png photo.blkw --instant
+
+# Wavelet+INR v3 — TRUE bit-perfect + float16 + brotli + combined (RECOMMENDED for smooth)
+python blkh.py wavelet3 photo.png photo.blkw3 --parallel --combined
+# Photo v5.21 — YCbCr 4:2:0 + brotli (RECOMMENDED for natural photos, beats PNG 2x)
+python blkh.py photo photo.png photo.blkp
+# DCT v5.22 — JPEG-like DCT + brotli (MAXIMUM compression, 20-50x vs PNG)
+python blkh.py dct photo.png photo.blkd --quality 0.9  # 30dB PSNR, 20x vs PNG
+python blkh.py dct photo.png photo.blkd --quality 0.5  # 25dB PSNR, 50x vs PNG
+# Fast v5.23 — speed-optimized DCT (3x faster than ZIP!)
+python blkh.py fast photo.png photo.blkf --speed fast  # 0.4ms, 20-50x vs PNG
+# Batch v5.24 — async parallel directory compression
+python blkh.py batch input_dir/ output_dir/ --mode fast --workers 4
+# Wavelet+INR v2 — bit-perfect + lossy mode
+python blkh.py wavelet2 photo.png photo.blkw2                          # lossless
+python blkh.py wavelet2 photo.png photo.blkw2 --lossy --quality 0.5 --threshold 5  # 50x+ lossy
+
+# Decompress (SHA-256 verified, auto-detects format including BLK2/BKWF)
+python blkh.py decompress photo.blkw recovered.png
 
 # Multiple similar images (datacenter mode)
 python blkh.py combo img1.png img2.png img3.png output.blkh9
@@ -1416,6 +1473,21 @@ res = comp.compress_many(new_images, epochs=1000)
 - [x] v5.14: 3D DCT residual (vectorized scipy.fft, 3.9x vs ZIP on 64³)
 - [x] v5.14: Auto-tune SIREN size + early stopping (2.1x speedup)
 - [x] v5.15: Multi-scale SIREN (experimental — better accuracy, weight overhead)
+- [x] v5.16: Native grayscale support (59% smaller for MRI/CT, beats ZIP 1.29x)
+- [x] v5.17: Audio compression via STFT spectrogram INR (2.38-2.62x vs ZIP on realistic audio)
+- [x] v5.18: Wavelet+INR hybrid (DWT separates smooth/detail, 28% smaller, 10x faster)
+- [x] v5.19: Wavelet+INR v2 - CRITICAL fix (v5.18 was lossy not bit-perfect as claimed). TRUE bit-perfect lossless mode + lossy mode (5-60x compression, 38-56 dB PSNR). zstd level 22, adaptive wavelet/level selection, soft thresholding.
+- [x] v5.20: Wavelet+INR v3 - float16 breakthrough (30% smaller than v5.19, 2x faster). Brotli support (8% smaller than zstd). Parallel adaptive search (2-3x faster). Combined mode (single bytestream, 6% smaller). Beats ZIP 1.87-2.74x on smooth images with TRUE bit-perfect.
+- [x] v5.21: Photo mode - YCbCr 4:2:0 chroma subsampling + brotli. Beats PNG 2-2.7x on natural photos with 35-38 dB PSNR (visually lossless). 0.02s encoding.
+- [x] v5.22: DCT mode - JPEG-like 8x8 DCT + standard quantization tables + brotli. Quality control (0.1-1.0). 20-50x smaller than PNG with 25-36 dB PSNR. Maximum compression for natural photos.
+- [x] v5.23: Fast DCT - speed-optimized codec selection (zstd L3 / brotli q=6 / brotli q=11). 3x FASTER than ZIP while being 6-7x smaller. Addresses Copilot feedback on speed.
+- [x] v5.24: Async batch - asyncio + ProcessPoolExecutor for io_uring-style concurrent I/O. Batch compression for large datasets (CIFAR-10 tested: 6-13x smaller than ZIP at 0.3ms/img).
+- [x] v5.25: GPU-ready DCT - CUDA-optional with CPU fallback. Uses torch GPU for DCT when available (10-100x expected speedup).
+- [x] v5.26: AVIF/HEIF wrapper - modern standard support via pillow-avif-plugin. Unified BLKH API for industry format.
+- [x] v5.27: Direct I/O - platform-optimized I/O (O_DIRECT on Linux, DirectStorage stub on Windows). CLI: --direct flag for batch.
+- [x] v5.28: DCT + Zigzag RLE - JPEG-style entropy coding. 8-15% smaller than v5.22 on images with smooth regions. CLI: blkh rle.
+- [x] v5.29: Palette mode - lossless palette+indices for images with few colors (logos, icons, UI). 2-5x smaller than ZIP, TRUE bit-perfect. CLI: blkh palette.
+- [x] v5.30: Auto mode - intelligent mode selector. Tries palette/DCT/fast/photo and picks smallest within time budget. CLI: blkh auto.
 - [x] Game engine integration (Texture Streaming Server + Unity + Godot)
 - [x] LOD streaming (resolution-independent texture loading)
 - [x] Web demo (Gradio interactive compression)

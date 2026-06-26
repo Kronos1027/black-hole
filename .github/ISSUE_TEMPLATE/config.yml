@@ -1,0 +1,14 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 🌐 Try BLKH Live Demo
+    url: https://huggingface.co/spaces/onatskyo/black-hole-blkh
+    about: Try BLKH v5.30 in your browser — no installation required!
+  - name: 📖 Read the Documentation
+    url: https://github.com/Kronos1027/black-hole#readme
+    about: Read the full README with all features and modes explained
+  - name: 💬 Start a Discussion
+    url: https://github.com/Kronos1027/black-hole/discussions
+    about: Ask questions, share ideas, or discuss BLKH with the community
+  - name: 📧 Contact Author
+    url: mailto:darlan1027pc@gmail.com
+    about: Contact Darlan Pereira da Silva directly for commercial licensing
