@@ -1,0 +1,42 @@
+{
+  "experiment": "phase1_scaling",
+  "date": "2026-06-25",
+  "results": [
+    {
+      "n_images": 5,
+      "baseline_size": 43134,
+      "bhuh_size": 21269,
+      "improvement": 2.0280220038553765,
+      "zip_size": 151985,
+      "baseline_time": 6.1734325885772705,
+      "bhuh_time": 2.715567111968994
+    },
+    {
+      "n_images": 10,
+      "baseline_size": 86265,
+      "bhuh_size": 21568,
+      "improvement": 3.9996754451038576,
+      "zip_size": 300333,
+      "baseline_time": 7.059998273849487,
+      "bhuh_time": 5.572165012359619
+    },
+    {
+      "n_images": 20,
+      "baseline_size": 172453,
+      "bhuh_size": 22213,
+      "improvement": 7.763606896862198,
+      "zip_size": 603126,
+      "baseline_time": 2.523345470428467,
+      "bhuh_time": 10.835841417312622
+    },
+    {
+      "n_images": 50,
+      "baseline_size": 431042,
+      "bhuh_size": 24044,
+      "improvement": 17.927216769256365,
+      "zip_size": 1509442,
+      "baseline_time": 6.250696659088135,
+      "bhuh_time": 23.516550540924072
+    }
+  ]
+}
