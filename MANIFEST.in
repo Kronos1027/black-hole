@@ -1,0 +1,46 @@
+# MANIFEST.in — Include extra files in PyPI package
+# ================================================
+
+# License
+include LICENSE
+
+# Documentation
+include README.md
+include CONTRIBUTING.md
+include HUGGINGFACE_GUIA.md
+include AUDITORIA.md
+include AUTHORS.md
+include CITATION.cff
+
+# Config files
+include requirements.txt
+include blackhole.toml
+include pyproject.toml
+
+# Research documentation (not code, just docs)
+recursive-include research/universe/docs *.md
+recursive-include research/universe *.md
+
+# Test data
+recursive-include tests *.json
+recursive-include tests *.py
+recursive-include tests *.raw
+recursive-include tests *.bin
+recursive-include tests *.txt
+
+# Sample photos
+recursive-include docs/assets/sample_photos *.png
+
+# Game engine textures
+recursive-include game_engine *.blkh8
+
+# Exclude unnecessary files
+global-exclude __pycache__
+global-exclude *.pyc
+global-exclude *.pyo
+global-exclude .git
+global-exclude .gitignore
+global-exclude .DS_Store
+global-exclude *.egg-info
+global-exclude dist
+global-exclude build

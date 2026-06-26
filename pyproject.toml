@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "blackhole-blkh"
 version = "5.30.0"
-description = "Black Hole (BLKH) — Bit-Perfect Neural Implicit Compression with SIREN"
+description = "Black Hole (BLKH) — Neural Implicit Compression with SIREN, DCT, Wavelet, AVIF"
 readme = "README.md"
 license = {text = "MIT"}
 authors = [
@@ -25,19 +25,25 @@ dependencies = [
 keywords = [
     "compression", "neural compression", "SIREN", "INR",
     "implicit neural representations", "lossless", "image compression",
-    "data compression", "MRI", "medical imaging",
+    "data compression", "MRI", "medical imaging", "DCT", "wavelet",
+    "AVIF", "JPEG", "PNG", "WebP", "bit-perfect", "lossy",
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Science/Research",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Scientific/Engineering :: Image Processing",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Topic :: System :: Archiving :: Compression",
+    "Topic :: Multimedia :: Graphics",
+    "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 
 [project.optional-dependencies]
@@ -47,6 +53,12 @@ dev = [
     "matplotlib>=3.7.0",
     "tqdm>=4.65.0",
     "gradio>=4.0.0",
+    "build>=1.0.0",
+    "twine>=4.0.0",
+]
+web-demo = [
+    "gradio>=4.0.0",
+    "pillow-avif-plugin>=1.0.0",
 ]
 game-engine = [
     "gradio>=4.0.0",
@@ -62,6 +74,8 @@ Homepage = "https://github.com/Kronos1027/black-hole"
 Repository = "https://github.com/Kronos1027/black-hole"
 Documentation = "https://github.com/Kronos1027/black-hole#readme"
 "Bug Tracker" = "https://github.com/Kronos1027/black-hole/issues"
+"Live Demo" = "https://huggingface.co/spaces/onatskyo/black-hole-blkh"
+"Research" = "https://github.com/Kronos1027/black-hole/tree/main/research/universe"
 
 [tool.setuptools]
 py-modules = ["blkh", "blkh_web_demo"]
