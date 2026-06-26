@@ -71,7 +71,40 @@ Each experiment entry follows:
 
 ## Phase 2: Universal Hypernetwork
 
-(No experiments yet — planned for Q4 2026)
+### Experiment: P2.001 — Universal Hypernetwork (Text + Audio + Binary)
+- **Date**: 2026-06-25
+- **Phase**: 2
+- **Status**: ✅ Complete
+- **Hypothesis**: Shared roots principle generalizes to text, audio, and binary
+- **Method**:
+  1. Generate 20 synthetic text files (log-like, ~400B each)
+  2. Generate 20 synthetic audio files (0.5s @ 8kHz, tones with harmonics)
+  3. Generate 20 synthetic binary files (512B structured patterns)
+  4. Train multi-file INR for each type with FiLM modulation
+  5. Compare with zlib compression
+- **Results**:
+
+| Type | Raw | ZIP | BHUH | vs ZIP | Status |
+|------|-----|-----|------|--------|--------|
+| Text | 7,634B | 4,371B | 29,327B | 0.15x | ❌ BHUH loses |
+| Audio | 160,000B | 113,086B | 13,718B | **8.24x** | ✅ BHUH wins! |
+| Binary | 10,240B | 3,466B | 44,971B | 0.08x | ❌ BHUH loses |
+
+- **Conclusions**:
+  1. ✅ **Audio**: BHUH works great (8.24x vs ZIP)! Tones are smooth signals, perfect for SIREN
+  2. ❌ **Text**: BHUH loses (0.15x). Text is discrete/high-entropy, SIREN struggles with cross-entropy on 128 classes
+  3. ❌ **Binary**: BHUH loses badly (0.08x). Binary patterns are too short (512B) — network overhead dominates
+- **Key insight**: BHUH works best for **continuous/smooth** signals (audio, images). For **discrete/short** data (text, binary), traditional compressors are better. This validates the "Hybridism" principle — need symbolic fallback for discrete data.
+- **Next steps**:
+  - Text: Use LLM program synthesis (Phase 3) instead of neural INR
+  - Binary: Use traditional compression for short files, BHUH only for large structured data
+  - Audio: Optimize further — try longer clips, more files
+
+### Phase 2 Validated Principle: Hybridism
+The experiment confirms Principle 5 (Hybridism): no single approach works for everything.
+- Neural INR: best for smooth/continuous (audio, images)
+- Symbolic: needed for discrete (text, code)
+- Traditional: best for short/high-entropy (binary, encrypted)
 
 ---
 
