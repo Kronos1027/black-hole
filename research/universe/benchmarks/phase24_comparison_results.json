@@ -1,0 +1,67 @@
+[
+  {
+    "name": "marble_128.png",
+    "original": 49152,
+    "zip": 31174,
+    "png": 27097,
+    "jpeg": 3057,
+    "webp": 1300,
+    "dct": 1153,
+    "fast": 1692,
+    "rle": 1108,
+    "photo": 10129,
+    "avif": 2917
+  },
+  {
+    "name": "skin_128.png",
+    "original": 49152,
+    "zip": 38726,
+    "png": 30699,
+    "jpeg": 2394,
+    "webp": 1450,
+    "dct": 336,
+    "fast": 464,
+    "rle": 285,
+    "photo": 13357,
+    "avif": 4055
+  },
+  {
+    "name": "sky_128.png",
+    "original": 49152,
+    "zip": 36237,
+    "png": 25507,
+    "jpeg": 1657,
+    "webp": 428,
+    "dct": 418,
+    "fast": 529,
+    "rle": 408,
+    "photo": 10746,
+    "avif": 1503
+  },
+  {
+    "name": "water_128.png",
+    "original": 49152,
+    "zip": 45317,
+    "png": 30459,
+    "jpeg": 3295,
+    "webp": 1902,
+    "dct": 973,
+    "fast": 1403,
+    "rle": 886,
+    "photo": 13009,
+    "avif": 4641
+  },
+  {
+    "name": "wood_128.png",
+    "original": 49152,
+    "zip": 43074,
+    "png": 28265,
+    "jpeg": 2346,
+    "webp": 854,
+    "dct": 509,
+    "fast": 668,
+    "rle": 495,
+    "photo": 11988,
+    "avif": 2888
+  }
+]
