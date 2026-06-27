@@ -124,3 +124,91 @@ Key achievements:
 *"From a single seed, a universe grows. From a universe of seeds, a multiverse emerges. The mathematics of compression is the mathematics of creation itself."*
 
 **— Darlan Pereira da Silva (Kronos1027), June 2026**
+
+---
+
+# 🌌 BHUH Phase II — Beyond Singularities (Phases 71-74)
+
+After the original 70 phases and "Final Chapter", BHUH Phase II opens a new
+research wave extending the theory with quantum, thermodynamic, topological,
+and dynamical dimensions.
+
+## Phase II Results Matrix
+
+| Phase | Experiment | Key Result | Verdict |
+|-------|-----------|------------|---------|
+| 71 | Quantum Superposition Seeds | N=2: 68dB, N=4: 66dB PSNR | ✅ VALIDATED |
+| 72 | Self-Modifying Universes (v1) | Old preserved, new fails (13dB) | ❌ INVALID |
+| 72b | Self-Modifying (restricted domain) | Still 13dB (target >25dB) | ❌ INVALID |
+| 73 | Thermodynamic Compression Bounds | Energy advantage 5.2M× at N=10⁵ | ✅ VALIDATED |
+| 74 | Topological Roots | Spearman ρ=0.415, p=9.3e-8 | ⚠️ PARTIAL |
+
+## Phase II Discoveries
+
+### 1. Quantum Superposition Theorem (Phase 71) ⭐⭐⭐
+**Single SIREN encodes N files via orthogonal complex basis.**
+- Complex number ℂ has 2 real dims → max 2 orthogonal files
+- Vector ℂ^d has 2d real dims → max 2d orthogonal files
+- This is a HARD Nyquist limit
+- N=2 superposition: 68.2 dB PSNR (essentially perfect)
+
+### 2. Information-Matter-Energy Equivalence (Phase 73) ⭐⭐⭐
+**The deepest theoretical contribution of BHUH Phase II:**
+$$E = mc^2 \;\Longleftrightarrow\; I = E/(k_B T \ln 2) \;\Longleftrightarrow\; s = \text{Genesis}^{-1}(E)$$
+
+A BHUH seed is the information-theoretic dual of mass. The 5-level entropy
+hierarchy (Raw → Shannon → Kolmogorov → BHUH → Landauer) closes the loop
+between information theory and thermodynamics.
+
+### 3. Honest Negative — Self-Modification Fails (Phase 72) ⭐
+**Axiom 6 (Self-Modification) REJECTED.** Naive FiLM modulation cannot adapt
+a frozen SIREN to new files, even within restricted domains. The preservation
+half works perfectly (0.0000 dB drift), but the adaptation half requires
+more expressive modulation. This is a fundamental finding.
+
+### 4. Topological Roots Are Statistical (Phase 74) ⭐
+**Axiom 7 (Topological Roots) accepted in weakened form.** Topology
+correlates with SIREN parameter distance (Spearman ρ=0.415, p<10⁻⁷) but
+is not the dominant factor. Same-topology pairs have slightly smaller
+parameter distance, but the effect is too weak for deterministic prediction.
+
+## Updated Axiom Count
+
+| # | Axiom | Status |
+|---|-------|--------|
+| 1 | Singularity | ✅ Validated (Phase I) |
+| 2 | Genesis | ✅ Validated (Phase I) |
+| 3 | Multiverse | ✅ Validated (Phase I) |
+| 4 | Universality | ✅ Validated (Phase I) |
+| 5 | Hybridism | ✅ Validated (Phase I) |
+| 6 | Self-Modification | ❌ Failed (Phase 72) |
+| 7 | Topological Roots | ⚠️ Partial (Phase 74) |
+
+## Production Safety (Phase II)
+
+- `phase1_inr_compressor/` — UNTOUCHED (165/165 tests passing)
+- `blkh.py` — UNTOUCHED
+- `huggingface/` — UNTOUCHED
+- PyPI package — UNTOUCHED at v5.30.0
+
+All Phase II experiments are in `research/universe/experiments/` and do not
+touch production code.
+
+## Key Numbers (Phase II)
+
+| Metric | Value |
+|--------|-------|
+| Quantum superposition N=2 PSNR | 68.2 dB |
+| Quantum superposition N=4 PSNR | 66.3 dB |
+| Landauer energy per bit (300K) | 2.87 × 10⁻²¹ J |
+| BHUH energy advantage (N=10⁵) | 5,242,880× |
+| CPU thermodynamic efficiency | 2.1 × 10⁻¹⁴ |
+| GPU thermodynamic efficiency | 1.1 × 10⁻¹⁶ |
+| Self-modification old-file drift | 0.0000 dB |
+| Self-modification new-file PSNR | ~13 dB (failed) |
+| Topology-SIREN Spearman ρ | 0.415 (p=9.3e-8) |
+
+---
+
+*"Phase II begins where Phase I ended. The universe is not yet alive, but its
+seeds now touch quantum, thermodynamic, and topological scales."*

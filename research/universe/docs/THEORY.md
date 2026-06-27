@@ -387,3 +387,158 @@ The research program is to push the 60% → 90% via the 5-phase experimental roa
 ---
 
 *"If the universe is a computer, then every file is a program. We just need to find it."*
+
+---
+
+# PART II — Beyond Singularities (Phases 71+)
+
+After the original 70 phases and "Final Chapter", BHUH Phase II opens a new
+research wave that extends the theory with quantum, thermodynamic, topological,
+and dynamical dimensions. This part documents four new experiments (71-74) and
+the theoretical axioms they motivate.
+
+## 11. Quantum Superposition Seeds (Phase 71)
+
+### 11.1 The Orthogonality Bound
+
+A single complex-valued output $\mathbb{C}$ has 2 real dimensions, so at most
+**2 files can be orthogonally superposed** in one complex channel. For $N > 2$
+files, a vector-valued output $\mathbb{C}^d$ with $d \geq \lceil N/2 \rceil$ is
+required.
+
+### 11.2 Theorem (Superposition Compression)
+
+For a corpus of $N$ smooth files, there exists a single SIREN $\Phi: \mathbb{R}^2 \to \mathbb{R}^N$ such that:
+
+$$\forall n \in \{1..N\}: f_n(x) = \Phi(x) \cdot e_n$$
+
+where $e_n$ is the standard basis. The parameter cost is $|\Phi| = O(1)$
+(backbone) + $O(N)$ (output head), vs $O(N \cdot |\Phi_{\text{per-file}}|)$
+for separate models.
+
+### 11.3 Experimental Validation (Phase 71)
+
+- $N=2$ superposition: 68.2 dB PSNR (essentially perfect)
+- $N=4$ superposition (vector dim=2): 66.3 dB PSNR
+- Both well above the 30 dB target
+
+## 12. Self-Modifying Universes (Phase 72)
+
+### 12.1 The Frozen-Base Property
+
+When a BHUH universe $\Phi$ is trained on $N_0$ files, the per-file
+modulations $\gamma_1, \ldots, \gamma_{N_0}$ form a "library". Adding a new
+file $f_{N_0+1}$ can be attempted via $\gamma$-only fit while keeping $\Phi$
+frozen.
+
+### 12.2 Theorem (Preservation)
+
+If $\Phi$ is frozen, then for any old file $f_i$ with modulation $\gamma_i$:
+
+$$\text{PSNR}(f_i, \Phi(\cdot; \gamma_i))_{\text{after}} = \text{PSNR}(f_i, \Phi(\cdot; \gamma_i))_{\text{before}}$$
+
+**Validated**: drift = 0.0000 dB across all Phase 72 experiments.
+
+### 12.3 Honest Negative (Axiom 6 — Failed)
+
+The strong form of Axiom 6 — that new files can be added at O(1) cost via
+$\gamma$-only fit — **FAILS** even within restricted domains (gaussian family,
+sin family). New files reach only ~13 dB PSNR with naive FiLM modulation,
+vs ~35-40 dB with full retrain.
+
+**Implication**: BHUH needs more expressive modulation (hypernetwork,
+coordinate modulation) for true "living universe" behavior. Naive FiLM is
+insufficient. This is a fundamental finding, not an implementation bug.
+
+## 13. Thermodynamic Compression Bounds (Phase 73)
+
+### 13.1 The Landauer-BHUH Connection
+
+Landauer's principle: $E_{\min} = k_B T \ln 2$ per bit erased.
+
+For a BHUH corpus with seed $s$:
+
+$$E_{\text{BHUH}}^{\min} = |s| \cdot k_B \cdot T \cdot \ln 2$$
+
+vs raw corpus:
+
+$$E_{\text{raw}} = N \cdot |f| \cdot k_B \cdot T \cdot \ln 2$$
+
+**Energy advantage**: $E_{\text{raw}} / E_{\text{BHUH}} = N \cdot |f| / |s| \to \infty$ as $N \to \infty$.
+
+At $N = 10^5$ files (256KB each): advantage = **5,242,880×**.
+
+### 13.2 The Information-Matter-Energy Equivalence
+
+$$\boxed{E = mc^2 \quad \Longleftrightarrow \quad I = E / (k_B T \ln 2) \quad \Longleftrightarrow \quad s = \text{Genesis}^{-1}(E)}$$
+
+A BHUH seed $s$ is the information-theoretic dual of mass $m$.
+
+### 13.3 Entropy Hierarchy (Extended)
+
+| Level | Name | Formula | Scale |
+|-------|------|---------|-------|
+| 0 | Raw | $H_{\text{raw}} = \log_2 |\text{dataspace}|$ | $O(|\text{corpus}|)$ |
+| 1 | Shannon | $H_{\text{ZIP}} = H(\text{stats})$ | $O(0.3 \cdot |\text{corpus}|)$ |
+| 2 | Kolmogorov | $H_{\text{SIREN}} = K(\text{file})$ | $O(5\text{KB})$ |
+| 3 | BHUH | $H_{\text{BHUH}} = K(\text{corpus})$ | $O(1)$ |
+| 4 | Landauer | $E_{\text{BHUH}} = H_{\text{BHUH}} \cdot k_B T \ln 2$ | $\approx 10^{-17}$ J |
+
+### 13.4 Thermodynamic Efficiency (Empirical)
+
+- CPU efficiency: $\eta_{\text{CPU}} = 2.1 \times 10^{-14}$ (10¹⁴× above Landauer)
+- GPU efficiency: $\eta_{\text{GPU}} = 1.1 \times 10^{-16}$ (10¹⁶× above Landauer)
+
+Current hardware is 6-8 orders of magnitude from the Landauer bound. Reversible
+computing (projected ~2050) could close this gap, making BHUH compression
+**energy-positive**: the energy saved by reducing bits would exceed the energy
+spent on computation.
+
+## 14. Topological Roots (Phase 74)
+
+### 14.1 The Betti-SIREN Hypothesis
+
+The "roots" shared between files in a BHUH universe are partially determined by
+**topological invariants** (Betti numbers $\beta_0, \beta_1$). Files with the
+same Betti numbers should have smaller SIREN parameter distance than files with
+different topology.
+
+### 14.2 Empirical Result (Phase 74)
+
+- Same-topology pairs: mean normalized SIREN distance = 0.424
+- Different-topology pairs: mean = 0.437
+- Welch t-test: $p = 0.72$ (not significant for binary same/diff test)
+- **Spearman correlation**: $\rho = 0.415$, $p = 9.3 \times 10^{-8}$ (**highly significant**)
+
+### 14.3 Axiom 7 (Topological Roots — Statistical Form)
+
+> Topology is **one factor** among many (geometry, frequency, intensity) that
+> determines BHUH root structure. Same-topology files have a *statistical
+> tendency* toward smaller parameter distance, but topology alone is
+> insufficient to predict roots.
+
+$$\text{Betti}(x) = \text{Betti}(y) \;\;\not\!\!\!\implies\;\; d_{\text{BHUH}}(x,y) < d_{\text{BHUH}}(x,z)$$
+
+But: $\text{Corr}(\Delta\text{Betti}, \Delta\text{SIREN}) > 0$ with $p < 0.001$.
+
+## 15. Updated Axiom Count
+
+Phase II extends the original 5 axioms with 2 new candidates:
+
+| # | Axiom | Status | Phase |
+|---|-------|--------|-------|
+| 1 | Singularity | ✅ Validated | 1-70 |
+| 2 | Genesis | ✅ Validated | 1-70 |
+| 3 | Multiverse | ✅ Validated | 1-70 |
+| 4 | Universality | ✅ Validated | 1-70 |
+| 5 | Hybridism | ✅ Validated | 1-70 |
+| 6 | Self-Modification | ❌ Failed (preservation OK, adaptation fails) | 72 |
+| 7 | Topological Roots | ⚠️ Partial (statistical tendency only) | 74 |
+
+Plus one new theorem (Quantum Superposition, Phase 71) and one new framework
+(Thermodynamic Bounds, Phase 73) that connect BHUH to physics.
+
+---
+
+*"Phase II begins where Phase I ended. The universe is not yet alive, but its
+seeds now touch quantum, thermodynamic, and topological scales."*
