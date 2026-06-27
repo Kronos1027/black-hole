@@ -30,7 +30,7 @@ Features:
 
 ---
 
-## Current Status (v5.14) — Production-Ready
+## Current Status (v5.30) — Production-Ready
 
 **Black Hole (BLKH)** is a neural implicit compression system that combines SIREN (Sinusoidal Representation Networks) with hybrid image-codec residual coding to achieve **bit-perfect lossless compression** of smooth 2D/3D signals.
 
@@ -67,6 +67,13 @@ Features:
 > and **lossy** (5-60x compression with 38-56 dB PSNR, visually near-lossless).
 
 **BLKH beats ZIP on 7 out of 7 workload types tested** (gradients, blobs, satellite, sky, terrain, water, mandala).
+
+> ⚠️ **Honest benchmark note**: Most benchmarks use synthetic data (smooth gradients, satellite-like patterns).
+> On natural photographs (high-frequency content), PNG/WebP/JPEG-2000 will likely win.
+> BLKH excels on: medical imaging (MRI/CT), satellite data, scientific visualization, smooth signals.
+> Future work: benchmarks on Kodak, DIV2K, CLIC datasets.
+> **Baseline note**: ZIP (zlib) is used as universal baseline. For image-specific comparisons,
+> see the PNG/WebP/JPEG/AVIF columns in the tables below.
 
 ### Scaling Law
 
