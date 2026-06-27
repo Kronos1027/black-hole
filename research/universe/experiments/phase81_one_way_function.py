@@ -1,27 +1,44 @@
 # SPDX-FileCopyrightText: 2026 Darlan Pereira da Silva (Kronos1027)
 # SPDX-License-Identifier: MIT
 """
-Phase 81: BHUH as a One-Way Function
-=====================================
-BHUH Phase II Wave 3
+Phase 81: BHUH Computational Asymmetry
+========================================
+BHUH Phase II Wave 3 (CORRECTED — was 'One-Way Function', renamed for accuracy)
+
+IMPORTANT CORRECTION
+--------------------
+An earlier version of this phase claimed BHUH is a 'one-way function' in
+the cryptographic sense and compared its 'security bits' to AES-256 / RSA.
+That claim was TECHNICALLY INCORRECT and has been removed.
+
+Formal cryptographic one-way functions require that NO polynomial-time
+algorithm can invert them. BHUH's inverse (compression via gradient descent)
+runs in O(P·N·E) — polynomial time. Therefore BHUH is NOT a cryptographic
+one-way function.
+
+What BHUH DOES exhibit is COMPUTATIONAL ASYMMETRY: a large constant-factor
+difference between forward (Genesis, ~ms) and inverse (compression, ~seconds).
+This is useful for proof-of-work style applications but is fundamentally
+different from cryptographic security.
 
 CONTEXT
 -------
 Phase 77 established Genesis Asymmetry: decompression is ~4808× faster than
-compression. This is the defining property of a ONE-WAY FUNCTION in
-cryptography.
+compression. This phase measures the asymmetry precisely and clarifies what
+it can and cannot be used for.
 
-DEFINITION (One-Way Function)
------------------------------
-A function f: X → Y is one-way if:
-  1. Forward: given x, computing f(x) is easy (polynomial time)
-  2. Backward: given y, finding ANY x' such that f(x') = y is hard
-     (no polynomial-time algorithm known; brute-force is exponential)
+DEFINITION (Computational Asymmetry — informal)
+-----------------------------------------------
+A function f: X → Y has computational asymmetry R if:
+  - T_forward(f, x) / T_inverse(f, y) = 1/R  (forward is R times faster)
+  - Both forward and inverse are polynomial-time
+  - R is a LARGE CONSTANT (not superpolynomial)
 
 For BHUH:
   - f = Genesis (SIREN forward pass over all pixels)
   - x = seed (parameter vector θ ∈ ℝ^P)
   - y = file (pixel array)
+  - R ≈ 1000-6000 (measured)
 
 EXPERIMENT
 ----------
@@ -252,12 +269,14 @@ def run_phase81():
 
     security_bits = 8 * P  # information-theoretic, assuming int8 quant
     print(f"  Seed dimension P = {P}")
-    print(f"  Information-theoretic security: {security_bits} bits")
-    print(f"  Compression asymmetry: {asymmetry:.0f}x")
-    print(f"  Effective security (accounting for asymmetry): {security_bits - np.log2(asymmetry):.1f} bits")
+    print(f"  Seed space size (int8 quant): 2^{security_bits} (information-theoretic)")
+    print(f"  Compression asymmetry: {asymmetry:.0f}x (POLYNOMIAL, not superpolynomial)")
     print()
-    print(f"  For P=5000 (typical BHUH seed): {8*5000} bits = {8*5000/8:.0f} bytes")
-    print(f"  This exceeds AES-256 by {8*5000 - 256} bits")
+    print(f"  IMPORTANT: This is NOT cryptographic security.")
+    print(f"  - BHUH inverse (compression) is polynomial-time via gradient descent")
+    print(f"  - Formal one-way functions require superpolynomial inversion")
+    print(f"  - The asymmetry is a LARGE CONSTANT (~{asymmetry:.0f}x), not exponential")
+    print(f"  - Useful for proof-of-work, NOT for encryption/authentication")
 
     # ============================================================
     # PART 5: Test "preimage resistance" — can two seeds give same output?
@@ -295,60 +314,66 @@ def run_phase81():
     print("ANALYSIS")
     print("=" * 72)
     print()
-    print("ONE-WAY FUNCTION CHECKLIST:")
+    print("COMPUTATIONAL ASYMMETRY CHECKLIST:")
     print(f"  [✓] Forward (Genesis) is fast: {t_genesis*1000:.2f}ms")
     print(f"  [✓] Inverse (Compression) is slow: {t_inverse:.2f}s ({asymmetry:.0f}x slower)")
-    print(f"  [✓] Brute-force infeasible: 2^{8*P} = 2^{n_seeds_bits} attempts")
-    print(f"  [✓] Information-theoretic security: {security_bits} bits")
-    print(f"  [✓] Many-to-one (collisions exist): multiple seeds → same output")
+    print(f"  [✓] Many-to-one (multiple seeds → same output): confirmed")
+    print(f"  [✗] NOT a cryptographic one-way function (inverse is polynomial)")
+    print(f"  [✗] NOT comparable to AES/RSA (different primitive class)")
     print()
-    print("COMPARISON TO STANDARD CRYPTO PRIMITIVES:")
-    print(f"  Primitive          Bits of security  Cost (forward)")
-    print(f"  SHA-256            256               ~1 μs")
-    print(f"  AES-256            256               ~10 ns")
-    print(f"  RSA-2048           112               ~1 ms")
-    print(f"  BHUH (P=5000)      ~40,000           ~1 ms (Genesis)")
-    print(f"  → BHUH offers DRAMATICALLY higher security at competitive forward cost")
+    print("COMPARISON TO PROOF-OF-WORK PRIMITIVES (NOT crypto keys):")
+    print(f"  Primitive          Asymmetry type     Forward cost")
+    print(f"  Bitcoin hashcash   Superpolynomial    ~1 μs (SHA-256)")
+    print(f"  BHUH asymmetry     Polynomial const.  ~0.4 ms (Genesis)")
+    print(f"  → BHUH is NOT a replacement for cryptographic hashes")
+    print(f"  → BHUH IS useful for proof-of-work with computational (not crypto) security")
     print()
-    print("CAVEAT:")
-    print("  BHUH's 'inverse' (compression) is polynomial-time via gradient descent,")
-    print("  NOT exponential like RSA factoring. So BHUH is NOT a public-key cryptosystem.")
-    print("  It IS a one-way function suitable for:")
-    print("  - Hash-like commitments (seed = commitment, file = preimage)")
-    print("  - Proof-of-work (compression is the 'work')")
-    print("  - Authenticated compression (only legitimate compressor knows the seed)")
+    print("WHAT BHUH ASYMMETRY CAN BE USED FOR:")
+    print("  - Proof-of-work compression (Phase 83): useful work, easy to verify")
+    print("  - Rate limiting: force ~1s compute per request, verify in ~1ms")
+    print("  - Anti-spam: require compression work, not pure hash brute-force")
+    print()
+    print("WHAT BHUH ASYMMETRY CANNOT BE USED FOR:")
+    print("  - Encryption (no secret-key property)")
+    print("  - Authentication (inverse is polynomial)")
+    print("  - Public-key crypto (no trapdoor function)")
+    print("  - Hash commitments (collisions exist, not collision-resistant)")
 
-    if asymmetry > 100 and security_bits > 128:
-        verdict = (f"VALIDATED — BHUH is a candidate one-way function. Forward cost {t_genesis*1000:.2f}ms, "
-                   f"inverse cost {t_inverse:.2f}s (asymmetry {asymmetry:.0f}x), "
-                   f"security {security_bits} bits. Multiple seeds → same output confirms "
-                   "many-to-one property. Suitable for hash-like commitments and proof-of-work, "
-                   "NOT public-key crypto (inverse is polynomial-time). "
-                   "Axiom 12 (One-Way Function) accepted.")
+    if asymmetry > 100:
+        verdict = (f"VALIDATED (asymmetry, NOT crypto) — BHUH exhibits computational asymmetry "
+                   f"of {asymmetry:.0f}x. Forward (Genesis) = {t_genesis*1000:.2f}ms, "
+                   f"inverse (compression) = {t_inverse:.2f}s. Both are polynomial-time. "
+                   "Multiple seeds → same output confirms many-to-one property. "
+                   "Suitable for proof-of-work applications (Phase 83). "
+                   "NOT a cryptographic one-way function (inverse is polynomial). "
+                   "Axiom 12 (Computational Asymmetry) accepted in REVISED form.")
     else:
-        verdict = "PARTIAL — Asymmetry exists but security parameters insufficient."
+        verdict = "PARTIAL — Asymmetry exists but is too small for practical use."
 
     print(f"\nVerdict: {verdict}")
     print()
-    print("NEW AXIOM (Axiom 12 — One-Way Function):")
-    print("  Genesis: θ → x is a one-way function. Forward is O(P·N), inverse is")
-    print("  O(P·N·E) with E epochs. Multiple θ can map to same x (many-to-one).")
-    print("  Security: 8·P bits (int8 quantization) — exceeds AES-256 for P≥32.")
+    print("REVISED AXIOM 12 (Computational Asymmetry — NOT 'One-Way Function'):")
+    print("  Genesis: θ → x has computational asymmetry R = T_inverse / T_forward.")
+    print("  Forward is O(P·N), inverse is O(P·N·E) with E epochs.")
+    print("  R is a LARGE CONSTANT (typically 1000-6000), NOT superpolynomial.")
+    print("  Multiple θ can map to same x (many-to-one, not collision-resistant).")
     print()
-    print("  Formal: ∃ ε << 1 such that Pr[A(Genesis(θ)) = θ] < ε for any polynomial A")
+    print("  Formal: R(θ) := T_inverse(x) / T_genesis(θ) = O(E), polynomial in E")
+    print("  This is NOT a cryptographic primitive.")
 
     return {
         'phase': 81,
-        'name': 'BHUH as One-Way Function',
+        'name': 'BHUH Computational Asymmetry (CORRECTED from One-Way Function)',
         'verdict': verdict,
         'seed_dim': int(P),
         't_genesis_ms': float(t_genesis * 1000),
         't_inverse_s': float(t_inverse),
         'asymmetry': float(asymmetry),
-        'security_bits': int(security_bits),
-        'effective_security_bits': float(security_bits - np.log2(asymmetry)),
+        'seed_space_bits': int(security_bits),
         'log2_brute_force_years': float(log2_brute_years),
         'many_to_one': True,
+        'is_cryptographic_one_way_function': False,
+        'note': 'CORRECTED: BHUH has computational asymmetry (polynomial), NOT cryptographic one-way property (superpolynomial). Comparison with AES/RSA removed as incorrect.',
     }
 
 

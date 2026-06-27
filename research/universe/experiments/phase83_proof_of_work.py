@@ -7,14 +7,13 @@ BHUH Phase II Wave 4
 
 CONTEXT
 -------
-Phase 81 established BHUH as a one-way function:
-  - Forward (Genesis): 0.38 ms
-  - Inverse (Compression): 2.24 s
-  - Asymmetry: ~6000×
+Phase 81 established BHUH has COMPUTATIONAL ASYMMETRY (NOT cryptographic
+one-way property — see correction in phase81). Decompression is ~7000×
+faster than compression. Both are polynomial-time.
 
-This asymmetry is the defining property of PROOF-OF-WORK systems:
-  - Hard to compute (prover does the work)
-  - Easy to verify (verifier checks cheaply)
+This asymmetry can be used for proof-of-work style applications where
+the goal is "hard to compute, easy to verify" with a LARGE CONSTANT
+FACTOR (not superpolynomial security).
 
 APPLICATION
 ----------
@@ -309,13 +308,20 @@ def run_phase83():
     print(f"  - Per attempt: ~{t_compress_typical}s (SIREN training)")
     print(f"  - Total attacker time: {attacker_cost:.2e}s = {attacker_cost/3600/24/365:.2e} years")
     print()
-    print("  This is INFEASIBLE — BHUH-PoW is cryptographically secure at d=20")
+    print("  This is INFEASIBLE in practice — but NOT cryptographic security.")
+    print("  BHUH-PoW is COMPUTATIONALLY HARD (polynomial with large constant),")
+    print("  not CRYPTOGRAPHICALLY HARD (superpolynomial). The distinction matters:")
+    print("  - Cryptographic PoW (Bitcoin): superpolynomial inversion (SHA-256)")
+    print("  - Computational PoW (BHUH): polynomial inversion with large constant")
+    print("  BHUH-PoW is suitable for rate-limiting and useful work, NOT for")
+    print("  cryptographic commitment or anti-censorship applications.")
     print()
-    print("PRACTICAL APPLICATIONS:")
+    print("PRACTICAL APPLICATIONS (computational, not cryptographic):")
     print("  1. Anti-spam: require BHUH-PoW for email, force spammers to compress")
     print("  2. Distributed compression: mining pool = compression pool")
     print("  3. Verifiable delay: BHUH-PoW takes predictable time, easy to verify")
-    print("  4. Cryptographic timestamp: seed + hash anchors file in time")
+    print("  4. Rate limiting: ~1s compute per request, verify in ~1ms")
+    print("  NOT suitable for: cryptographic timestamp, anti-censorship, sybil resistance")
 
     # ============================================================
     # ANALYSIS

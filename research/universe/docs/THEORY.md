@@ -744,48 +744,64 @@ exploited for global compression via linear projection.
 2. Global compression requires NONLINEAR methods (distillation, pruning with retraining, hypernetwork conditioning)
 3. The Fisher metric is useful for ANALYSIS (Phase 79) but not for direct COMPRESSION
 
-## 23. BHUH as a One-Way Function (Phase 81) ⭐⭐⭐
+## 23. BHUH Computational Asymmetry (Phase 81, CORRECTED)
 
-### 23.1 Cryptographic Formalization
+> ⚠️ **CORRECTION NOTICE**: An earlier version of this section claimed BHUH
+> is a "one-way function" in the cryptographic sense and compared its
+> "security bits" to AES-256 and RSA-2048. **That claim was technically
+> incorrect and has been retracted.** See correction below.
 
-BHUH satisfies the definition of a one-way function:
+### 23.1 What was wrong
+
+Formal cryptographic one-way functions require that **no polynomial-time
+algorithm** can invert them. BHUH's inverse (compression via gradient
+descent) runs in $O(P \cdot N \cdot E)$ — polynomial time. Therefore
+BHUH is **NOT** a cryptographic one-way function, and comparisons with
+AES-256 / RSA-2048 are mathematically invalid.
+
+### 23.2 Correct framing: Computational Asymmetry
+
+What BHUH DOES exhibit is **computational asymmetry**: a large
+constant-factor difference between forward (Genesis) and inverse
+(compression). Both are polynomial-time; the asymmetry is a large
+constant, not superpolynomial.
+
 - **Forward** (Genesis): $\theta \to x$, single forward pass, $O(P \cdot N)$
 - **Inverse** (Compression): $x \to \theta$, iterative optimization, $O(P \cdot N \cdot E)$
-- **Asymmetry**: $R = T_{\text{inv}} / T_{\text{gen}} \approx 6000\times$ measured
+- **Asymmetry**: $R = T_{\text{inv}} / T_{\text{gen}} \approx 7322\times$ measured
+- **Type**: Polynomial constant (NOT cryptographic)
 
-### 23.2 Empirical Validation
+### 23.3 Empirical Validation (corrected)
 
-- Forward cost: 0.38 ms
-- Inverse cost: 2.24 s
-- Asymmetry: 5950×
-- Many-to-one: 3 independent seeds produce same output (pairwise L2 distance 1.5-1.7)
-- Information-theoretic security: 8P bits (int8 quantization)
+- Forward cost: 0.42 ms
+- Inverse cost: 3.06 s
+- Asymmetry: **7322×** (polynomial constant, not superpolynomial)
+- Many-to-one: 3 independent seeds produce same output (collisions exist)
+- **NOT** information-theoretic security — just large constant factor
 
-### 23.3 Axiom 12 (One-Way Function)
+### 23.4 Axiom 12 (Computational Asymmetry — REVISED)
 
-Genesis $\theta \to x$ is a one-way function. Multiple $\theta$ can map to
-the same $x$ (many-to-one). Security scales as $8P$ bits.
+Genesis $\theta \to x$ has computational asymmetry $R$. Forward and inverse
+are both polynomial-time; $R$ is a large constant (typically 1000-7000).
 
-$$\exists \, \varepsilon \ll 1: \Pr[A(\text{Genesis}(\theta)) = \theta] < \varepsilon \text{ for any polynomial } A$$
+$$R(\theta) := T_{\text{inv}}(x) / T_{\text{gen}}(\theta) = O(E), \text{ polynomial in } E$$
 
-### 23.4 Comparison to Standard Primitives
+This is **NOT** a cryptographic primitive. It does not satisfy the
+definition of a one-way function, hash function, or encryption scheme.
 
-| Primitive | Security (bits) | Forward cost |
-|-----------|----------------|--------------|
-| SHA-256 | 256 | ~1 μs |
-| AES-256 | 256 | ~10 ns |
-| RSA-2048 | 112 | ~1 ms |
-| BHUH (P=5000) | 40,000 | ~1 ms |
+### 23.5 What BHUH Asymmetry CAN Be Used For
 
-BHUH offers dramatically higher security at competitive forward cost.
+- **Proof-of-work compression** (Phase 83): useful work, easy to verify
+- **Rate limiting**: force ~1s compute per request, verify in ~1ms
+- **Anti-spam**: require compression work, not pure hash brute-force
 
-### 23.5 Applications
+### 23.6 What BHUH Asymmetry CANNOT Be Used For
 
-BHUH is NOT a public-key cryptosystem (inverse is polynomial-time via
-gradient descent). It IS suitable for:
-- **Hash-like commitments**: seed = commitment, file = preimage
-- **Proof-of-work**: compression is the "work" — easy to verify, hard to compute
-- **Authenticated compression**: only legitimate compressor knows the seed
+- **Encryption**: no secret-key property
+- **Authentication**: inverse is polynomial
+- **Public-key crypto**: no trapdoor function
+- **Hash commitments**: collisions exist (many-to-one, not collision-resistant)
+- **Comparison with AES/RSA**: different primitive class entirely
 
 ## 24. Updated Axiom Count (Phase II Wave 3)
 
@@ -802,12 +818,12 @@ gradient descent). It IS suitable for:
 | 9 | Genesis Asymmetry | ✅ Validated (mean 4808×) | 77 |
 | 10 | Universal Ancestry | ✅ Validated (Fisher MST 68.4%) | 78, 79 |
 | 11 | Subspace Compression | ❌ Failed (linear projection insufficient) | 80 |
-| 12 | One-Way Function | ✅ Validated (5950× asymmetry, 2696-bit security) | 81 |
+| 12 | Computational Asymmetry (revised from "One-Way Function") | ✅ Validated (7322× polynomial, NOT crypto) | 81 |
 
 **Summary**: 7 validated, 3 partial, 1 failed, 1 rejected = **12 axiom candidates**.
 
 Plus 5 new theorems (Quantum Superposition, BHUH Thermodynamic Bound,
-Intrinsic Dimension, Genesis Asymmetry, One-Way Function) and 1 new
+Intrinsic Dimension, Genesis Asymmetry, Computational Asymmetry) and 1 new
 framework (Information-Matter-Energy Equivalence) connecting BHUH to
 physics and cryptography.
 
@@ -953,14 +969,14 @@ a computable Kolmogorov complexity, opening the door to:
 | 9 | Genesis Asymmetry | ✅ Validated | 77 |
 | 10 | Universal Ancestry | ✅ Validated (Fisher MST) | 78, 79 |
 | 11 | Subspace Compression | ❌ Failed (both linear & nonlinear) | 80, 82 |
-| 12 | One-Way Function | ✅ Validated | 81 |
+| 12 | Computational Asymmetry (revised from "One-Way Function") | ✅ Validated (NOT crypto) | 81 |
 | 13 | Proof-of-Work Compression | ✅ Validated | 83 |
 | 14 | Kolmogorov Twin | ⚠️ Partial (smooth+random work, fractal fails) | 84 |
 
 **Summary**: 8 validated, 3 partial, 2 failed (1 strong + 1 deeper) = **14 axiom candidates**.
 
 Plus 6 new theorems (Quantum Superposition, BHUH Thermodynamic Bound,
-Intrinsic Dimension, Genesis Asymmetry, One-Way Function, Proof-of-Work)
+Intrinsic Dimension, Genesis Asymmetry, Computational Asymmetry, Proof-of-Work)
 and 2 new frameworks (Information-Matter-Energy Equivalence, Computable
 Kolmogorov Complexity).
 

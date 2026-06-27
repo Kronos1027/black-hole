@@ -48,6 +48,34 @@ No single approach works for everything. The Universe combines:
 - **[Experiment Log](docs/EXPERIMENT_LOG.md)** — Results tracking
 - **[Production BLKH](../phase1_inr_compressor/)** — Stable production code (untouched)
 
+### Scientific Honesty Documents
+- **[SPECULATIVE.md](SPECULATIVE.md)** — Unvalidated claims, clearly marked
+- **[DOCUMENTATION_PROTOCOL.md](DOCUMENTATION_PROTOCOL.md)** — Protocol to prevent knowledge loss
+- **[RESEARCH_REPORT.md](RESEARCH_REPORT.md)** — Honest summary of all results
+
+---
+
+## ⚠️ Scientific Honesty Notice
+
+The BHUH research program has 14 candidate axioms. Not all are validated:
+
+- **8 validated** (empirically tested with reproducible code)
+- **3 partial** (some aspects work, others fail)
+- **2 failed/rejected** (honest negatives, documented)
+
+Additionally, some earlier theoretical claims have been **retracted or
+corrected**:
+- Axiom 12 was originally called "One-Way Function" and compared to AES/RSA.
+  This was **technically incorrect** (BHUH inverse is polynomial-time).
+  It has been renamed to "Computational Asymmetry" and the comparison removed.
+- Axiom 11 (Subspace Compression) was rejected twice (Phase 80 linear,
+  Phase 82 nonlinear).
+- Physics analogies (AdS/CFT, Bekenstein) are CONCEPTUAL, not formal
+  derivations.
+
+See [SPECULATIVE.md](SPECULATIVE.md) for full details on what is and
+isn't validated.
+
 ---
 
 ## 🧪 Active Experiments
