@@ -1525,6 +1525,36 @@ The singularity is for everyone.
 
 ---
 
+## 📄 arXiv Publication — Seeking Endorsement
+
+A complete paper draft is ready for arXiv submission (`paper/paper.pdf`),
+but as an **independent researcher without academic affiliation**, I need
+an **arXiv endorser** to submit.
+
+### What's ready
+- ✅ 10-15 page paper draft (LaTeX source: `paper/paper.tex`)
+- ✅ 165 passing tests verifying all empirical claims
+- ✅ Live demo on HuggingFace Spaces
+- ✅ PyPI package (`blackhole-blkh` v5.30.0)
+- ✅ Honest documentation including failed experiments and retracted claims
+  (see [`research/universe/SPECULATIVE.md`](research/universe/SPECULATIVE.md))
+
+### What I need
+An arXiv author in `cs.IT`, `eess.SP`, `cs.LG`, or `eess.IV` willing to:
+1. Verify reproducibility (`git clone` + `pytest` should show 159+ passed)
+2. Review the paper for technical correctness
+3. Endorse the submission
+
+### If you can help
+- **Email**: darlan1027pc@gmail.com
+- **GitHub**: Open an issue titled "arXiv endorsement discussion"
+- **Full details**: [`ARXIV_ENDORSEMENT.md`](ARXIV_ENDORSEMENT.md)
+
+I am happy to share the paper draft privately for review before any
+commitment. No pressure — only endorse if the work genuinely merits it.
+
+---
+
 ## Citation
 
 If you use Black Hole in research, please cite:

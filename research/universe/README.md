@@ -189,4 +189,37 @@ This is open research. Contributions welcome:
 
 ---
 
+## 📄 arXiv Publication Status
+
+A paper draft is ready at [`paper/paper.pdf`](../../paper/paper.pdf) but
+**arXiv endorsement is needed** to submit. As an independent researcher
+without academic affiliation, I cannot self-submit.
+
+### Research Documentation Status
+- ✅ 84 experimental phases documented (71-84 from Phase II)
+- ✅ 14 axiom candidates (8 validated, 3 partial, 2 rejected, 1 corrected)
+- ✅ Honest disclosure of failed/retracted claims in [`SPECULATIVE.md`](SPECULATIVE.md)
+- ✅ Reproducibility protocol in [`DOCUMENTATION_PROTOCOL.md`](DOCUMENTATION_PROTOCOL.md)
+- ✅ 165 production tests passing (untouched by research)
+
+### What an arXiv endorser would verify
+1. Empirical claims (compression ratios, PSNR) are reproducible from code
+2. Theoretical claims (Phase 73 thermodynamic framework, Phase 84
+   Kolmogorov approximation) are honestly caveated
+3. Failed experiments (Axiom 11 subspace, Axiom 6 self-modification)
+   are documented as negatives
+4. The corrected Axiom 12 (Computational Asymmetry, not "One-Way Function")
+   makes no invalid cryptographic claims
+
+### How to help
+- **Email**: darlan1027pc@gmail.com
+- **GitHub issue**: title "arXiv endorsement discussion"
+- **Full details**: [`ARXIV_ENDORSEMENT.md`](../../ARXIV_ENDORSEMENT.md)
+
+I'm happy to share the paper draft privately before any commitment.
+Independent research is harder — but the absence of an institutional
+safety net is exactly what makes honesty non-negotiable.
+
+---
+
 *"We are not just compressing data. We are discovering the mathematical DNA of information itself."*
