@@ -35,15 +35,23 @@ compression modes validated on synthetic and real-world benchmarks.
 | Benchmark | Result | Reproduce |
 |-----------|--------|-----------|
 | Production tests | 159/159 passing | `python -m pytest tests/ -q` |
+| **REAL photos (scikit-image)** | **2.87× smaller than JPEG, 1.59× smaller than WebP** | `python research/universe/real_image_benchmark.py` |
+| Kodak-like (768×512) | 7.54× smaller than JPEG, 4.22× smaller than WebP | `python research/universe/kodak_benchmark.py` |
 | Real photos (128×128) | 27-122× smaller than ZIP, 30-36 dB PSNR | `python research/universe/validate_claims.py` |
-| Kodak-like (768×512) | 50.77× vs ZIP, 22.68× vs PNG, 7.54× vs JPEG | `python research/universe/kodak_benchmark.py` |
 | Bit-perfect (SHA-256) | 4/4 test files verified | `python research/universe/validate_claims.py` |
 | Documentation consistency | 18/18 checks pass | `python research/universe/validate_claims.py` |
 
-**Important caveat**: Kodak-like images are SYNTHETIC (real Kodak
-dataset mirrors were unavailable during testing). When real Kodak
-images are accessible, the script should be re-run for proper
-academic validation. See `research/universe/KODAK_BENCHMARK.md`.
+**Dataset details**:
+- **REAL photographs**: scikit-image standard test images (astronaut, camera,
+  coins, moon, page, text) — used in academic image processing literature
+  for decades. BLKH beats JPEG q=85 on ALL 6 real images (2.16× to 4.29× smaller).
+- **Kodak-like**: 12 synthetic images at standard Kodak resolution (768×512)
+  because real Kodak dataset mirrors were unavailable. Synthetic benchmark
+  should be re-run on real Kodak images when available.
+
+**Honest caveat**: BLKH PSNR (30.7 dB on real photos) is lower than JPEG
+(42.9 dB). BLKH achieves smaller sizes by being more lossy. The paper
+documents this trade-off honestly.
 
 ### Production-Ready Components
 
