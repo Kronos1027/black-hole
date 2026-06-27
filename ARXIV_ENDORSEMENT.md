@@ -32,12 +32,18 @@ compression modes validated on synthetic and real-world benchmarks.
 
 ### Key Empirical Results (all reproducible from this repo)
 
-| Mode | Throughput | Compression | Use Case |
-|------|------------|-------------|----------|
-| v5.23 fast (zstd L3) | 120-146 MB/s | 14-50× smaller than ZIP | Speed |
-| v5.22 DCT q=0.9 | 0.4-0.7 MB/s | 20-76× smaller than ZIP | Quality |
-| v5.25 GPU-ready | 17-99 MB/s | 16-72× smaller than ZIP | GPU |
-| Wavelet v3 (lossless) | - | 2.74× smaller than ZIP | Bit-perfect |
+| Benchmark | Result | Reproduce |
+|-----------|--------|-----------|
+| Production tests | 159/159 passing | `python -m pytest tests/ -q` |
+| Real photos (128×128) | 27-122× smaller than ZIP, 30-36 dB PSNR | `python research/universe/validate_claims.py` |
+| Kodak-like (768×512) | 50.77× vs ZIP, 22.68× vs PNG, 7.54× vs JPEG | `python research/universe/kodak_benchmark.py` |
+| Bit-perfect (SHA-256) | 4/4 test files verified | `python research/universe/validate_claims.py` |
+| Documentation consistency | 18/18 checks pass | `python research/universe/validate_claims.py` |
+
+**Important caveat**: Kodak-like images are SYNTHETIC (real Kodak
+dataset mirrors were unavailable during testing). When real Kodak
+images are accessible, the script should be re-run for proper
+academic validation. See `research/universe/KODAK_BENCHMARK.md`.
 
 ### Production-Ready Components
 
