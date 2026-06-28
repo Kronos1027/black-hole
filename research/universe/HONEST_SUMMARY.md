@@ -17,13 +17,16 @@
 ### ✅ Experiment 4: Scaling Law — VALIDATED (N=3 to N=10)
 - Real photographs, 64×64 grayscale
 - Ratio grows: 0.87× (N=3) → 2.69× (N=10)
-- Linear fit: ratio = 0.258 + 0.122 × N
 
-### ✅ Experiment 5: Scaling at N=20, 50 — VALIDATED AND EXCEEDS THEORY
-- **N=20: 4.77× advantage** (predicted 2.70×)
-- **N=50: 8.94× advantage** (predicted 6.36×)
-- Empirical fit: ratio = 0.168 + 0.800 × N (R²=0.984)
-- **Scaling is 6.6× steeper than parameter-count theory predicts**
+### ✅ Experiment 5: Scaling at N=20, 50 — VALIDATED
+- **N=20: 4.77× advantage**
+- **N=50: 8.94× advantage**
+
+### ✅ Experiment 8: N=100 — VALIDATED but sublinear
+- **N=100: 29.68× advantage** (29 bytes/image!)
+- Linear prediction (80×) FAILED — scaling is SUBLINEAR
+- Better fit: logarithmic ratio ~ 8.3×ln(N) - 9.1
+- Quality concern: 17.11 dB at N=100 (vs 27 dB at N=50)
 
 ---
 
@@ -43,29 +46,44 @@
 - RGB ratio 1.32× vs grayscale 1.44×
 - 3-channel head overhead reduces backbone amortization
 
+### ❌ Experiment 8: Linear Scaling Prediction — FAILED at N=100
+- Linear fit (R²=0.984 at N≤50) predicted 80× at N=100
+- Actual: 29.68× (37% of prediction)
+- Scaling is SUBLINEAR, not linear
+- Linear fit was overfitted to small N
+
 ---
 
 ## The Complete Picture (honest)
 
-### BHUH Scaling Law (empirically validated):
+### BHUH Scaling Law (revised after N=100):
 ```
-BHUH advantage = 0.168 + 0.800 × N    (R² = 0.984)
+N=3:   0.87×  (COIN wins — backbone overhead)
+N=5:   1.44×  (break-even passed)
+N=10:  2.69×
+N=20:  4.77×
+N=50:  8.94×  (sweet spot — good quality + strong advantage)
+N=100: 29.68× (extreme compression, low quality)
 ```
 
-Where N = number of images compressed together.
+Scaling is SUBLINEAR. Linear fit works for N≤50 but fails at N=100.
+Logarithmic fit is better but imperfect. True scaling is complex.
 
 ### What BHUH IS:
 - ✅ A **corpus compressor** — excels at compressing MANY images together
 - ✅ **N=50: 8.94× smaller than COIN** (real data, real baseline)
-- ✅ **Projected N=1000: 800× advantage**
+- ✅ **N=100: 29.68× smaller than COIN** (extreme compression)
 - ✅ **Resolution independent** — works at any image size
-- ✅ **Quality cost acceptable** (5.51 dB at N=50, trade-off worthwhile)
+- ✅ **Quality cost acceptable at N≤50** (24-27 dB)
+- ✅ **Sweet spot: N=20-50** where quality and advantage balance
 
 ### What BHUH is NOT:
 - ❌ NOT a per-image compressor (loses to COIN at N=1-4)
 - ❌ NOT resolution-scalable (advantage constant across resolutions)
 - ❌ NOT channel-scalable (RGB doesn't help)
 - ❌ NOT meta-learning viable (needs huge dataset)
+- ❌ NOT linearly scaling (sublinear at N>50)
+- ❌ NOT quality-stable at N=100 (drops to 17 dB)
 - ❌ NOT a JPEG/WebP replacement for single photos
 
 ---
