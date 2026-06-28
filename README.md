@@ -14,56 +14,44 @@
 
 ---
 
-## 🔬 BREAKTHROUGH: BHUH Beats COIN on CPU — SOTA Result
+## BHUH Research Results - Honest Trade-off Characterization
 
-**We achieved State-of-the-Art (SOTA) neural compression on a consumer CPU (Ryzen 7 5700X), beating COIN (Dupont et al., 2021) in BOTH quality AND size — no GPU required.**
+**We conducted 21 rigorous experiments comparing BHUH (hierarchical shared SIREN) against COIN (Dupont et al., 2021) on real photographs, using a consumer CPU (Ryzen 7 5700X).**
 
-### The Result
+### Fair Comparison (Exp 21 - both equally optimized)
 
-| Method | PSNR | Size | vs COIN |
-|--------|------|------|---------|
-| COIN (separate SIRENs) | 28.10 dB | ~86,000 B | baseline |
-| **BHUH Hierarchical K=50** | **31.21 dB** | **56,983 B** | **+3.1 dB better, 1.5× smaller** |
+| Method | PSNR | Size | Trade-off |
+|--------|------|------|-----------|
+| COIN (omega=50, 5L, 500ep, AC, pruning) | **44.90 dB** | 27,159 B | Best quality |
+| **BHUH K=50** (same optimizations) | 36.86 dB | **14,886 B** | **1.82x smaller, -8.05 dB** |
 
-- **+3.11 dB higher PSNR** than COIN (better visual quality)
-- **1.5× smaller file size** than COIN
-- **CPU-only**: Ryzen 7 5700X, 16GB RAM, no GPU acceleration
-- **Real data**: 100 real photographs from scikit-image dataset
-- **Reproducible**: all code in `research/universe/experiment_*.py`
+**Honest assessment**: When both methods receive identical optimizations, BHUH is 1.82x smaller but 8 dB lower quality. BHUH trades quality for size - it does NOT beat COIN on quality when compared fairly.
 
-### How We Did It
+> **Note**: An earlier experiment (Exp 13) showed BHUH "+3.1 dB better" than COIN, but that was an unfair comparison - BHUH was optimized while COIN used default parameters. Exp 21 corrects this with a fair comparison.
 
-Three key innovations, all validated on real data:
+### What BHUH IS good for
 
-1. **Hierarchical Sharing** (new technique, not in COIN/COIN++ literature):
-   - Cluster images into K groups by pixel similarity (KMeans)
-   - Train shared SIREN backbone per group (not per image)
-   - K=50 groups: each backbone handles ~2 similar images → better fit
+- **1.82x smaller** than optimized COIN at acceptable quality (36.86 dB)
+- **Scaling advantage**: at N=100 images, BHUH is 29.7x smaller (but quality drops)
+- **Tunable trade-off**: K parameter controls quality/size balance
+- **CPU-only**: runs on consumer hardware without GPU
 
-2. **Omega Optimization** (omega=50, never tested before):
-   - SIREN frequency parameter ω=50 gives +3.5 dB vs default ω=15
-   - Higher ω captures fine detail in natural photographs
+### Key Optimizations Discovered (apply to BOTH COIN and BHUH)
 
-3. **Arithmetic Coding** (entropy optimization):
-   - Replaces zlib for weight compression
-   - **61.4% average savings** vs zlib (no quality loss)
-   - SIREN weights have non-uniform distribution that AC exploits better
-
-### Additional Findings
-
-| Optimization | Result |
+| Optimization | Impact |
 |-------------|--------|
-| 5 layers (vs 3) | +11.4 dB improvement |
-| L1 Pruning (threshold=0.01) | 24.3% weights removed, PSNR maintained |
-| 500 epochs (vs 50) | +5 dB at N=100 (17→22 dB) |
-| Scaling law (N=3 to N=100) | R²=0.984, confirmed sublinear |
-| N=100 advantage | 29.7× smaller than COIN |
+| omega=50 (vs default 15) | +3.5 dB |
+| 5 layers (vs 3) | +11.4 dB |
+| 500 epochs (vs 50) | +5 dB |
+| Arithmetic coding (vs zlib) | 61.4% byte savings |
+| L1 pruning (threshold=0.01) | 24.3% weights removed |
+| Constant LR (not cosine) | Best convergence |
 
 ### Full Results Documentation
 
-- [`research/universe/HONEST_SUMMARY.md`](research/universe/HONEST_SUMMARY.md) — Complete honest summary
-- [`research/universe/EXPERIMENT_13_RESULTS.md`](research/universe/EXPERIMENT_13_RESULTS.md) — K=50 breakthrough
-- [`research/universe/rd_curve_hierarchical.png`](research/universe/rd_curve_hierarchical.png) — R-D curve plot
+- [`research/universe/BHUH_BREAKTHROUGH_RESULTS.md`](research/universe/BHUH_BREAKTHROUGH_RESULTS.md) - Complete results
+- [`research/universe/HONEST_SUMMARY.md`](research/universe/HONEST_SUMMARY.md) - Honest summary
+- [`research/universe/rd_curve_hierarchical.png`](research/universe/rd_curve_hierarchical.png) - R-D curve
 
 ### Hardware Used
 
@@ -73,8 +61,6 @@ RAM: 16GB DDR4 3200MHz
 GPU: NOT USED (CPU-only PyTorch)
 OS: Windows
 ```
-
-**This is significant**: published neural compression papers (COIN, COIN++, ComPress) report results on A100/H100 GPUs or TPU pods. We matched and exceeded COIN on a $200 consumer CPU.
 
 ---
 
