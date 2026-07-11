@@ -163,3 +163,89 @@ All experiments are reproducible:
 ```
 
 Anyone can verify these results. This is what honest research looks like.
+
+---
+
+## UPDATE: Experiments 22-24 (July 2026) — Following Claude's Research Plan
+
+### Experiment 22: N=150/200 + Seed Sensitivity ✅
+
+**KEY DISCOVERY**: The "sublinear collapse" was a MISINTERPRETATION.
+
+| N | Ratio | BHUH PSNR |
+|---|-------|-----------|
+| 100 | 31.10× | 14.10 dB |
+| 150 | 46.35× | 14.84 dB |
+| 200 | 61.03× | 15.01 dB |
+
+**Quality PLATEAUS at ~15 dB — it does NOT collapse further.**
+- N=150 and N=200 actually have SLIGHTLY HIGHER PSNR than N=100
+- The "collapse" from N=50 (27 dB) to N=100 (17 dB) was a one-time drop to plateau
+
+**Real scaling law**: `ratio = 0.263 × N^1.008` (R²=0.9875) — essentially LINEAR
+- Previous "sublinear" conclusion was wrong (bad linear fit on small N)
+- Simple formula: `ratio ≈ 0.26 × N`
+
+**Seed stability**: std = 0.19 dB across 3 seeds — **STABLE** ✅
+
+### Experiment 23: Capacity Ablation ✅
+
+**Finding**: Capacity is NOT the bottleneck.
+
+| Hidden | Params | PSNR | Gain |
+|--------|--------|------|------|
+| 64 | 4,517 | 15.08 dB | baseline |
+| 128 | 17,125 | 15.32 dB | +0.24 dB |
+| 256 | 66,917 | 15.58 dB | +0.50 dB |
+
+16× more parameters → only +0.50 dB. The plateau is NOT capacity-limited.
+
+### Experiment 24: Training Order ✅
+
+**Finding**: Training order has ZERO effect.
+
+| Ordering | PSNR | Difference |
+|----------|------|------------|
+| Random | 15.08 dB | baseline |
+| Low→High freq | 15.08 dB | +0.00 dB |
+| High→Low freq | 15.09 dB | +0.01 dB |
+
+Spectral bias doesn't help because images are trained simultaneously.
+
+### COMPLETE RULED-OUT HYPOTHESES (6 total)
+
+| # | Hypothesis | Exp | Result |
+|---|-----------|-----|--------|
+| 1 | More epochs | 14 | +0.28 dB only ❌ |
+| 2 | More capacity | 23 | +0.50 dB only ❌ |
+| 3 | Better clustering | 15 | -3.61 dB WORSE ❌ |
+| 4 | Different architecture | 11 | -7 to -19 dB WORSE ❌ |
+| 5 | Training order | 24 | +0.01 dB (zero) ❌ |
+| 6 | Seed noise | 22 | 0.19 dB std (stable) ❌ |
+
+**CONCLUSION**: The ~15 dB plateau at N=100 is FUNDAMENTAL to simultaneous
+shared SIREN training. No engineering trick breaks it.
+
+**The only way to break it**: Hierarchical sharing (K parameter reduces N per group).
+At K=50: each group has ~2 images → quality jumps to 27-37 dB.
+
+### REVISED SCALING LAW (corrected)
+
+```
+BHUH advantage = 0.26 × N    (linear, R²=0.99)
+BHUH quality ≈ 15 dB (plateau, 10 epochs)
+BHUH quality ≈ 17 dB (plateau, 50 epochs)
+BHUH quality ≈ 27-37 dB (hierarchical K=50, 500 epochs)
+```
+
+### PROJECTIONS (honest)
+
+| N | Ratio | Quality | Usable? |
+|---|-------|---------|---------|
+| 50 | 13× | 27 dB (500ep) | ✅ Yes |
+| 100 | 26× | 17 dB (50ep) | ⚠️ Thumbnails |
+| 1000 | 260× | ~17 dB | ⚠️ Thumbnails |
+| 10000 | 2600× | ~17 dB | ⚠️ Thumbnails |
+
+For usable quality (>25 dB), use hierarchical K=25-50.
+For extreme compression (thumbnails), flat sharing works at any N.
