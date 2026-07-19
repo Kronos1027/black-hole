@@ -249,3 +249,66 @@ BHUH quality ≈ 27-37 dB (hierarchical K=50, 500 epochs)
 
 For usable quality (>25 dB), use hierarchical K=25-50.
 For extreme compression (thumbnails), flat sharing works at any N.
+
+---
+
+## UPDATE: Experiments 25-28 (July 2026) — Wyner-Ziv + Multi-Omega Breakthrough
+
+### Experiment 25: Wyner-Ziv Incremental Compression ✅
+- Pre-trained backbone + fit only head for new images
+- **10× smaller per new image** (86 B vs 861 B)
+- Quality: 14.16 dB vs 17.72 dB (-3.55 dB)
+- At N=1000 new images: 9.71× advantage (backbone amortized)
+
+### Experiment 26: Skip Connections + FiLM ✅
+- Skip: -0.93 dB (HURTS)
+- FiLM: -0.41 dB, 3.4× larger (WORSE)
+- Standard one-hot remains best for architecture
+
+### Experiment 27: Multi-Omega SIREN ✅ BREAKTHROUGH
+- **omega=[10,50] beats default [15,15] on BOTH metrics**
+- +1.57 dB better quality (16.43 vs 14.86 at N=50)
+- 28% smaller bytes (1,964 vs 2,725)
+- Low omega (10) = smooth foundation, high omega (50) = fine detail
+- First success after 8 failed hypotheses
+
+### Experiment 28: Multi-Omega at N=100 ✅ CONFIRMED
+- [10,50] confirmed at N=100: +1.29 dB, -28% bytes
+- More layers (3,4) don't help — 2 layers is optimal
+- Consistent across N=50 and N=100
+
+### Updated Ruled-Out List (9 hypotheses)
+
+| # | Hypothesis | Exp | Result |
+|---|-----------|-----|--------|
+| 1 | More epochs | 14 | +0.28 dB ❌ |
+| 2 | More capacity | 23 | +0.50 dB ❌ |
+| 3 | Better clustering | 15 | -3.61 dB ❌ |
+| 4 | KAN architecture | 11 | -7 to -19 dB ❌ |
+| 5 | Training order | 24 | +0.01 dB ❌ |
+| 6 | Seed noise | 22 | 0.19 dB std ❌ |
+| 7 | Skip connections | 26 | -0.93 dB ❌ |
+| 8 | FiLM modulation | 26 | -0.41 dB ❌ |
+| **9** | **Multi-omega [10,50]** | **27-28** | **+1.29-1.57 dB, -28% bytes ✅** |
+
+### What Works (summary)
+
+1. **Multi-omega [10,50]**: First architectural improvement found (+1.3-1.6 dB, -28% bytes)
+2. **Hierarchical sharing (K)**: Only way to fully break plateau (reduce N per group)
+3. **Wyner-Ziv incremental**: 10× smaller for new images with pre-trained backbone
+4. **omega=50, 5 layers, 500 epochs**: Optimizations for all methods (from Kimi experiments)
+5. **Arithmetic coding**: 61.4% savings vs zlib
+6. **L1 pruning (0.01)**: 24.3% weights removed safely
+
+### RECOMMENDED BHUH Configuration (as of July 2026)
+
+```
+Architecture: 2-layer SIREN with multi-omega [10, 50]
+Hidden: 64
+Epochs: 500 (on Ryzen 7 5700X)
+Clustering: KMeans, K=50 for best quality/size trade-off
+Quantization: INT8
+Entropy coding: Arithmetic coding (61% savings vs zlib)
+Pruning: L1 threshold=0.01 (24.3% removed)
+LR: Constant 1e-3 (NOT cosine)
+```
