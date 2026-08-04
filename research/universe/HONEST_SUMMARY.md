@@ -312,3 +312,47 @@ Entropy coding: Arithmetic coding (61% savings vs zlib)
 Pruning: L1 threshold=0.01 (24.3% removed)
 LR: Constant 1e-3 (NOT cosine)
 ```
+
+---
+
+## Experiment 29-30: Combined Pipeline Validation (August 2026)
+
+### #10 — Combined Pipeline (Exp 29) — RULED OUT (PSNR), PARTIALLY MET (size for hl=2)
+- **Hypothesis**: Combining all 7 validated components (multi-omega SIREN [10,50], 5 hidden layers, KMeans K=50, 500 epochs constant lr=1e-3, arithmetic coding, L1 pruning threshold=0.01) produces ~34-35 dB PSNR and ~5.1x size reduction vs COIN.
+- **Status**: COMPLETED 2026-08-03. PSNR projection decisively ruled out; size reduction projection met for hl=2 only (5.27x vs 5.1x target).
+- **Actual numbers** (30 images, 300 epochs, 3 seeds):
+  - hl=2: PSNR 14.95 ± 0.27 dB (vs 34-35 dB projected) — 20 dB below projection
+  - hl=5: PSNR 11.88 ± 0.15 dB (vs 34-35 dB projected) — 23 dB below projection
+  - hl=2: size reduction 5.27 ± 0.02x (vs 5.1x projected) — MET
+  - hl=5: size reduction 3.84 ± 0.02x (vs 5.1x projected) — NOT MET
+- **Primary cause (hypothesized)**: L1 pruning with threshold=0.01 destroys 22-38 dB of PSNR. Pre-prune PSNR for hl=5 was 49.54 dB (above projection); post-prune collapsed to 11.88 dB.
+- **See**: EXPERIMENT_29_RESULTS.md for full details, SHA-256 verification, and recommended follow-up experiments.
+
+### #11 — No-Pruning Pipeline (Exp 30) — HYPOTHESIS CONFIRMED: pruning was the killer
+- **Hypothesis**: Removing L1 pruning should preserve pre-prune PSNR (~37 dB hl=2, ~49 dB hl=5) and recover the PSNR lost in Experiment 29.
+- **Status**: COMPLETED 2026-08-03. Hypothesis CONFIRMED.
+- **Method**: Run the exact same pipeline as Exp 29 but skip the L1 pruning step entirely.
+- **Actual numbers** (30 images, 300 epochs, 3 seeds):
+  - hl=2: PSNR 37.05 ± 0.28 dB (vs Exp 29's 14.95 dB — recovered +22.10 dB)
+  - hl=5: PSNR 49.54 ± 2.81 dB (vs Exp 29's 11.88 dB — recovered +37.66 dB)
+  - hl=2: size reduction 4.32 ± 0.03x (vs Exp 29's 5.27x — 22% larger without pruning)
+  - hl=5: size reduction 2.66 ± 0.02x (vs Exp 29's 3.84x — 44% larger without pruning)
+- **Key finding**: The PSNR projection of 34-35 dB IS achievable for hl=2 (37.05 dB actual) without pruning. The size projection of 5.1x requires pruning, but threshold=0.01 is too aggressive.
+- **Implication**: The combined pipeline is viable IF a less aggressive pruning method is found. The natural next experiment is to test smaller pruning thresholds (Exp 31).
+- **See**: EXPERIMENT_30_RESULTS.md for full details and SHA-256 verification.
+
+### Updated Ruled-Out List (11 hypotheses)
+
+| # | Hypothesis | Exp | Result |
+|---|-----------|-----|--------|
+| 1 | More epochs | 14 | +0.28 dB ❌ |
+| 2 | More capacity | 23 | +0.50 dB ❌ |
+| 3 | Better clustering | 15 | -3.61 dB ❌ |
+| 4 | KAN architecture | 11 | -7 to -19 dB ❌ |
+| 5 | Training order | 24 | +0.01 dB ❌ |
+| 6 | Seed noise | 22 | 0.19 dB std ❌ |
+| 7 | Skip connections | 26 | -0.93 dB ❌ |
+| 8 | FiLM modulation | 26 | -0.41 dB ❌ |
+| 9 | Multi-omega [10,50] | 27-28 | +1.29-1.57 dB, -28% bytes ✅ |
+| **10** | **Combined pipeline (with pruning 0.01)** | **29** | **PSNR 15 dB (vs 34 projected) ❌** |
+| **11** | **No-pruning pipeline** | **30** | **PSNR 37-50 dB ✅, but size 2.7-4.3x (vs 5.1x projected) ⚠️** |

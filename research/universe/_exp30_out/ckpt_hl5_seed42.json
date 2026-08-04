@@ -1,0 +1,240 @@
+{
+  "hidden_layers": 5,
+  "seed": 42,
+  "config": {
+    "hidden_features": 64,
+    "omegas": [
+      10.0,
+      50.0
+    ],
+    "epochs": 300,
+    "lr": 0.001,
+    "pruning": "NONE",
+    "K": 50,
+    "num_images": 30,
+    "image_size": 64
+  },
+  "mean_psnr_db": 47.162794237838135,
+  "std_psnr_db": 4.0420380658828625,
+  "mean_total_size_bytes": 15761.933333333338,
+  "std_total_size_bytes": 19.645072890902924,
+  "mean_train_time_s": 3.5808860858281455,
+  "codebook_bytes": 200,
+  "total_bytes_all_images": 472858,
+  "weights_file": "/home/z/my-project/research/universe/_exp30_out/exp30_weights_hl5_seed42.bin",
+  "weights_sha256": "186ef0063d6afbba88f5510af19f5c33e9be764627ef6d7bad6ca481be63660c",
+  "size_reduction_vs_coin_x": 2.6718803530869724,
+  "psnr_delta_vs_coin_db": -16.93023526976713,
+  "per_image": [
+    {
+      "index": 0,
+      "name": "astronaut",
+      "psnr_db": 42.77169519043953,
+      "train_time_s": 3.3487510681152344,
+      "n_params": 29505
+    },
+    {
+      "index": 1,
+      "name": "camera",
+      "psnr_db": 45.20605458572568,
+      "train_time_s": 3.3100976943969727,
+      "n_params": 29505
+    },
+    {
+      "index": 2,
+      "name": "cell",
+      "psnr_db": 51.69591454820691,
+      "train_time_s": 3.553374767303467,
+      "n_params": 29505
+    },
+    {
+      "index": 3,
+      "name": "coins",
+      "psnr_db": 47.3039835281379,
+      "train_time_s": 4.013667583465576,
+      "n_params": 29505
+    },
+    {
+      "index": 4,
+      "name": "moon",
+      "psnr_db": 55.835378319090445,
+      "train_time_s": 4.131074905395508,
+      "n_params": 29505
+    },
+    {
+      "index": 5,
+      "name": "page",
+      "psnr_db": 46.02694935540724,
+      "train_time_s": 4.239112138748169,
+      "n_params": 29505
+    },
+    {
+      "index": 6,
+      "name": "text",
+      "psnr_db": 46.29170834381468,
+      "train_time_s": 3.8381898403167725,
+      "n_params": 29505
+    },
+    {
+      "index": 7,
+      "name": "clock",
+      "psnr_db": 52.0274900515411,
+      "train_time_s": 3.615920066833496,
+      "n_params": 29505
+    },
+    {
+      "index": 8,
+      "name": "coffee",
+      "psnr_db": 53.4676599120207,
+      "train_time_s": 3.626371383666992,
+      "n_params": 29505
+    },
+    {
+      "index": 9,
+      "name": "chelsea",
+      "psnr_db": 45.47278914404135,
+      "train_time_s": 3.687950849533081,
+      "n_params": 29505
+    },
+    {
+      "index": 10,
+      "name": "aug_11",
+      "psnr_db": 48.75010234462516,
+      "train_time_s": 3.6189205646514893,
+      "n_params": 29505
+    },
+    {
+      "index": 11,
+      "name": "aug_12",
+      "psnr_db": 47.094662124469494,
+      "train_time_s": 3.4792754650115967,
+      "n_params": 29505
+    },
+    {
+      "index": 12,
+      "name": "aug_13",
+      "psnr_db": 39.72546017106324,
+      "train_time_s": 3.404891014099121,
+      "n_params": 29505
+    },
+    {
+      "index": 13,
+      "name": "aug_14",
+      "psnr_db": 43.567004997023055,
+      "train_time_s": 3.461517572402954,
+      "n_params": 29505
+    },
+    {
+      "index": 14,
+      "name": "aug_15",
+      "psnr_db": 42.26202031677062,
+      "train_time_s": 3.485433340072632,
+      "n_params": 29505
+    },
+    {
+      "index": 15,
+      "name": "aug_16",
+      "psnr_db": 48.691460275200356,
+      "train_time_s": 3.536844491958618,
+      "n_params": 29505
+    },
+    {
+      "index": 16,
+      "name": "aug_17",
+      "psnr_db": 45.74559268163475,
+      "train_time_s": 3.436791181564331,
+      "n_params": 29505
+    },
+    {
+      "index": 17,
+      "name": "aug_18",
+      "psnr_db": 50.30130073999679,
+      "train_time_s": 3.422243595123291,
+      "n_params": 29505
+    },
+    {
+      "index": 18,
+      "name": "aug_19",
+      "psnr_db": 45.90066885555985,
+      "train_time_s": 3.4521913528442383,
+      "n_params": 29505
+    },
+    {
+      "index": 19,
+      "name": "aug_20",
+      "psnr_db": 47.47653369074193,
+      "train_time_s": 3.507486343383789,
+      "n_params": 29505
+    },
+    {
+      "index": 20,
+      "name": "aug_21",
+      "psnr_db": 43.83993124713658,
+      "train_time_s": 3.7749905586242676,
+      "n_params": 29505
+    },
+    {
+      "index": 21,
+      "name": "aug_22",
+      "psnr_db": 44.83577784664747,
+      "train_time_s": 3.6018123626708984,
+      "n_params": 29505
+    },
+    {
+      "index": 22,
+      "name": "aug_23",
+      "psnr_db": 41.4259037641788,
+      "train_time_s": 3.487961530685425,
+      "n_params": 29505
+    },
+    {
+      "index": 23,
+      "name": "aug_24",
+      "psnr_db": 52.879247887448095,
+      "train_time_s": 3.386606216430664,
+      "n_params": 29505
+    },
+    {
+      "index": 24,
+      "name": "aug_25",
+      "psnr_db": 46.30626690683133,
+      "train_time_s": 3.5432517528533936,
+      "n_params": 29505
+    },
+    {
+      "index": 25,
+      "name": "aug_26",
+      "psnr_db": 42.191921152451414,
+      "train_time_s": 3.462841272354126,
+      "n_params": 29505
+    },
+    {
+      "index": 26,
+      "name": "aug_27",
+      "psnr_db": 49.957331725318795,
+      "train_time_s": 3.4561901092529297,
+      "n_params": 29505
+    },
+    {
+      "index": 27,
+      "name": "aug_28",
+      "psnr_db": 54.430937913589915,
+      "train_time_s": 3.475558280944824,
+      "n_params": 29505
+    },
+    {
+      "index": 28,
+      "name": "aug_29",
+      "psnr_db": 43.258395256068674,
+      "train_time_s": 3.528920888900757,
+      "n_params": 29505
+    },
+    {
+      "index": 29,
+      "name": "aug_30",
+      "psnr_db": 50.143684259962086,
+      "train_time_s": 3.538344383239746,
+      "n_params": 29505
+    }
+  ]
+}
