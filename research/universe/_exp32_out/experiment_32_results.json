@@ -1,0 +1,323 @@
+{
+  "experiment": "experiment_32_coin_rd_curve",
+  "timestamp": "2026-08-05T01:36:49+0000",
+  "hypothesis": "Measuring the actual COIN rate-distortion curve will confirm whether BHUH loses to COIN at every PSNR level (as estimated in Exp 31) or if BHUH wins in some region.",
+  "config": {
+    "hidden_features": 64,
+    "hidden_layers": 5,
+    "omega": 30.0,
+    "epochs": 300,
+    "lr": 0.001,
+    "num_images": 30,
+    "image_size": 64,
+    "seeds": [
+      42,
+      123,
+      2024
+    ],
+    "bits_options": [
+      16,
+      8,
+      4,
+      2
+    ]
+  },
+  "all_runs": [
+    {
+      "bits": 16,
+      "seed": 42,
+      "mean_psnr_pre_quant_db": 64.09302950760527,
+      "std_psnr_pre_quant_db": 15.187997382087314,
+      "mean_psnr_post_quant_db": 56.128758262182174,
+      "std_psnr_post_quant_db": 5.742570062044233,
+      "mean_size_bytes": 42122.0,
+      "std_size_bytes": 0.0,
+      "mean_train_time_s": 2.846638258298238,
+      "total_time_s": 90.12107110023499
+    },
+    {
+      "bits": 16,
+      "seed": 123,
+      "mean_psnr_pre_quant_db": 55.568678973628934,
+      "std_psnr_pre_quant_db": 10.554550603567655,
+      "mean_psnr_post_quant_db": 52.747180204285264,
+      "std_psnr_post_quant_db": 7.457500633126888,
+      "mean_size_bytes": 42122.0,
+      "std_size_bytes": 0.0,
+      "mean_train_time_s": 2.690994056065877,
+      "total_time_s": 85.2353150844574
+    },
+    {
+      "bits": 16,
+      "seed": 2024,
+      "mean_psnr_pre_quant_db": 59.13907456226478,
+      "std_psnr_pre_quant_db": 12.486200852095607,
+      "mean_psnr_post_quant_db": 54.68406144500262,
+      "std_psnr_post_quant_db": 6.882464108393387,
+      "mean_size_bytes": 42122.0,
+      "std_size_bytes": 0.0,
+      "mean_train_time_s": 2.8909284750620525,
+      "total_time_s": 91.7876136302948
+    },
+    {
+      "bits": 8,
+      "seed": 42,
+      "mean_psnr_pre_quant_db": 64.09302950760527,
+      "std_psnr_pre_quant_db": 15.187997382087314,
+      "mean_psnr_post_quant_db": 15.844910752248971,
+      "std_psnr_post_quant_db": 1.1756243706752234,
+      "mean_size_bytes": 21065.0,
+      "std_size_bytes": 0.0,
+      "mean_train_time_s": 2.8325566689173383,
+      "total_time_s": 89.56172966957092
+    },
+    {
+      "bits": 8,
+      "seed": 123,
+      "mean_psnr_pre_quant_db": 55.568678973628934,
+      "std_psnr_pre_quant_db": 10.554550603567655,
+      "mean_psnr_post_quant_db": 15.492576748377946,
+      "std_psnr_post_quant_db": 1.208182342115832,
+      "mean_size_bytes": 21065.0,
+      "std_size_bytes": 0.0,
+      "mean_train_time_s": 2.8599990685780843,
+      "total_time_s": 90.64401745796204
+    },
+    {
+      "bits": 8,
+      "seed": 2024,
+      "mean_psnr_pre_quant_db": 59.13907456226478,
+      "std_psnr_pre_quant_db": 12.486200852095607,
+      "mean_psnr_post_quant_db": 15.816677959395156,
+      "std_psnr_post_quant_db": 1.2249798791652222,
+      "mean_size_bytes": 21065.0,
+      "std_size_bytes": 0.0,
+      "mean_train_time_s": 2.732777714729309,
+      "total_time_s": 86.82630515098572
+    },
+    {
+      "bits": 4,
+      "seed": 42,
+      "mean_psnr_pre_quant_db": 64.09302950760527,
+      "std_psnr_pre_quant_db": 15.187997382087314,
+      "mean_psnr_post_quant_db": 9.90322066887881,
+      "std_psnr_post_quant_db": 1.9738153424597416,
+      "mean_size_bytes": 10537.0,
+      "std_size_bytes": 0.0,
+      "mean_train_time_s": 2.9139926433563232,
+      "total_time_s": 92.26074481010437
+    },
+    {
+      "bits": 4,
+      "seed": 123,
+      "mean_psnr_pre_quant_db": 55.568678973628934,
+      "std_psnr_pre_quant_db": 10.554550603567655,
+      "mean_psnr_post_quant_db": 9.369604982567974,
+      "std_psnr_post_quant_db": 1.150387553134819,
+      "mean_size_bytes": 10537.0,
+      "std_size_bytes": 0.0,
+      "mean_train_time_s": 2.7953352053960163,
+      "total_time_s": 88.54687786102295
+    },
+    {
+      "bits": 4,
+      "seed": 2024,
+      "mean_psnr_pre_quant_db": 58.92928994300385,
+      "std_psnr_pre_quant_db": 12.528455462609612,
+      "mean_psnr_post_quant_db": 9.711261658789015,
+      "std_psnr_post_quant_db": 1.6466413323353268,
+      "mean_size_bytes": 10537.0,
+      "std_size_bytes": 0.0,
+      "mean_train_time_s": 2.8167557954788207,
+      "total_time_s": 89.35691261291504
+    },
+    {
+      "bits": 2,
+      "seed": 42,
+      "mean_psnr_pre_quant_db": 64.09302950760527,
+      "std_psnr_pre_quant_db": 15.187997382087314,
+      "mean_psnr_post_quant_db": -3.5158444666330255,
+      "std_psnr_post_quant_db": 0.3905726473667155,
+      "mean_size_bytes": 5273.0,
+      "std_size_bytes": 0.0,
+      "mean_train_time_s": 2.8685839891433718,
+      "total_time_s": 91.18446373939514
+    },
+    {
+      "bits": 2,
+      "seed": 123,
+      "mean_psnr_pre_quant_db": 55.568678973628934,
+      "std_psnr_pre_quant_db": 10.554550603567655,
+      "mean_psnr_post_quant_db": 2.9253190157684372,
+      "std_psnr_post_quant_db": 0.3896429780531468,
+      "mean_size_bytes": 5273.0,
+      "std_size_bytes": 0.0,
+      "mean_train_time_s": 2.8065585692723594,
+      "total_time_s": 89.10194945335388
+    },
+    {
+      "bits": 2,
+      "seed": 2024,
+      "mean_psnr_pre_quant_db": 58.92928994300385,
+      "std_psnr_pre_quant_db": 12.528455462609612,
+      "mean_psnr_post_quant_db": -2.21255820240704,
+      "std_psnr_post_quant_db": 0.5337391046312897,
+      "mean_size_bytes": 5273.0,
+      "std_size_bytes": 0.0,
+      "mean_train_time_s": 2.710116235415141,
+      "total_time_s": 85.87680244445801
+    }
+  ],
+  "aggregated": [
+    {
+      "bits": 16,
+      "n_seeds": 3,
+      "seeds": [
+        42,
+        123,
+        2024
+      ],
+      "mean_psnr_db": 54.51999997049001,
+      "std_psnr_db": 1.3853891549493462,
+      "mean_size_bytes": 42122.0,
+      "std_size_bytes": 0.0
+    },
+    {
+      "bits": 8,
+      "n_seeds": 3,
+      "seeds": [
+        42,
+        123,
+        2024
+      ],
+      "mean_psnr_db": 15.718055153340691,
+      "std_psnr_db": 0.15985338277411026,
+      "mean_size_bytes": 21065.0,
+      "std_size_bytes": 0.0
+    },
+    {
+      "bits": 4,
+      "n_seeds": 3,
+      "seeds": [
+        42,
+        123,
+        2024
+      ],
+      "mean_psnr_db": 9.661362436745266,
+      "std_psnr_db": 0.22068661708355336,
+      "mean_size_bytes": 10537.0,
+      "std_size_bytes": 0.0
+    },
+    {
+      "bits": 2,
+      "n_seeds": 3,
+      "seeds": [
+        42,
+        123,
+        2024
+      ],
+      "mean_psnr_db": -0.9343612177572095,
+      "std_psnr_db": 2.780585957483479,
+      "mean_size_bytes": 5273.0,
+      "std_size_bytes": 0.0
+    }
+  ],
+  "rd_comparison_with_bhuH": [
+    {
+      "bhuH_config": "hl=2 thr=0.001",
+      "bhuH_psnr_db": 36.04472607645467,
+      "bhuH_size_bytes": 9514.633333333333,
+      "coin_bits": 16,
+      "coin_psnr_db": 54.51999997049001,
+      "coin_size_bytes": 42122.0,
+      "psnr_diff_db": -18.47527389403534,
+      "size_ratio_bhuH_over_coin": 0.22588275327224094,
+      "winner": "BHUH",
+      "winner_smaller_by_x": 4.427075487231948
+    },
+    {
+      "bhuH_config": "hl=2 thr=0.002",
+      "bhuH_psnr_db": 32.42180429961209,
+      "bhuH_size_bytes": 9723.566666666668,
+      "coin_bits": 8,
+      "coin_psnr_db": 15.718055153340691,
+      "coin_size_bytes": 21065.0,
+      "psnr_diff_db": 16.7037491462714,
+      "size_ratio_bhuH_over_coin": 0.46159822770788833,
+      "winner": "BHUH",
+      "winner_smaller_by_x": 2.1663861340317507
+    },
+    {
+      "bhuH_config": "hl=2 thr=0.005",
+      "bhuH_psnr_db": 22.53556410289582,
+      "bhuH_size_bytes": 9270.199999999999,
+      "coin_bits": 8,
+      "coin_psnr_db": 15.718055153340691,
+      "coin_size_bytes": 21065.0,
+      "psnr_diff_db": 6.817508949555128,
+      "size_ratio_bhuH_over_coin": 0.4400759553762164,
+      "winner": "BHUH",
+      "winner_smaller_by_x": 2.272335008953421
+    },
+    {
+      "bhuH_config": "hl=2 thr=0.01",
+      "bhuH_psnr_db": 14.954821037192746,
+      "bhuH_size_bytes": 7994.511111111108,
+      "coin_bits": 8,
+      "coin_psnr_db": 15.718055153340691,
+      "coin_size_bytes": 21065.0,
+      "psnr_diff_db": -0.7632341161479452,
+      "size_ratio_bhuH_over_coin": 0.37951631194451024,
+      "winner": "BHUH",
+      "winner_smaller_by_x": 2.6349328567100216
+    },
+    {
+      "bhuH_config": "hl=5 thr=0.001",
+      "bhuH_psnr_db": 33.41033715823316,
+      "bhuH_size_bytes": 15767.077777777782,
+      "coin_bits": 8,
+      "coin_psnr_db": 15.718055153340691,
+      "coin_size_bytes": 21065.0,
+      "psnr_diff_db": 17.69228200489247,
+      "size_ratio_bhuH_over_coin": 0.7484964527784373,
+      "winner": "BHUH",
+      "winner_smaller_by_x": 1.3360116755236118
+    },
+    {
+      "bhuH_config": "hl=5 thr=0.002",
+      "bhuH_psnr_db": 24.950031887378916,
+      "bhuH_size_bytes": 15537.844444444449,
+      "coin_bits": 8,
+      "coin_psnr_db": 15.718055153340691,
+      "coin_size_bytes": 21065.0,
+      "psnr_diff_db": 9.231976734038225,
+      "size_ratio_bhuH_over_coin": 0.7376142627317563,
+      "winner": "BHUH",
+      "winner_smaller_by_x": 1.355722157942686
+    },
+    {
+      "bhuH_config": "hl=5 thr=0.005",
+      "bhuH_psnr_db": 15.6972871140983,
+      "bhuH_size_bytes": 14177.211111111115,
+      "coin_bits": 8,
+      "coin_psnr_db": 15.718055153340691,
+      "coin_size_bytes": 21065.0,
+      "psnr_diff_db": -0.020768039242391012,
+      "size_ratio_bhuH_over_coin": 0.6730221272780021,
+      "winner": "BHUH",
+      "winner_smaller_by_x": 1.4858352489010136
+    },
+    {
+      "bhuH_config": "hl=5 thr=0.01",
+      "bhuH_psnr_db": 11.878652889222266,
+      "bhuH_size_bytes": 10969.233333333337,
+      "coin_bits": 4,
+      "coin_psnr_db": 9.661362436745266,
+      "coin_size_bytes": 10537.0,
+      "psnr_diff_db": 2.217290452477,
+      "size_ratio_bhuH_over_coin": 1.0410205308278768,
+      "winner": "COIN",
+      "winner_smaller_by_x": 1.0410205308278768
+    }
+  ]
+}

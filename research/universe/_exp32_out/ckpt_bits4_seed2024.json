@@ -1,0 +1,12 @@
+{
+  "bits": 4,
+  "seed": 2024,
+  "mean_psnr_pre_quant_db": 58.92928994300385,
+  "std_psnr_pre_quant_db": 12.528455462609612,
+  "mean_psnr_post_quant_db": 9.711261658789015,
+  "std_psnr_post_quant_db": 1.6466413323353268,
+  "mean_size_bytes": 10537.0,
+  "std_size_bytes": 0.0,
+  "mean_train_time_s": 2.8167557954788207,
+  "total_time_s": 89.35691261291504
+}

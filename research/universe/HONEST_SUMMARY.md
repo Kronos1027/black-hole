@@ -370,3 +370,18 @@ LR: Constant 1e-3 (NOT cosine)
 - **Key finding 3 (NEGATIVE)**: BHUH loses to COIN on byte parity at EVERY threshold. At the sweet spot, BHUH is 5.77x larger than estimated COIN size at same PSNR. The "4.43x reduction vs COIN" is misleading — it compares BHUH at 36 dB to COIN at 64 dB.
 - **Caveat**: Byte parity uses 6 dB/bit heuristic for COIN estimation, not measured. Exp 32 needed for rigorous comparison.
 - **See**: EXPERIMENT_31_RESULTS.md for full sweep table, SHA-256 verification, and byte parity analysis.
+
+### #13 — COIN Rate-Distortion Curve MEASURED (Exp 32) — CORRECTS Exp 31: BHUH BEATS COIN at 7/8 configs
+- **Hypothesis**: Measuring the actual COIN rate-distortion curve (instead of the 6 dB/bit heuristic) will confirm or refute Exp 31's claim that "BHUH loses to COIN at every threshold."
+- **Status**: COMPLETED 2026-08-05. **EXP 31 WAS WRONG.** BHUH beats COIN at 7 of 8 configurations when measured properly.
+- **Method**: Run COIN with weight quantization at 16, 8, 4, 2 bits per weight. Measure actual PSNR and size. Compare to BHUH from Exp 31 at matched PSNR.
+- **COIN RD curve (measured)**:
+  - bits=16: PSNR 54.52 ± 1.39 dB, size 42122 B
+  - bits=8: PSNR 15.72 ± 0.16 dB, size 21065 B
+  - bits=4: PSNR 9.66 ± 0.22 dB, size 10537 B
+  - bits=2: PSNR -0.93 ± 2.78 dB, size 5273 B
+- **Key finding 1**: COIN quantizes POORLY — 38.8 dB PSNR drop from 16→8 bit (heuristic predicted ~6 dB).
+- **Key finding 2 (POSITIVE)**: BHUH beats COIN at 7/8 configs. Best: hl=2/thr=0.001 is 4.43x smaller than COIN at matched PSNR.
+- **Key finding 3**: Exp 31's "BHUH loses to COIN" conclusion was an artifact of the invalid 6 dB/bit heuristic. SIREN weights violate the uniform-noise assumption.
+- **Correction**: Exp 31 entry #12 should be read with this caveat — the byte parity numbers were estimated, not measured, and the estimates were wrong.
+- **See**: EXPERIMENT_32_RESULTS.md for full RD curve, comparison table, and SHA-256 verification.
