@@ -1,0 +1,15 @@
+{
+  "config_name": "bhuH_multi_omega_hl2",
+  "seed": 42,
+  "hidden_layers": 2,
+  "omega": "multi [10,50]",
+  "mean_psnr_db": 36.73917983274073,
+  "std_psnr_db": 2.780552039769685,
+  "mean_total_size_bytes": 9841.766666666668,
+  "std_total_size_bytes": 31.194390521374192,
+  "mean_train_time_s": 2.4016228516896567,
+  "codebook_bytes": 200,
+  "weights_file": "/home/z/my-project/research/universe/_exp35_out/exp35_bhuH_multi_omega_hl2_seed42.bin",
+  "weights_sha256": "459575d89b09bc9b77a3012bbf5cbc347a04ee5b2bdb82b0c4ab1bfa21f71b8b",
+  "total_time_s": 79.38682174682617
+}

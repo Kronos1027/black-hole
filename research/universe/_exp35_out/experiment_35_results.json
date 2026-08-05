@@ -1,0 +1,149 @@
+{
+  "experiment": "experiment_35_controlled_hl2",
+  "timestamp": "2026-08-05T16:18:42+0000",
+  "hypothesis": "At hl=2 with same entropy coding, COIN (single-omega) still dominates BHUH (multi-omega).",
+  "config": {
+    "hidden_features": 64,
+    "epochs": 300,
+    "lr": 0.001,
+    "K": 50,
+    "num_images": 30,
+    "image_size": 64,
+    "seeds": [
+      42,
+      123,
+      2024
+    ]
+  },
+  "all_runs": [
+    {
+      "config_name": "coin_single_omega_hl2",
+      "seed": 42,
+      "hidden_layers": 2,
+      "omega": 30.0,
+      "mean_psnr_db": 41.46856796102632,
+      "std_psnr_db": 2.258279047175487,
+      "mean_total_size_bytes": 4242.333333333334,
+      "std_total_size_bytes": 34.18511696955595,
+      "mean_train_time_s": 1.5115695476531983,
+      "codebook_bytes": 200,
+      "weights_file": "/home/z/my-project/research/universe/_exp35_out/exp35_coin_single_omega_hl2_seed42.bin",
+      "weights_sha256": "b1c7dbe40db291f047a38edbb5cbddb4620ccfd93b0bd6bfa8ed85024f238708",
+      "total_time_s": 52.46756386756897
+    },
+    {
+      "config_name": "coin_single_omega_hl2",
+      "seed": 123,
+      "hidden_layers": 2,
+      "omega": 30.0,
+      "mean_psnr_db": 40.463776401277485,
+      "std_psnr_db": 2.792765468589096,
+      "mean_total_size_bytes": 4180.266666666667,
+      "std_total_size_bytes": 43.28556341322134,
+      "mean_train_time_s": 1.490017056465149,
+      "codebook_bytes": 200,
+      "weights_file": "/home/z/my-project/research/universe/_exp35_out/exp35_coin_single_omega_hl2_seed123.bin",
+      "weights_sha256": "542884b1898de851d60de9d954c9b5ab99efc2532189224e2f4728229a0df7ae",
+      "total_time_s": 51.60895824432373
+    },
+    {
+      "config_name": "coin_single_omega_hl2",
+      "seed": 2024,
+      "hidden_layers": 2,
+      "omega": 30.0,
+      "mean_psnr_db": 42.19875323865008,
+      "std_psnr_db": 2.0916049848444733,
+      "mean_total_size_bytes": 4072.266666666668,
+      "std_total_size_bytes": 35.78416782135187,
+      "mean_train_time_s": 1.3949272235234578,
+      "codebook_bytes": 200,
+      "weights_file": "/home/z/my-project/research/universe/_exp35_out/exp35_coin_single_omega_hl2_seed2024.bin",
+      "weights_sha256": "42ae2553a58dcb5beb2dd8c815065a408e803e78f28d0c8b60407d3913326af0",
+      "total_time_s": 48.500096559524536
+    },
+    {
+      "config_name": "bhuH_multi_omega_hl2",
+      "seed": 42,
+      "hidden_layers": 2,
+      "omega": "multi [10,50]",
+      "mean_psnr_db": 36.73917983274073,
+      "std_psnr_db": 2.780552039769685,
+      "mean_total_size_bytes": 9841.766666666668,
+      "std_total_size_bytes": 31.194390521374192,
+      "mean_train_time_s": 2.4016228516896567,
+      "codebook_bytes": 200,
+      "weights_file": "/home/z/my-project/research/universe/_exp35_out/exp35_bhuH_multi_omega_hl2_seed42.bin",
+      "weights_sha256": "459575d89b09bc9b77a3012bbf5cbc347a04ee5b2bdb82b0c4ab1bfa21f71b8b",
+      "total_time_s": 79.38682174682617
+    },
+    {
+      "config_name": "bhuH_multi_omega_hl2",
+      "seed": 123,
+      "hidden_layers": 2,
+      "omega": "multi [10,50]",
+      "mean_psnr_db": 36.99922407164239,
+      "std_psnr_db": 3.213187057872367,
+      "mean_total_size_bytes": 9696.566666666668,
+      "std_total_size_bytes": 32.83326565136848,
+      "mean_train_time_s": 2.397053066889445,
+      "codebook_bytes": 200,
+      "weights_file": "/home/z/my-project/research/universe/_exp35_out/exp35_bhuH_multi_omega_hl2_seed123.bin",
+      "weights_sha256": "8e4b3a57fb9ff5713a6c0b594d1fdd0ddd35bc9aacb506a6ce9640b0048b6b7e",
+      "total_time_s": 79.51920795440674
+    },
+    {
+      "config_name": "bhuH_multi_omega_hl2",
+      "seed": 2024,
+      "hidden_layers": 2,
+      "omega": "multi [10,50]",
+      "mean_psnr_db": 37.42401401705167,
+      "std_psnr_db": 2.75431185554397,
+      "mean_total_size_bytes": 9694.766666666666,
+      "std_total_size_bytes": 45.70291748528388,
+      "mean_train_time_s": 2.352653074264526,
+      "codebook_bytes": 200,
+      "weights_file": "/home/z/my-project/research/universe/_exp35_out/exp35_bhuH_multi_omega_hl2_seed2024.bin",
+      "weights_sha256": "f577d6cf13833e271342b548779788b75d96bf8bb476be70a64d42ee7c97d84f",
+      "total_time_s": 77.94770669937134
+    }
+  ],
+  "aggregated": {
+    "coin_single_omega_hl2": {
+      "n_seeds": 3,
+      "seeds": [
+        42,
+        123,
+        2024
+      ],
+      "mean_psnr_db": 41.377032533651295,
+      "std_psnr_db": 0.7112525137171265,
+      "mean_size_bytes": 4164.955555555557,
+      "std_size_bytes": 70.26848686938939
+    },
+    "bhuH_multi_omega_hl2": {
+      "n_seeds": 3,
+      "seeds": [
+        42,
+        123,
+        2024
+      ],
+      "mean_psnr_db": 37.05413930714493,
+      "std_psnr_db": 0.28226610059532026,
+      "mean_size_bytes": 9744.366666666667,
+      "std_size_bytes": 68.87612068053836
+    }
+  },
+  "controlled_comparison": {
+    "coin_hl2": {
+      "psnr_db": 41.377032533651295,
+      "size_bytes": 4164.955555555557
+    },
+    "bhuh_hl2": {
+      "psnr_db": 37.05413930714493,
+      "size_bytes": 9744.366666666667
+    },
+    "psnr_diff_coin_minus_bhuh": 4.322893226506366,
+    "size_ratio_bhuh_over_coin": 2.339608799346931,
+    "winner": "COIN (dominates on both axes)"
+  }
+}

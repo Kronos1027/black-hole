@@ -1,0 +1,15 @@
+{
+  "config_name": "coin_single_omega_hl2",
+  "seed": 2024,
+  "hidden_layers": 2,
+  "omega": 30.0,
+  "mean_psnr_db": 42.19875323865008,
+  "std_psnr_db": 2.0916049848444733,
+  "mean_total_size_bytes": 4072.266666666668,
+  "std_total_size_bytes": 35.78416782135187,
+  "mean_train_time_s": 1.3949272235234578,
+  "codebook_bytes": 200,
+  "weights_file": "/home/z/my-project/research/universe/_exp35_out/exp35_coin_single_omega_hl2_seed2024.bin",
+  "weights_sha256": "42ae2553a58dcb5beb2dd8c815065a408e803e78f28d0c8b60407d3913326af0",
+  "total_time_s": 48.500096559524536
+}

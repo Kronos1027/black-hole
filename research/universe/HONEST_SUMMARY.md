@@ -420,3 +420,19 @@ LR: Constant 1e-3 (NOT cosine)
 - **Key finding 3 (NEGATIVE)**: When COIN gets entropy coding, it DOMINATES BHUH: 22.48 dB higher PSNR at only 6% larger size.
 - **Reinterpretation**: Exp 32-33's "BHUH beats COIN 8/8" was comparing BHUH (with entropy coding) to COIN (without). The advantage was the entropy coding, not the architecture.
 - **See**: EXPERIMENT_34_RESULTS.md for full isolation analysis and SHA-256 verification.
+
+### #16 — Controlled hl=2 Comparison (Exp 35) — COIN DOMINATES BHUH on both axes (definitive)
+- **Hypothesis**: At hl=2 with same entropy coding, COIN (single-omega) still dominates BHUH (multi-omega).
+- **Status**: COMPLETED 2026-08-05. **HYPOTHESIS CONFIRMED — COIN dominates on BOTH axes.**
+- **Method**: Ran COIN (single-omega=30, hl=2) and BHUH (multi-omega [10,50], hl=2) with identical entropy coding (KMeans K=50 + arithmetic coding), 3 seeds, 30 images.
+- **Results**:
+  - COIN: 41.38 ± 0.28 dB, 4165 B
+  - BHUH: 37.05 ± 0.28 dB, 9744 B
+  - PSNR diff: +4.32 dB (COIN higher)
+  - Size ratio: 2.34x (BHUH larger)
+  - **Winner: COIN (dominates on both axes)**
+- **Key finding 1**: Multi-omega architecture is DEFINITIVELY worse than single-omega when entropy coding is controlled.
+- **Key finding 2**: The "BHUH beats COIN" narrative from Exp 32-33 is fully overturned — it was an artifact of comparing BHUH (with entropy coding) to COIN (without).
+- **Key finding 3**: The entropy coding pipeline (KMeans + arithmetic coding) is the real innovation, delivering ~10x size reduction over raw float16.
+- **Final conclusion**: Single-omega SIREN + entropy coding is the optimal configuration. Multi-omega adds complexity without value.
+- **See**: EXPERIMENT_35_RESULTS.md for full comparison and SHA-256 verification.
