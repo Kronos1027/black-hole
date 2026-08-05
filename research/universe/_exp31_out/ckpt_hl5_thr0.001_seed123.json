@@ -1,0 +1,19 @@
+{
+  "threshold": 0.001,
+  "hidden_layers": 5,
+  "seed": 123,
+  "mean_psnr_pre_prune_db": 47.96616106751555,
+  "std_psnr_pre_prune_db": 5.681211402742998,
+  "mean_psnr_post_prune_db": 33.235914183119945,
+  "std_psnr_post_prune_db": 1.5292875443574945,
+  "mean_total_size_bytes": 15785.633333333337,
+  "std_total_size_bytes": 16.11103831401178,
+  "mean_sparsity": 0.06811952776365589,
+  "std_sparsity": 0.0016595761073956235,
+  "codebook_bytes": 200,
+  "weights_file": "/home/z/my-project/research/universe/_exp31_out/exp31_weights_hl5_seed123_thr0.001.bin",
+  "weights_sha256": "c1941a93be9230155fefbe852a643bbd754ed777036dd9d235ede7408fa866da",
+  "size_reduction_vs_coin_x": 2.667868884998806,
+  "psnr_delta_vs_coin_db": -30.85711532448532,
+  "train_time_s": 112.47184920310974
+}

@@ -356,3 +356,17 @@ LR: Constant 1e-3 (NOT cosine)
 | 9 | Multi-omega [10,50] | 27-28 | +1.29-1.57 dB, -28% bytes ✅ |
 | **10** | **Combined pipeline (with pruning 0.01)** | **29** | **PSNR 15 dB (vs 34 projected) ❌** |
 | **11** | **No-pruning pipeline** | **30** | **PSNR 37-50 dB ✅, but size 2.7-4.3x (vs 5.1x projected) ⚠️** |
+
+### #12 — L1 Pruning Threshold Sweep (Exp 31) — SWEET SPOT FOUND at thr=0.001, but BHUH loses to COIN on byte parity
+- **Hypothesis**: A pruning threshold between 0.001 and 0.005 finds a sweet spot: enough sparsity for size reduction, not so much that PSNR collapses.
+- **Status**: COMPLETED 2026-08-05. Sweet spot identified at thr=0.001, but byte parity analysis reveals BHUH loses to COIN at every threshold.
+- **Actual numbers** (30 images, 300 epochs, 3 seeds, 4 thresholds × 2 hidden_layers = 24 runs):
+  - hl=2 thr=0.001: PSNR 36.04 ± 0.32 dB, size 9515 B, 4.43x reduction, sparsity 4.43% ← SWEET SPOT
+  - hl=2 thr=0.01: PSNR 14.95 ± 0.27 dB, size 7995 B, 5.27x reduction, sparsity 40.77%
+  - hl=5 thr=0.001: PSNR 33.41 ± 0.25 dB, size 15767 B, 2.67x reduction, sparsity 6.79%
+  - hl=5 thr=0.01: PSNR 11.88 ± 0.15 dB, size 10969 B, 3.84x reduction, sparsity 55.91%
+- **Key finding 1**: thr=0.001 is the sweet spot — only 1 dB PSNR loss vs no-prune (hl=2), while retaining 4.43x size reduction.
+- **Key finding 2**: hl=2 is more pruning-robust than hl=5 at every threshold (counterintuitive — deeper networks are MORE vulnerable to pruning).
+- **Key finding 3 (NEGATIVE)**: BHUH loses to COIN on byte parity at EVERY threshold. At the sweet spot, BHUH is 5.77x larger than estimated COIN size at same PSNR. The "4.43x reduction vs COIN" is misleading — it compares BHUH at 36 dB to COIN at 64 dB.
+- **Caveat**: Byte parity uses 6 dB/bit heuristic for COIN estimation, not measured. Exp 32 needed for rigorous comparison.
+- **See**: EXPERIMENT_31_RESULTS.md for full sweep table, SHA-256 verification, and byte parity analysis.
