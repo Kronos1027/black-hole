@@ -1,0 +1,9 @@
+ida em estado potencial e ejetada instantaneamente sob demanda.
+
+O paper COIN, publicado por Dupont et al. em 2021, demonstrou que é possível comprimir imagens usando INRs. Porém, os resultados mostram que para a maioria dos arquivos do mundo real, os métodos tradicionais como BPG e JPEG XL ainda ganham em razão de compressão.
+
+O custo de treinamento é o calcanhar de Aquiles dessa abordagem. Comprimir um único arquivo de imagem pode exigir minutos de GPU, enquanto o JPEG faz o mesmo em milissegundos. Esse fator de mil é difícil de superar com otimizações de engenharia.
+
+O limite de Shannon estabelece o teto teórico de qualquer esquema de compressão sem perdas. Para dados aleatórios, esse teto é exatamente o tamanho original, pois não há redundância a ser explorada por nenhum algoritmo, por mais inteligente que seja.
+
+A visão original do usuário, de ter receitas rodando em background para pré-calcular arquivos, é elegante mas esbarra na segunda lei da termodinâmica da computação. Manter

@@ -1,0 +1,9 @@
+ue as redes neurais representem com fidelidade sinais com altas frequências. Isso é fundamental para comprimir texturas, áudio e imagens sem perder detalhes.
+
+A determinação é o combustível que move a inovação tecnológica. Sem ela, nenhuma ideia por mais brilhante que seja consegue atravessar o vale da morte que separa o conceito da implementação real.
+
+Para compressão sem perdas, o cenário é ainda mais desafiador. As INRs são inerentemente aproximativas, pois usam números de ponto flutuante. Reconstruir byte a byte um executável ou um arquivo de texto exige precisão absoluta que redes neurais não fornecem naturalmente.
+
+A arquitetura zero-copy elimina intermediários do sistema operacional. Instruções diretas de hardware como io_uring e DirectStorage permitem que o dado seja ejetado do núcleo da IA direto para a memória RAM ou VRAM de execução.
+
+A descompressão, por outro lado, é onde as INRs poderiam brilhar. Avaliar uma rede neural é uma operação altamente paralelizável, especialment

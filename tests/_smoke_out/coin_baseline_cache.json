@@ -1,0 +1,14 @@
+{
+  "mean_psnr_db": 32.889137175595124,
+  "mean_weights_bytes_float16": 42114.0,
+  "std_psnr_db": 1.0995059837377013,
+  "std_weights_bytes": 0.0,
+  "config": {
+    "hidden_features": 64,
+    "hidden_layers": 5,
+    "omega": 30.0,
+    "epochs": 50,
+    "lr": 0.001,
+    "seed": 42
+  }
+}

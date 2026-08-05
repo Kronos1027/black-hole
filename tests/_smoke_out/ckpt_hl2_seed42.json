@@ -1,0 +1,83 @@
+{
+  "hidden_layers": 2,
+  "seed": 42,
+  "config": {
+    "hidden_features": 64,
+    "omegas": [
+      10.0,
+      50.0
+    ],
+    "epochs": 50,
+    "lr": 0.001,
+    "pruning_threshold": 0.01,
+    "K": 50,
+    "num_images": 5,
+    "image_size": 64
+  },
+  "mean_psnr_pre_prune_db": 26.683144329353922,
+  "std_psnr_pre_prune_db": 2.3381829197776804,
+  "mean_psnr_post_prune_db": 15.944730219060315,
+  "std_psnr_post_prune_db": 1.9502124819107813,
+  "mean_total_size_bytes": 8051.6,
+  "std_total_size_bytes": 37.6913783244922,
+  "mean_sparsity": 0.39920117474302497,
+  "mean_train_time_s": 0.3805704116821289,
+  "codebook_bytes": 200,
+  "total_bytes_all_images": 40258,
+  "weights_file": "/home/z/my-project/tests/_smoke_out/exp29_weights_hl2_seed42.bin",
+  "weights_sha256": "4a89650c73c073c08523386c3a03ddff322489adf741be21d0c15fc06ff8cf54",
+  "size_reduction_vs_coin_x": 5.2305131899249835,
+  "psnr_delta_vs_coin_db": -16.94440695653481,
+  "per_image": [
+    {
+      "index": 0,
+      "name": "astronaut",
+      "psnr_pre_prune_db": 24.18308931675123,
+      "psnr_post_prune_db": 14.189408126662803,
+      "train_time_s": 0.3811943531036377,
+      "n_params": 17025,
+      "n_params_kept": 10234,
+      "sparsity": 0.3988839941262849
+    },
+    {
+      "index": 1,
+      "name": "camera",
+      "psnr_pre_prune_db": 26.62944929623076,
+      "psnr_post_prune_db": 15.613504792772176,
+      "train_time_s": 0.3831791877746582,
+      "n_params": 17025,
+      "n_params_kept": 10245,
+      "sparsity": 0.39823788546255506
+    },
+    {
+      "index": 2,
+      "name": "cell",
+      "psnr_pre_prune_db": 30.00897057232796,
+      "psnr_post_prune_db": 18.089155269885737,
+      "train_time_s": 0.38936400413513184,
+      "n_params": 17025,
+      "n_params_kept": 10065,
+      "sparsity": 0.40881057268722465
+    },
+    {
+      "index": 3,
+      "name": "coins",
+      "psnr_pre_prune_db": 24.092206280228105,
+      "psnr_post_prune_db": 13.546662500299842,
+      "train_time_s": 0.3740098476409912,
+      "n_params": 17025,
+      "n_params_kept": 10312,
+      "sparsity": 0.39430249632892805
+    },
+    {
+      "index": 4,
+      "name": "moon",
+      "psnr_pre_prune_db": 28.502006181231557,
+      "psnr_post_prune_db": 18.284920405681017,
+      "train_time_s": 0.3751046657562256,
+      "n_params": 17025,
+      "n_params_kept": 10287,
+      "sparsity": 0.3957709251101322
+    }
+  ]
+}
