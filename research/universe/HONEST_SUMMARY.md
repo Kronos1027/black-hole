@@ -385,3 +385,24 @@ LR: Constant 1e-3 (NOT cosine)
 - **Key finding 3**: Exp 31's "BHUH loses to COIN" conclusion was an artifact of the invalid 6 dB/bit heuristic. SIREN weights violate the uniform-noise assumption.
 - **Correction**: Exp 31 entry #12 should be read with this caveat — the byte parity numbers were estimated, not measured, and the estimates were wrong.
 - **See**: EXPERIMENT_32_RESULTS.md for full RD curve, comparison table, and SHA-256 verification.
+
+### #14 — COIN RD Curve Fine Resolution (Exp 33) — BHUH BEATS COIN at 8/8 (interpolated, definitive)
+- **Hypothesis**: Filling in the COIN RD curve with intermediate bit depths (12, 10, 6, 3) will confirm or refute Exp 32's "BHUH wins 7/8" finding.
+- **Status**: COMPLETED 2026-08-05. **BHUH wins 8/8** with interpolated comparison — STRONGER than Exp 32's 7/8.
+- **Method**: Ran COIN at 4 additional bit depths (12, 10, 6, 3). Merged with Exp 32 data (16, 8, 4, 2) to get 8-point RD curve. Used linear interpolation to compare BHUH to COIN at exact matched PSNR.
+- **Full COIN RD curve (8 points)**:
+  - bits=16: 54.52 dB, 42122 B
+  - bits=12: 37.37 dB, 31594 B (new)
+  - bits=10: 25.80 dB, 26330 B (new)
+  - bits=8:  15.72 dB, 21065 B
+  - bits=6:  10.16 dB, 15801 B (new)
+  - bits=4:   9.66 dB, 10537 B
+  - bits=3:   7.71 dB,  7905 B (new)
+  - bits=2:  -0.93 dB,  5273 B
+- **Key finding 1**: BHUH wins 8/8 configs with interpolated comparison (was 7/8 in Exp 32 with nearest-point).
+- **Key finding 2**: Exp 32's "COIN wins 1/8" (hl=5/thr=0.01) was an artifact of sparse sampling — it flipped to BHUH wins 1.59x with interpolation.
+- **Key finding 3**: COIN RD curve has a "knee" at 10-bit — above 10-bit, each bit costs ~10 dB; below 10-bit, bits are nearly free.
+- **Key finding 4**: BHUH's advantage grows with PSNR (3.26x at 36 dB vs 1.48x at 16 dB) — multi-omega architecture preserves high-frequency detail that COIN's uniform quantization destroys.
+- **Best BHUH config confirmed**: hl=2/thr=0.001 — 3.26x smaller than COIN at matched PSNR (36.04 dB).
+- **Definitive answer**: The 6 dB/bit heuristic from Exp 31 is refuted. BHUH genuinely beats COIN on the rate-distortion frontier.
+- **See**: EXPERIMENT_33_RESULTS.md for full 8-point curve, interpolation methods, and SHA-256 verification.

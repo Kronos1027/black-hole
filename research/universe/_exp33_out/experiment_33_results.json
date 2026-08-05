@@ -1,6 +1,6 @@
 {
   "experiment": "experiment_33_coin_rd_fine",
-  "timestamp": "2026-08-05T02:26:31+0000",
+  "timestamp": "2026-08-05T02:29:18+0000",
   "hypothesis": "Filling in the COIN RD curve with intermediate bit depths (12, 10, 6, 3) will either confirm or refute the Exp 32 finding that BHUH wins 7/8 configs.",
   "config": {
     "hidden_features": 64,
@@ -11,13 +11,138 @@
     "num_images": 30,
     "image_size": 64,
     "seeds": [
-      123
+      42,
+      123,
+      2024
     ],
     "bits_options_new": [
+      12,
+      10,
+      6,
       3
     ]
   },
   "new_runs": [
+    {
+      "bits": 12,
+      "seed": 42,
+      "mean_psnr_pre_quant_db": 64.09302950760527,
+      "std_psnr_pre_quant_db": 15.187997382087314,
+      "mean_psnr_post_quant_db": 37.326881371456544,
+      "std_psnr_post_quant_db": 1.0367854216441705,
+      "mean_size_bytes": 31594.0,
+      "std_size_bytes": 0.0,
+      "mean_train_time_s": 2.8370521545410154,
+      "total_time_s": 89.52125668525696
+    },
+    {
+      "bits": 12,
+      "seed": 123,
+      "mean_psnr_pre_quant_db": 55.568678973628934,
+      "std_psnr_pre_quant_db": 10.554550603567655,
+      "mean_psnr_post_quant_db": 37.21170782741204,
+      "std_psnr_post_quant_db": 1.8503685457809236,
+      "mean_size_bytes": 31594.0,
+      "std_size_bytes": 0.0,
+      "mean_train_time_s": 2.6526403347651164,
+      "total_time_s": 84.3486795425415
+    },
+    {
+      "bits": 12,
+      "seed": 2024,
+      "mean_psnr_pre_quant_db": 58.92928994300385,
+      "std_psnr_pre_quant_db": 12.528455462609612,
+      "mean_psnr_post_quant_db": 37.583736120894045,
+      "std_psnr_post_quant_db": 1.1094033959243013,
+      "mean_size_bytes": 31594.0,
+      "std_size_bytes": 0.0,
+      "mean_train_time_s": 2.6565760374069214,
+      "total_time_s": 84.22186040878296
+    },
+    {
+      "bits": 10,
+      "seed": 42,
+      "mean_psnr_pre_quant_db": 64.09302950760527,
+      "std_psnr_pre_quant_db": 15.187997382087314,
+      "mean_psnr_post_quant_db": 25.573998274799624,
+      "std_psnr_post_quant_db": 0.8358060471845472,
+      "mean_size_bytes": 26330.0,
+      "std_size_bytes": 0.0,
+      "mean_train_time_s": 2.6852990786234536,
+      "total_time_s": 85.29189491271973
+    },
+    {
+      "bits": 10,
+      "seed": 123,
+      "mean_psnr_pre_quant_db": 55.568678973628934,
+      "std_psnr_pre_quant_db": 10.554550603567655,
+      "mean_psnr_post_quant_db": 25.807947794064255,
+      "std_psnr_post_quant_db": 0.9075872492529763,
+      "mean_size_bytes": 26330.0,
+      "std_size_bytes": 0.0,
+      "mean_train_time_s": 2.576519576708476,
+      "total_time_s": 81.4381160736084
+    },
+    {
+      "bits": 10,
+      "seed": 2024,
+      "mean_psnr_pre_quant_db": 58.92928994300385,
+      "std_psnr_pre_quant_db": 12.528455462609612,
+      "mean_psnr_post_quant_db": 26.003222710280404,
+      "std_psnr_post_quant_db": 0.7259964837131353,
+      "mean_size_bytes": 26330.0,
+      "std_size_bytes": 0.0,
+      "mean_train_time_s": 2.662436596552531,
+      "total_time_s": 84.43305969238281
+    },
+    {
+      "bits": 6,
+      "seed": 42,
+      "mean_psnr_pre_quant_db": 64.09302950760527,
+      "std_psnr_pre_quant_db": 15.187997382087314,
+      "mean_psnr_post_quant_db": 10.25383086542813,
+      "std_psnr_post_quant_db": 1.4067908485903373,
+      "mean_size_bytes": 15801.0,
+      "std_size_bytes": 0.0,
+      "mean_train_time_s": 2.597056206067403,
+      "total_time_s": 82.83771347999573
+    },
+    {
+      "bits": 6,
+      "seed": 123,
+      "mean_psnr_pre_quant_db": 55.568678973628934,
+      "std_psnr_pre_quant_db": 10.554550603567655,
+      "mean_psnr_post_quant_db": 10.126586858767531,
+      "std_psnr_post_quant_db": 1.5172655384634426,
+      "mean_size_bytes": 15801.0,
+      "std_size_bytes": 0.0,
+      "mean_train_time_s": 2.701346262296041,
+      "total_time_s": 85.75237989425659
+    },
+    {
+      "bits": 6,
+      "seed": 2024,
+      "mean_psnr_pre_quant_db": 58.92928994300385,
+      "std_psnr_pre_quant_db": 12.528455462609612,
+      "mean_psnr_post_quant_db": 10.094221963752817,
+      "std_psnr_post_quant_db": 1.400580604662785,
+      "mean_size_bytes": 15801.0,
+      "std_size_bytes": 0.0,
+      "mean_train_time_s": 2.6676772197087604,
+      "total_time_s": 84.8883330821991
+    },
+    {
+      "bits": 3,
+      "seed": 42,
+      "mean_psnr_pre_quant_db": 64.09302950760527,
+      "std_psnr_pre_quant_db": 15.187997382087314,
+      "mean_psnr_post_quant_db": 6.77744603679358,
+      "std_psnr_post_quant_db": 0.879543716393216,
+      "mean_size_bytes": 7905.0,
+      "std_size_bytes": 0.0,
+      "mean_train_time_s": 2.6680978218714397,
+      "total_time_s": 84.5179648399353
+    },
     {
       "bits": 3,
       "seed": 123,
@@ -29,17 +154,70 @@
       "std_size_bytes": 0.0,
       "mean_train_time_s": 2.613538471857707,
       "total_time_s": 82.63579988479614
+    },
+    {
+      "bits": 3,
+      "seed": 2024,
+      "mean_psnr_pre_quant_db": 58.92928994300385,
+      "std_psnr_pre_quant_db": 12.528455462609612,
+      "mean_psnr_post_quant_db": 8.22560564919842,
+      "std_psnr_post_quant_db": 0.9779044038411447,
+      "mean_size_bytes": 7905.0,
+      "std_size_bytes": 0.0,
+      "mean_train_time_s": 2.664083178838094,
+      "total_time_s": 84.5614984035492
     }
   ],
   "new_aggregated": [
     {
-      "bits": 3,
-      "n_seeds": 1,
+      "bits": 12,
+      "n_seeds": 3,
       "seeds": [
-        123
+        42,
+        123,
+        2024
       ],
-      "mean_psnr_db": 8.135327372375038,
-      "std_psnr_db": 0.0,
+      "mean_psnr_db": 37.374108439920875,
+      "std_psnr_db": 0.15550789858735795,
+      "mean_size_bytes": 31594.0,
+      "std_size_bytes": 0.0
+    },
+    {
+      "bits": 10,
+      "n_seeds": 3,
+      "seeds": [
+        42,
+        123,
+        2024
+      ],
+      "mean_psnr_db": 25.795056259714766,
+      "std_psnr_db": 0.17546708665133695,
+      "mean_size_bytes": 26330.0,
+      "std_size_bytes": 0.0
+    },
+    {
+      "bits": 6,
+      "n_seeds": 3,
+      "seeds": [
+        42,
+        123,
+        2024
+      ],
+      "mean_psnr_db": 10.158213229316159,
+      "std_psnr_db": 0.06889083567044918,
+      "mean_size_bytes": 15801.0,
+      "std_size_bytes": 0.0
+    },
+    {
+      "bits": 3,
+      "n_seeds": 3,
+      "seeds": [
+        42,
+        123,
+        2024
+      ],
+      "mean_psnr_db": 7.712793019455678,
+      "std_psnr_db": 0.6624162967489399,
       "mean_size_bytes": 7905.0,
       "std_size_bytes": 0.0
     }
@@ -59,6 +237,32 @@
       "std_size_bytes": 0.0
     },
     {
+      "bits": 12,
+      "n_seeds": 3,
+      "seeds": [
+        42,
+        123,
+        2024
+      ],
+      "mean_psnr_db": 37.374108439920875,
+      "std_psnr_db": 0.15550789858735795,
+      "mean_size_bytes": 31594.0,
+      "std_size_bytes": 0.0
+    },
+    {
+      "bits": 10,
+      "n_seeds": 3,
+      "seeds": [
+        42,
+        123,
+        2024
+      ],
+      "mean_psnr_db": 25.795056259714766,
+      "std_psnr_db": 0.17546708665133695,
+      "mean_size_bytes": 26330.0,
+      "std_size_bytes": 0.0
+    },
+    {
       "bits": 8,
       "n_seeds": 3,
       "seeds": [
@@ -69,6 +273,19 @@
       "mean_psnr_db": 15.718055153340691,
       "std_psnr_db": 0.15985338277411026,
       "mean_size_bytes": 21065.0,
+      "std_size_bytes": 0.0
+    },
+    {
+      "bits": 6,
+      "n_seeds": 3,
+      "seeds": [
+        42,
+        123,
+        2024
+      ],
+      "mean_psnr_db": 10.158213229316159,
+      "std_psnr_db": 0.06889083567044918,
+      "mean_size_bytes": 15801.0,
       "std_size_bytes": 0.0
     },
     {
@@ -86,12 +303,14 @@
     },
     {
       "bits": 3,
-      "n_seeds": 1,
+      "n_seeds": 3,
       "seeds": [
-        123
+        42,
+        123,
+        2024
       ],
-      "mean_psnr_db": 8.135327372375038,
-      "std_psnr_db": 0.0,
+      "mean_psnr_db": 7.712793019455678,
+      "std_psnr_db": 0.6624162967489399,
       "mean_size_bytes": 7905.0,
       "std_size_bytes": 0.0
     },
@@ -114,121 +333,121 @@
       "bhuH_config": "hl=2 thr=0.001",
       "bhuH_psnr_db": 36.04472607645467,
       "bhuH_size_bytes": 9514.633333333333,
-      "coin_interpolated_size_bytes": 32095.85712958489,
-      "coin_interp_method": "linear interp between bits=8 and bits=16",
+      "coin_interpolated_size_bytes": 30989.644077565463,
+      "coin_interp_method": "linear interp between bits=10 and bits=12",
       "coin_nearest_measured": {
-        "bits": 16,
-        "psnr_db": 54.51999997049001,
-        "size_bytes": 42122.0
+        "bits": 12,
+        "psnr_db": 37.374108439920875,
+        "size_bytes": 31594.0
       },
-      "size_ratio_bhuH_over_coin": 0.29644428235453046,
+      "size_ratio_bhuH_over_coin": 0.3070262217119597,
       "winner": "BHUH",
-      "winner_smaller_by_x": 3.3733151877898493
+      "winner_smaller_by_x": 3.2570507965868853
     },
     {
       "bhuH_config": "hl=2 thr=0.002",
       "bhuH_psnr_db": 32.42180429961209,
       "bhuH_size_bytes": 9723.566666666668,
-      "coin_interpolated_size_bytes": 30129.773619738313,
-      "coin_interp_method": "linear interp between bits=8 and bits=16",
+      "coin_interpolated_size_bytes": 29342.612875313822,
+      "coin_interp_method": "linear interp between bits=10 and bits=12",
       "coin_nearest_measured": {
-        "bits": 8,
-        "psnr_db": 15.718055153340691,
-        "size_bytes": 21065.0
+        "bits": 12,
+        "psnr_db": 37.374108439920875,
+        "size_bytes": 31594.0
       },
-      "size_ratio_bhuH_over_coin": 0.32272285843849363,
+      "size_ratio_bhuH_over_coin": 0.3313803957399848,
       "winner": "BHUH",
-      "winner_smaller_by_x": 3.098633932652111
+      "winner_smaller_by_x": 3.017680022280626
     },
     {
       "bhuH_config": "hl=2 thr=0.005",
       "bhuH_psnr_db": 22.53556410289582,
       "bhuH_size_bytes": 9270.199999999999,
-      "coin_interpolated_size_bytes": 24764.718831808004,
-      "coin_interp_method": "linear interp between bits=8 and bits=16",
+      "coin_interpolated_size_bytes": 24626.990739159824,
+      "coin_interp_method": "linear interp between bits=8 and bits=10",
       "coin_nearest_measured": {
-        "bits": 8,
-        "psnr_db": 15.718055153340691,
-        "size_bytes": 21065.0
+        "bits": 10,
+        "psnr_db": 25.795056259714766,
+        "size_bytes": 26330.0
       },
-      "size_ratio_bhuH_over_coin": 0.374330920652056,
+      "size_ratio_bhuH_over_coin": 0.37642439135932615,
       "winner": "BHUH",
-      "winner_smaller_by_x": 2.6714330685215
+      "winner_smaller_by_x": 2.656575989639903
     },
     {
       "bhuH_config": "hl=2 thr=0.01",
       "bhuH_psnr_db": 14.954821037192746,
       "bhuH_size_bytes": 7994.511111111108,
-      "coin_interpolated_size_bytes": 19738.3141087398,
-      "coin_interp_method": "linear interp between bits=4 and bits=8",
+      "coin_interpolated_size_bytes": 20342.3779466567,
+      "coin_interp_method": "linear interp between bits=6 and bits=8",
       "coin_nearest_measured": {
         "bits": 8,
         "psnr_db": 15.718055153340691,
         "size_bytes": 21065.0
       },
-      "size_ratio_bhuH_over_coin": 0.40502502225209147,
+      "size_ratio_bhuH_over_coin": 0.3929978654449795,
       "winner": "BHUH",
-      "winner_smaller_by_x": 2.4689832604406114
+      "winner_smaller_by_x": 2.5445430826137705
     },
     {
       "bhuH_config": "hl=5 thr=0.001",
       "bhuH_psnr_db": 33.41033715823316,
       "bhuH_size_bytes": 15767.077777777782,
-      "coin_interpolated_size_bytes": 30666.229627345023,
-      "coin_interp_method": "linear interp between bits=8 and bits=16",
+      "coin_interpolated_size_bytes": 29792.013818223186,
+      "coin_interp_method": "linear interp between bits=10 and bits=12",
       "coin_nearest_measured": {
-        "bits": 8,
-        "psnr_db": 15.718055153340691,
-        "size_bytes": 21065.0
+        "bits": 12,
+        "psnr_db": 37.374108439920875,
+        "size_bytes": 31594.0
       },
-      "size_ratio_bhuH_over_coin": 0.5141511678931115,
+      "size_ratio_bhuH_over_coin": 0.5292384017401796,
       "winner": "BHUH",
-      "winner_smaller_by_x": 1.9449532792034678
+      "winner_smaller_by_x": 1.8895076334444316
     },
     {
       "bhuH_config": "hl=5 thr=0.002",
       "bhuH_psnr_db": 24.950031887378916,
       "bhuH_size_bytes": 15537.844444444449,
-      "coin_interpolated_size_bytes": 26074.999756577272,
-      "coin_interp_method": "linear interp between bits=8 and bits=16",
+      "coin_interpolated_size_bytes": 25888.494310620445,
+      "coin_interp_method": "linear interp between bits=8 and bits=10",
       "coin_nearest_measured": {
-        "bits": 8,
-        "psnr_db": 15.718055153340691,
-        "size_bytes": 21065.0
+        "bits": 10,
+        "psnr_db": 25.795056259714766,
+        "size_bytes": 26330.0
       },
-      "size_ratio_bhuH_over_coin": 0.5958904924064329,
+      "size_ratio_bhuH_over_coin": 0.6001833964546264,
       "winner": "BHUH",
-      "winner_smaller_by_x": 1.6781606901657702
+      "winner_smaller_by_x": 1.666157387737066
     },
     {
       "bhuH_config": "hl=5 thr=0.005",
       "bhuH_psnr_db": 15.6972871140983,
       "bhuH_size_bytes": 14177.211111111115,
-      "coin_interpolated_size_bytes": 21028.90011391121,
-      "coin_interp_method": "linear interp between bits=4 and bits=8",
+      "coin_interpolated_size_bytes": 21045.33703834284,
+      "coin_interp_method": "linear interp between bits=6 and bits=8",
       "coin_nearest_measured": {
         "bits": 8,
         "psnr_db": 15.718055153340691,
         "size_bytes": 21065.0
       },
-      "size_ratio_bhuH_over_coin": 0.6741774907063489,
+      "size_ratio_bhuH_over_coin": 0.6736509415497326,
       "winner": "BHUH",
-      "winner_smaller_by_x": 1.4832889169175323
+      "winner_smaller_by_x": 1.4844483074565324
     },
     {
       "bhuH_config": "hl=5 thr=0.01",
       "bhuH_psnr_db": 11.878652889222266,
       "bhuH_size_bytes": 10969.233333333337,
-      "coin_interpolated_size_bytes": 14391.188246948037,
-      "coin_interp_method": "linear interp between bits=4 and bits=8",
+      "coin_interpolated_size_bytes": 17429.894219206544,
+      "coin_interp_method": "linear interp between bits=6 and bits=8",
       "coin_nearest_measured": {
-        "bits": 4,
-        "psnr_db": 9.661362436745266,
-        "size_bytes": 10537.0
+        "bits": 6,
+        "psnr_db": 10.158213229316159,
+        "size_bytes": 15801.0
       },
-      "size_ratio_bhuH_over_coin": 0.7622187372651178,
+      "size_ratio_bhuH_over_coin": 0.6293344753203377,
       "winner": "BHUH",
-      "winner_smaller_by_x": 1.3119593511805474
+      "winner_smaller_by_x": 1.5889801674872328
     }
   ]
 }
