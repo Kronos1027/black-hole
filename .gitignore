@@ -30,3 +30,13 @@ tests/docs/
 dist/
 build/
 *.egg-info/
+
+# Environment artifacts (not part of the project)
+skills/
+tool-results/
+upload/
+.env
+scripts/
+test_data/
+results/
+download/

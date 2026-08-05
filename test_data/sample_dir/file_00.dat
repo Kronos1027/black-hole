@@ -1,7 +1,0 @@
-A função de ativação senoidal, proposta no paper SIREN de Sitzmann et al. em 2020, permite que as redes neurais representem com fidelidade sinais com altas frequências. Isso é fundamental para comprimir texturas, áudio e imagens sem perder detalhes.
-
-A visão original do usuário, de ter receitas rodando em background para pré-calcular arquivos, é elegante mas esbarra na segunda lei da termodinâmica da computação. Manter redes neurais em execução constante consome energia, mesmo que em pequena quantidade.
-
-As representações neurais implícitas, conhecidas como INRs, oferecem um caminho alternativo. Ao invés de armazenar o dado diretamente, armazenam-se os pesos de uma rede neural treinada para reconstruí-lo. Isso é poderosíssimo para dados com estrutura espacial contínua.
-
-O limite de Shannon estabelece o teto teórico de qualquer esquema de compressão sem perdas. Para dados aleatórios, esse teto é exatamente o tamanho original, pois não há redundância a ser explorada por nenhum algoritmo,
