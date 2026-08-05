@@ -406,3 +406,17 @@ LR: Constant 1e-3 (NOT cosine)
 - **Best BHUH config confirmed**: hl=2/thr=0.001 — 3.26x smaller than COIN at matched PSNR (36.04 dB).
 - **Definitive answer**: The 6 dB/bit heuristic from Exp 31 is refuted. BHUH genuinely beats COIN on the rate-distortion frontier.
 - **See**: EXPERIMENT_33_RESULTS.md for full 8-point curve, interpolation methods, and SHA-256 verification.
+
+### #15 — COIN with Entropy Coding (Exp 34) — Entropy coding is the DOMINANT contributor, not architecture
+- **Hypothesis**: If BHUH still wins after COIN gets the same entropy coding, the advantage comes from the multi-omega architecture.
+- **Status**: COMPLETED 2026-08-05. **HYPOTHESIS REFUTED** — entropy coding is the dominant contributor (94%), not architecture.
+- **Method**: Gave COIN the same KMeans K=50 + arithmetic coding pipeline as BHUH. Compared COIN raw → COIN+entropy → BHUH to isolate contributions.
+- **Results**:
+  - COIN raw (float16): 64.09 dB, 42114 B
+  - COIN + entropy: 59.53 ± 3.51 dB, 10351 B
+  - BHUH (multi-omega, no prune, hl=2): 37.05 dB, 9744 B
+- **Key finding 1**: Entropy coding contributes 4.07x size reduction (94% of total) at -4.56 dB PSNR cost.
+- **Key finding 2**: Multi-omega architecture contributes only 1.06x size reduction (6%) at -22.48 dB PSNR cost — a terrible trade.
+- **Key finding 3 (NEGATIVE)**: When COIN gets entropy coding, it DOMINATES BHUH: 22.48 dB higher PSNR at only 6% larger size.
+- **Reinterpretation**: Exp 32-33's "BHUH beats COIN 8/8" was comparing BHUH (with entropy coding) to COIN (without). The advantage was the entropy coding, not the architecture.
+- **See**: EXPERIMENT_34_RESULTS.md for full isolation analysis and SHA-256 verification.

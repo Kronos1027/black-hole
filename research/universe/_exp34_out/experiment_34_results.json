@@ -1,0 +1,104 @@
+{
+  "experiment": "experiment_34_coin_with_entropy",
+  "timestamp": "2026-08-05T15:02:52+0000",
+  "hypothesis": "If BHUH still wins after COIN gets the same entropy coding, the advantage comes from the multi-omega architecture.",
+  "config": {
+    "hidden_features": 64,
+    "hidden_layers": 5,
+    "omega": 30.0,
+    "epochs": 300,
+    "lr": 0.001,
+    "K": 50,
+    "num_images": 30,
+    "image_size": 64,
+    "seeds": [
+      42,
+      123,
+      2024
+    ]
+  },
+  "all_runs": [
+    {
+      "seed": 42,
+      "mean_psnr_db": 64.09302950760527,
+      "std_psnr_db": 15.187997382087314,
+      "mean_total_size_bytes": 10248.133333333335,
+      "std_total_size_bytes": 23.36483587692316,
+      "mean_train_time_s": 2.654340958595276,
+      "codebook_bytes": 200,
+      "weights_file": "/home/z/my-project/research/universe/_exp34_out/exp34_weights_seed42.bin",
+      "weights_sha256": "20335ec523f6e09bb1f90964de334d0fcb11206789b59138e49a41205590e4dd",
+      "total_time_s": 88.0809121131897
+    },
+    {
+      "seed": 123,
+      "mean_psnr_db": 55.568678973628934,
+      "std_psnr_db": 10.554550603567655,
+      "mean_total_size_bytes": 10400.133333333335,
+      "std_total_size_bytes": 28.50465848866735,
+      "mean_train_time_s": 2.608598725001017,
+      "codebook_bytes": 200,
+      "weights_file": "/home/z/my-project/research/universe/_exp34_out/exp34_weights_seed123.bin",
+      "weights_sha256": "50ca2f7f366eb2f30475eff3d4b8a77fea942f53079e94c68bb9728edaa8ea4c",
+      "total_time_s": 86.524329662323
+    },
+    {
+      "seed": 2024,
+      "mean_psnr_db": 58.92928994300385,
+      "std_psnr_db": 12.528455462609612,
+      "mean_total_size_bytes": 10404.833333333336,
+      "std_total_size_bytes": 20.81679343436181,
+      "mean_train_time_s": 2.818586254119873,
+      "codebook_bytes": 200,
+      "weights_file": "/home/z/my-project/research/universe/_exp34_out/exp34_weights_seed2024.bin",
+      "weights_sha256": "77f7abe15a1325e127af50370ec634a6d7296aa97a4802cbeac49037819d429b",
+      "total_time_s": 93.10799980163574
+    }
+  ],
+  "aggregated": {
+    "n_seeds": 3,
+    "seeds": [
+      42,
+      123,
+      2024
+    ],
+    "mean_psnr_db": 59.53033280807935,
+    "std_psnr_db": 3.505907148491839,
+    "mean_size_bytes": 10351.033333333335,
+    "std_size_bytes": 72.7865830127139
+  },
+  "comparison": {
+    "coin_raw_float16": {
+      "psnr_db": 64.09302950760527,
+      "size_bytes": 42114.0,
+      "description": "COIN baseline: single-omega SIREN, float16 weights, no entropy coding"
+    },
+    "coin_with_entropy": {
+      "psnr_db": 59.53033280807935,
+      "size_bytes": 10351.033333333335,
+      "description": "COIN: single-omega SIREN + KMeans K=50 + arithmetic coding"
+    },
+    "bhuH_multi_omega_no_prune_hl2": {
+      "psnr_db": 37.05413907326609,
+      "size_bytes": 9744.344444444445,
+      "description": "BHUH: multi-omega [10,50] SIREN + KMeans K=50 + arithmetic coding (no pruning)"
+    }
+  },
+  "isolation_analysis": {
+    "entropy_coding_contribution": {
+      "psnr_gain_db": -4.562696699525915,
+      "size_reduction_x": 4.068579304481678,
+      "note": "COIN raw (float16) \u2192 COIN + KMeans + arithmetic coding"
+    },
+    "architecture_contribution": {
+      "psnr_gain_db": -22.476193734813258,
+      "size_reduction_x": 1.06226061612947,
+      "note": "COIN + entropy \u2192 BHUH (multi-omega, same entropy pipeline)"
+    },
+    "total_bhuH_advantage": {
+      "psnr_gain_db": -27.038890434339173,
+      "size_reduction_x": 4.321891558750318,
+      "note": "COIN raw \u2192 BHUH (combined architecture + entropy)"
+    }
+  }
+}

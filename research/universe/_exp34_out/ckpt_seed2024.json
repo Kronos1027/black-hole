@@ -1,0 +1,12 @@
+{
+  "seed": 2024,
+  "mean_psnr_db": 58.92928994300385,
+  "std_psnr_db": 12.528455462609612,
+  "mean_total_size_bytes": 10404.833333333336,
+  "std_total_size_bytes": 20.81679343436181,
+  "mean_train_time_s": 2.818586254119873,
+  "codebook_bytes": 200,
+  "weights_file": "/home/z/my-project/research/universe/_exp34_out/exp34_weights_seed2024.bin",
+  "weights_sha256": "77f7abe15a1325e127af50370ec634a6d7296aa97a4802cbeac49037819d429b",
+  "total_time_s": 93.10799980163574
+}
