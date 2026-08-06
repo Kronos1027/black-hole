@@ -1,3 +1,28 @@
+> ## UPDATE 2026-08-05 — CORRECTION NOTICE
+>
+> **The multi-omega architecture [10,50] mentioned as part of the combined
+> pipeline has been REFUTED in controlled conditions.** See
+> `EXPERIMENT_35_RESULTS.md` for the definitive controlled comparison:
+> at hl=2 with identical entropy coding (KMeans K=50 + arithmetic coding),
+> single-omega SIREN (ω=30) dominates multi-omega [10,50] on BOTH axes
+> (PSNR 41.38 dB vs 37.05 dB, size 4165 B vs 9744 B).
+>
+> **The hierarchical K=50 sharing mechanism described in this document
+> (the "Hybrid K=50" result: COIN 28.10 dB → BHUH 31.21 dB) has NOT been
+> re-tested with the same level of control.** That claim — that a shared
+> backbone across clustered images beats per-image COIN — remains as the
+> original claim, pending Experiment 36, which will isolate hierarchical
+> sharing from multi-omega and entropy coding in a fully controlled
+> comparison.
+>
+> **Reader discretion**: treat the multi-omega claims in this document as
+> refuted. Treat the hierarchical K=50 sharing claims as UNVERIFIED under
+> controlled conditions. The entropy coding pipeline (KMeans + arithmetic
+> coding) has been independently validated as the dominant contributor to
+> size reduction (Exp 34: 94% of the advantage).
+
+---
+
 # BHUH BREAKTHROUGH — Complete Results from Ryzen 7 5700X
 
 **Date**: 2026-06-28

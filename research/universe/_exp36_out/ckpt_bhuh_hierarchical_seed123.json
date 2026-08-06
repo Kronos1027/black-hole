@@ -1,0 +1,14 @@
+{
+  "config_name": "bhuh_hierarchical",
+  "seed": 123,
+  "omega": 30.0,
+  "hidden_layers": 2,
+  "mean_psnr_db": 41.195855173307386,
+  "std_psnr_db": 2.2036240186933873,
+  "mean_total_size_bytes": 4148.000000000001,
+  "std_total_size_bytes": 46.45667037382502,
+  "train_time_s": 38.28815174102783,
+  "codebook_bytes": 200,
+  "weights_file": "/home/z/my-project/research/universe/_exp36_out/exp36_bhuh_hierarchical_seed123.bin",
+  "weights_sha256": "065cd4d60221ce8373e707599778e68ad8002299843ab7bd413e281fcb0e89dd"
+}

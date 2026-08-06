@@ -1,0 +1,14 @@
+{
+  "config_name": "coin_per_image",
+  "seed": 123,
+  "omega": 30.0,
+  "hidden_layers": 2,
+  "mean_psnr_db": 40.463776401277485,
+  "std_psnr_db": 2.792765468589096,
+  "mean_total_size_bytes": 4180.266666666667,
+  "std_total_size_bytes": 43.28556341322134,
+  "train_time_s": 38.30910634994507,
+  "codebook_bytes": 200,
+  "weights_file": "/home/z/my-project/research/universe/_exp36_out/exp36_coin_per_image_seed123.bin",
+  "weights_sha256": "6ad18c89d4ecbdb20d2b91d690010ba5fe80234fb6353b56544dfe883e3dc4b3"
+}

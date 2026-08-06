@@ -1,0 +1,84 @@
+{
+  "experiment": "experiment_36_hierarchical_isolated",
+  "timestamp": "2026-08-06T01:10:04+0000",
+  "hypothesis": "Hierarchical K=50 sharing (shared backbone across clustered images) beats per-image COIN when multi-omega and entropy coding are controlled.",
+  "config": {
+    "hidden_features": 64,
+    "hidden_layers": 2,
+    "omega": 30.0,
+    "epochs": 300,
+    "lr": 0.001,
+    "K": 50,
+    "num_images": 30,
+    "image_size": 64,
+    "seeds": [
+      2024
+    ],
+    "note": "SINGLE omega=30 for both configs. SAME entropy coding for both. Only difference: per-image SIREN vs shared backbone."
+  },
+  "all_runs": [
+    {
+      "config_name": "coin_per_image",
+      "seed": 2024,
+      "omega": 30.0,
+      "hidden_layers": 2,
+      "mean_psnr_db": 42.198753080205314,
+      "std_psnr_db": 2.091605089485644,
+      "mean_total_size_bytes": 4030.3666666666677,
+      "std_total_size_bytes": 42.30535821067275,
+      "train_time_s": 39.58335590362549,
+      "codebook_bytes": 200,
+      "weights_file": "/home/z/my-project/research/universe/_exp36_out/exp36_coin_per_image_seed2024.bin",
+      "weights_sha256": "4344def88fad8ae03b00e8c8e051a3a6c122e3e45fb36530609499ed91cd1865"
+    },
+    {
+      "config_name": "bhuh_hierarchical",
+      "seed": 2024,
+      "omega": 30.0,
+      "hidden_layers": 2,
+      "mean_psnr_db": 41.087059334915395,
+      "std_psnr_db": 2.494073149537281,
+      "mean_total_size_bytes": 4188.866666666668,
+      "std_total_size_bytes": 36.69459542403123,
+      "train_time_s": 44.3939642906189,
+      "codebook_bytes": 200,
+      "weights_file": "/home/z/my-project/research/universe/_exp36_out/exp36_bhuh_hierarchical_seed2024.bin",
+      "weights_sha256": "1c0d8cfd23736ae831b803105e315b9a9fa426526f46005b524907a7d35d9eb4"
+    }
+  ],
+  "aggregated": {
+    "coin_per_image": {
+      "n_seeds": 1,
+      "seeds": [
+        2024
+      ],
+      "mean_psnr_db": 42.198753080205314,
+      "std_psnr_db": 0.0,
+      "mean_size_bytes": 4030.3666666666677,
+      "std_size_bytes": 0.0
+    },
+    "bhuh_hierarchical": {
+      "n_seeds": 1,
+      "seeds": [
+        2024
+      ],
+      "mean_psnr_db": 41.087059334915395,
+      "std_psnr_db": 0.0,
+      "mean_size_bytes": 4188.866666666668,
+      "std_size_bytes": 0.0
+    }
+  },
+  "controlled_comparison": {
+    "coin_per_image": {
+      "psnr_db": 42.198753080205314,
+      "size_bytes": 4030.3666666666677
+    },
+    "bhuh_hierarchical": {
+      "psnr_db": 41.087059334915395,
+      "size_bytes": 4188.866666666668
+    },
+    "psnr_diff_bhuh_minus_coin": -1.1116937452899194,
+    "size_ratio_bhuh_over_coin": 1.0393264467252772,
+    "winner": "COIN (dominates on both axes)"
+  }
+}
