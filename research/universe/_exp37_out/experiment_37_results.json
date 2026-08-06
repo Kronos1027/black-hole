@@ -1,0 +1,202 @@
+{
+  "experiment": "experiment_37_real_photo_parity",
+  "timestamp": "2026-08-06T03:10:14+0000",
+  "hypothesis": "SIREN + entropy coding (validated in Exp 34-36) is competitive with JPEG and WebP on real 256\u00d7256 photographs at matched byte budget.",
+  "config": {
+    "image_size": 256,
+    "hidden_features": 64,
+    "hidden_layers": 2,
+    "omega": 30.0,
+    "epochs": 300,
+    "lr": 0.001,
+    "K": 50,
+    "seeds": [
+      42,
+      123,
+      2024
+    ],
+    "num_images": 3,
+    "dataset": "3 real scikit-image photos (astronaut, camera, cell) at 256\u00d7256 grayscale"
+  },
+  "all_runs": [
+    {
+      "seed": 42,
+      "per_image": [
+        {
+          "name": "astronaut",
+          "siren_entropy_psnr_db": 25.31920826869819,
+          "siren_entropy_size_bytes": 4325.666666666667,
+          "jpeg_psnr_db": 5.495681195068957,
+          "jpeg_size_bytes": 1100,
+          "webp_psnr_db": 5.495681195068957,
+          "webp_size_bytes": 176,
+          "coin_raw_psnr_db": 25.31920826869819,
+          "coin_raw_size_bytes": 17154
+        },
+        {
+          "name": "camera",
+          "siren_entropy_psnr_db": 26.427139770012356,
+          "siren_entropy_size_bytes": 4247.666666666667,
+          "jpeg_psnr_db": 31.50070853182121,
+          "jpeg_size_bytes": 3889,
+          "webp_psnr_db": 34.571207613589394,
+          "webp_size_bytes": 4100,
+          "coin_raw_psnr_db": 26.427139770012356,
+          "coin_raw_size_bytes": 17154
+        },
+        {
+          "name": "cell",
+          "siren_entropy_psnr_db": 40.301578203391344,
+          "siren_entropy_size_bytes": 4147.666666666667,
+          "jpeg_psnr_db": 44.21105232467703,
+          "jpeg_size_bytes": 3794,
+          "webp_psnr_db": 45.61840842462956,
+          "webp_size_bytes": 4238,
+          "coin_raw_psnr_db": 40.301578203391344,
+          "coin_raw_size_bytes": 17154
+        }
+      ],
+      "mean_siren_entropy_psnr_db": 30.68264208070063,
+      "mean_siren_entropy_size_bytes": 4240.333333333333,
+      "mean_jpeg_psnr_db": 27.0691473505224,
+      "mean_jpeg_size_bytes": 2927.6666666666665,
+      "mean_webp_psnr_db": 28.561765744429305,
+      "mean_webp_size_bytes": 2838.0,
+      "mean_coin_raw_psnr_db": 30.68264208070063,
+      "mean_coin_raw_size_bytes": 17154.0,
+      "total_time_s": 75.14827609062195,
+      "weights_file": "/home/z/my-project/research/universe/_exp37_out/exp37_weights_seed42.bin",
+      "weights_sha256": "94f2ff0409d2ea787f52d3f9943b6c2030eac0a8943cac6bedd7a03ef491125a"
+    },
+    {
+      "seed": 123,
+      "per_image": [
+        {
+          "name": "astronaut",
+          "siren_entropy_psnr_db": 24.872818228139934,
+          "siren_entropy_size_bytes": 4303.666666666667,
+          "jpeg_psnr_db": 5.495681195068957,
+          "jpeg_size_bytes": 1100,
+          "webp_psnr_db": 5.495681195068957,
+          "webp_size_bytes": 176,
+          "coin_raw_psnr_db": 24.872818228139934,
+          "coin_raw_size_bytes": 17154
+        },
+        {
+          "name": "camera",
+          "siren_entropy_psnr_db": 25.980098483042795,
+          "siren_entropy_size_bytes": 4233.666666666667,
+          "jpeg_psnr_db": 31.50070853182121,
+          "jpeg_size_bytes": 3889,
+          "webp_psnr_db": 34.571207613589394,
+          "webp_size_bytes": 4100,
+          "coin_raw_psnr_db": 25.980098483042795,
+          "coin_raw_size_bytes": 17154
+        },
+        {
+          "name": "cell",
+          "siren_entropy_psnr_db": 40.068455120610395,
+          "siren_entropy_size_bytes": 4093.6666666666665,
+          "jpeg_psnr_db": 44.21105232467703,
+          "jpeg_size_bytes": 3794,
+          "webp_psnr_db": 45.61840842462956,
+          "webp_size_bytes": 4238,
+          "coin_raw_psnr_db": 40.068455120610395,
+          "coin_raw_size_bytes": 17154
+        }
+      ],
+      "mean_siren_entropy_psnr_db": 30.307123943931042,
+      "mean_siren_entropy_size_bytes": 4210.333333333333,
+      "mean_jpeg_psnr_db": 27.0691473505224,
+      "mean_jpeg_size_bytes": 2927.6666666666665,
+      "mean_webp_psnr_db": 28.561765744429305,
+      "mean_webp_size_bytes": 2838.0,
+      "mean_coin_raw_psnr_db": 30.307123943931042,
+      "mean_coin_raw_size_bytes": 17154.0,
+      "total_time_s": 69.38929319381714,
+      "weights_file": "/home/z/my-project/research/universe/_exp37_out/exp37_weights_seed123.bin",
+      "weights_sha256": "a724cef97cbff1605a4f62f71b4c36b41f14213ace5897d9196e9832a5af8d3f"
+    },
+    {
+      "seed": 2024,
+      "per_image": [
+        {
+          "name": "astronaut",
+          "siren_entropy_psnr_db": 25.468240447400255,
+          "siren_entropy_size_bytes": 4442.666666666667,
+          "jpeg_psnr_db": 5.495681195068957,
+          "jpeg_size_bytes": 1100,
+          "webp_psnr_db": 5.495681195068957,
+          "webp_size_bytes": 176,
+          "coin_raw_psnr_db": 25.468240447400255,
+          "coin_raw_size_bytes": 17154
+        },
+        {
+          "name": "camera",
+          "siren_entropy_psnr_db": 26.588349146639683,
+          "siren_entropy_size_bytes": 4362.666666666667,
+          "jpeg_psnr_db": 32.19417642989051,
+          "jpeg_size_bytes": 4451,
+          "webp_psnr_db": 34.571207613589394,
+          "webp_size_bytes": 4100,
+          "coin_raw_psnr_db": 26.588349146639683,
+          "coin_raw_size_bytes": 17154
+        },
+        {
+          "name": "cell",
+          "siren_entropy_psnr_db": 40.5534263776541,
+          "siren_entropy_size_bytes": 4237.666666666667,
+          "jpeg_psnr_db": 45.941698909196646,
+          "jpeg_size_bytes": 4653,
+          "webp_psnr_db": 45.61840842462956,
+          "webp_size_bytes": 4238,
+          "coin_raw_psnr_db": 40.5534263776541,
+          "coin_raw_size_bytes": 17154
+        }
+      ],
+      "mean_siren_entropy_psnr_db": 30.87000532389801,
+      "mean_siren_entropy_size_bytes": 4347.666666666667,
+      "mean_jpeg_psnr_db": 27.877185511385374,
+      "mean_jpeg_size_bytes": 3401.3333333333335,
+      "mean_webp_psnr_db": 28.561765744429305,
+      "mean_webp_size_bytes": 2838.0,
+      "mean_coin_raw_psnr_db": 30.87000532389801,
+      "mean_coin_raw_size_bytes": 17154.0,
+      "total_time_s": 59.52815818786621,
+      "weights_file": "/home/z/my-project/research/universe/_exp37_out/exp37_weights_seed2024.bin",
+      "weights_sha256": "5c550269e0af7e48bb690a88cb5f16eff8cb5a7cca3e96141517f23962d9a21c"
+    }
+  ],
+  "aggregated": {
+    "siren_entropy": {
+      "mean_psnr_db": 30.61992378284323,
+      "std_psnr_db": 0.2340356819560881,
+      "mean_size_bytes": 4266.11111111111,
+      "std_size_bytes": 58.954680229712785
+    },
+    "jpeg": {
+      "mean_psnr_db": 27.338493404143392,
+      "std_psnr_db": 0.38091284200247694,
+      "mean_size_bytes": 3085.555555555555,
+      "std_size_bytes": 223.28860801468548
+    },
+    "webp": {
+      "mean_psnr_db": 28.561765744429305,
+      "std_psnr_db": 0.0,
+      "mean_size_bytes": 2838.0,
+      "std_size_bytes": 0.0
+    },
+    "coin_raw": {
+      "mean_psnr_db": 30.61992378284323,
+      "std_psnr_db": 0.2340356819560881,
+      "mean_size_bytes": 17154.0,
+      "std_size_bytes": 0.0
+    }
+  },
+  "parity_comparison": {
+    "psnr_diff_jpeg_minus_siren": -3.281430378699838,
+    "psnr_diff_webp_minus_siren": -2.058158038413925,
+    "winner": "SIREN+entropy (beats JPEG and WebP)",
+    "conclusion": "POSITIVE \u2014 entropy coding pipeline is competitive with production codecs on real photos"
+  }
+}

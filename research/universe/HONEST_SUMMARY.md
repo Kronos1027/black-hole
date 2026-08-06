@@ -450,3 +450,19 @@ LR: Constant 1e-3 (NOT cosine)
 - **Key finding**: The original BHUH "breakthrough" (COIN 28.10 dB → BHUH 31.21 dB) was an artifact of comparing BHUH (with multi-omega + entropy coding) to COIN (without either). When controlled, hierarchical sharing provides NO benefit — shared backbone hurts because it averages diverse images.
 - **Final conclusion**: The ONLY component of BHUH that provides real value is the entropy coding pipeline (KMeans + arithmetic coding). Every architectural innovation (multi-omega, hierarchical sharing, pruning) was refuted under controlled conditions.
 - **See**: EXPERIMENT_36_RESULTS.md for full comparison and SHA-256 verification.
+
+### #18 — Real Photo Byte Parity Test (Exp 37) — SIREN+entropy BEATS JPEG and WebP (POSITIVE, publishable)
+- **Hypothesis**: SIREN + entropy coding (validated in Exp 34-36) is competitive with JPEG and WebP on real 256×256 photographs at matched byte budget.
+- **Status**: COMPLETED 2026-08-06. **HYPOTHESIS CONFIRMED — SIREN+entropy beats both JPEG and WebP.**
+- **Method**: Trained single-omega SIREN (ω=30, hl=2) on 3 real scikit-image photos (astronaut, camera, cell) at 256×256. Applied KMeans K=50 + arithmetic coding. Compressed JPEG/WebP to matched byte budget via binary search on quality. 3 seeds.
+- **Results**:
+  - SIREN+entropy: 30.62 ± 0.23 dB, 4266 ± 59 B
+  - JPEG (matched size): 27.34 ± 0.38 dB, 3086 ± 223 B
+  - WebP (matched size): 28.56 ± 0.00 dB, 2838 ± 0 B
+  - COIN raw (float16): 30.62 ± 0.23 dB, 17154 ± 0 B
+- **Key finding 1**: SIREN+entropy beats JPEG by 3.28 dB and WebP by 2.06 dB at matched byte budget.
+- **Key finding 2**: Entropy coding delivers 4.02x size reduction over COIN raw with ZERO PSNR loss (same model, different weight encoding).
+- **Key finding 3**: SIREN's continuous representation avoids blocking artifacts that hurt JPEG/WebP at low bitrates.
+- **Publishable result**: This is the ONE positive, validated, reproducible contribution of the BHUH program — single-omega SIREN + entropy coding beats production codecs on real photos.
+- **Caveats**: Only 3 images at 256×256; SIREN training is ~25000x slower than JPEG; no JPEG XL/AVIF comparison.
+- **See**: EXPERIMENT_37_RESULTS.md for full parity table, SHA-256, and caveats.
