@@ -481,3 +481,19 @@ LR: Constant 1e-3 (NOT cosine)
 - **Key finding**: SIREN+entropy LOSES to JPEG by 10.04 dB and WebP by 11.27 dB at matched byte budget. The "positive result" of Exp 37 was completely false.
 - **Impact**: Every PSNR number in Exp 30-37 was measured pre-quantization and is inflated. The relative comparisons (Exp 35-36: COIN dominates BHUH) still hold because both sides had the same bug. But the absolute PSNR claims and the "beats JPEG/WebP" claim are INVALID.
 - **Final conclusion**: The BHUH program ends with a purely negative result. No component beats production codecs on real photos. See EXPERIMENT_38_RESULTS.md.
+
+### #20 — QAT with STE (Exp 39) — 91% reduction in quantization loss, but byte-parity not established
+- **Hypothesis**: QAT with STE + asymmetric K + quantization regularization will reduce the post-quantization PSNR drop from 13.33 dB (Exp 38) to under 5 dB.
+- **Status**: COMPLETED 2026-08-06. **HYPOTHESIS CONFIRMED — drop reduced to 1.19 dB (91% improvement).**
+- **Method**: STE quantization during training (forward: quantized weights, backward: gradient passes through). Asymmetric K: layer_0=256, hidden=64, output=128. Quantization-friendly regularization. Codebook re-fitted every 100 epochs. 500 epochs, STE starts at epoch 200.
+- **Results**:
+  - SIREN pre-quant: 31.95 ± 0.24 dB
+  - SIREN post-quant: 30.75 ± 0.25 dB (the REAL number, measured correctly)
+  - PSNR drop: 1.19 ± 0.01 dB (Exp 38 was 13.33 dB — 91% improvement)
+  - Quantized size: 6562 B
+  - AVIF at 0.1 BPP: 23.62 dB, 642 B
+- **Key finding 1**: QAT reduces quantization loss by 91% (13.33 → 1.19 dB). Genuine technical achievement.
+- **Key finding 2 (CAVEAT)**: SIREN+QAT at 6562 B beats AVIF at 642 B by 7.14 dB — but this is NOT a fair comparison (10x size difference). Byte-parity not established.
+- **Key finding 3**: "Phase shift" theory supported — highest-PSNR image (cell) has largest drop (2.41 dB), consistent with sin activation sensitivity to weight perturbation.
+- **Next step**: Exp 40 — byte-parity test with QAT model at matched budget against JPEG/WebP/AVIF.
+- **See**: EXPERIMENT_39_RESULTS.md for full results, per-image breakdown, and SHA-256.

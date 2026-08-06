@@ -1,0 +1,52 @@
+{
+  "seed": 123,
+  "per_image": [
+    {
+      "name": "astronaut",
+      "psnr_pre_quant_db": 26.161145439307493,
+      "psnr_post_quant_db": 25.565980138023974,
+      "psnr_drop_db": 0.5951653012835187,
+      "quantized_size_bytes": 6562,
+      "avif_psnr_db": 5.495681195068957,
+      "avif_size_bytes": 314,
+      "avif_bpp": 0.038330078125
+    },
+    {
+      "name": "camera",
+      "psnr_pre_quant_db": 27.47749876867234,
+      "psnr_post_quant_db": 26.919400964283838,
+      "psnr_drop_db": 0.5580978043885025,
+      "quantized_size_bytes": 6562,
+      "avif_psnr_db": 27.009303551272367,
+      "avif_size_bytes": 908,
+      "avif_bpp": 0.11083984375
+    },
+    {
+      "name": "cell",
+      "psnr_pre_quant_db": 41.22780788146329,
+      "psnr_post_quant_db": 38.77097788780796,
+      "psnr_drop_db": 2.456829993655333,
+      "quantized_size_bytes": 6562,
+      "avif_psnr_db": 38.34705165578756,
+      "avif_size_bytes": 705,
+      "avif_bpp": 0.0860595703125
+    }
+  ],
+  "mean_psnr_pre_quant": 31.622150696481043,
+  "mean_psnr_post_quant": 30.41878633003859,
+  "mean_psnr_drop": 1.2033643664424538,
+  "mean_quantized_size": 6562.0,
+  "mean_avif_psnr": 23.617345467376293,
+  "mean_avif_size": 642.3333333333334,
+  "mean_avif_bpp": 0.07840983072916667,
+  "total_time_s": 258.67928767204285,
+  "weights_sha256": "183df798e8a8b82b8dc000b8ee3d5d4ee95f1861848cb7fcf0d9fe6a0c6279d0",
+  "k_config": {
+    "layer_0": 256,
+    "layer_1": 64,
+    "layer_2": 64,
+    "layer_3": 128
+  },
+  "reg_weight": 0.01,
+  "ste_start_epoch": 200
+}
