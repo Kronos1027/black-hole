@@ -513,3 +513,17 @@ LR: Constant 1e-3 (NOT cosine)
 - **Key finding 4 (entropy)**: Shannon entropy of QAT indices is near-maximum (5.3% savings from arithmetic coding). Not enough to close AVIF gap.
 - **Next step**: Exp 41 — structured pruning to reduce size from 6562 B to ~3300 B, then re-test byte parity.
 - **See**: EXPERIMENT_40_RESULTS.md for full table, per-image breakdown, entropy analysis, and SHA-256.
+
+### #22 — Kodak Validation (Exp 40-B) — SIREN loses to AVIF by 21 dB, SSIM advantage does NOT generalize
+- **Hypothesis**: SIREN+QAT beats JPEG/WebP on PSNR and all codecs on SSIM, with advantage growing on complex images.
+- **Status**: COMPLETED 2026-08-06. **HYPOTHESIS REFUTED — SIREN loses on both PSNR and SSIM on Kodak.**
+- **Method**: 12 Kodak images (kodim01-12), grayscale, 256×256. Same SIREN+QAT config as Exp 39/40. AVIF/JPEG/WebP at ~6562 B. Single seed (42) due to time.
+- **Results**:
+  - SIREN: PSNR=33.50±4.95 dB, SSIM=0.7011±0.1875
+  - AVIF:  PSNR=54.57 dB, SSIM=0.9114
+  - Δ(SIREN-AVIF): PSNR=-21.07 dB, SSIM=-0.2103
+- **Key finding 1**: Exp 40's SSIM advantage (+0.14) does NOT generalize to Kodak — AVIF beats SIREN by +0.21 SSIM.
+- **Key finding 2**: Correlation between Laplacian variance and PSNR diff is NEGATIVE (-0.47) — SIREN's disadvantage GROWS with image complexity (opposite of hypothesis).
+- **Key finding 3**: AVIF adapts to image complexity (uses higher quality on simple images), SIREN's fixed-size representation cannot — fundamental disadvantage.
+- **Conclusion**: SIREN+QAT is NOT competitive with AVIF on natural photography. Exp 40's positive result was specific to 3 scikit-image photos.
+- **See**: EXPERIMENT_40B_RESULTS.md for full table, correlation analysis, and SHA-256.

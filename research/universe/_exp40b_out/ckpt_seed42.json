@@ -1,0 +1,355 @@
+{
+  "seed": 42,
+  "num_images": 12,
+  "per_image": [
+    {
+      "image_id": "kodim01",
+      "laplacian_variance": 216.8969268798828,
+      "siren": {
+        "psnr_db": 31.084141598761803,
+        "ssim": 0.7111439232397603,
+        "size_bytes": 6562,
+        "enc_time_s": 44.49355864524841,
+        "dec_time_s": 0.01891946792602539
+      },
+      "jpeg": {
+        "psnr_db": 32.541773128737894,
+        "ssim": 0.8060288923983434,
+        "size_bytes": 6701
+      },
+      "webp": {
+        "psnr_db": 32.93009647631202,
+        "ssim": 0.8390057095454286,
+        "size_bytes": 6718
+      },
+      "avif": {
+        "psnr_db": 33.75449352581616,
+        "ssim": 0.8617339101847247,
+        "size_bytes": 6549
+      },
+      "psnr_diff_siren_minus_avif": -2.670351927054355,
+      "ssim_diff_siren_minus_avif": -0.1505899869449644
+    },
+    {
+      "image_id": "kodim02",
+      "laplacian_variance": 554.9505615234375,
+      "siren": {
+        "psnr_db": 31.46442470135231,
+        "ssim": 0.6662001635813858,
+        "size_bytes": 6562,
+        "enc_time_s": 43.833659648895264,
+        "dec_time_s": 0.02090907096862793
+      },
+      "jpeg": {
+        "psnr_db": 49.04038917397186,
+        "ssim": 0.9954818928463084,
+        "size_bytes": 6642
+      },
+      "webp": {
+        "psnr_db": 58.07415409830132,
+        "ssim": 0.9996970008174145,
+        "size_bytes": 3960
+      },
+      "avif": {
+        "psnr_db": 99.0,
+        "ssim": 1.0,
+        "size_bytes": 5407
+      },
+      "psnr_diff_siren_minus_avif": -67.53557529864769,
+      "ssim_diff_siren_minus_avif": -0.3337998364186142
+    },
+    {
+      "image_id": "kodim03",
+      "laplacian_variance": 141.31349182128906,
+      "siren": {
+        "psnr_db": 28.49968176562299,
+        "ssim": 0.439121579593675,
+        "size_bytes": 6562,
+        "enc_time_s": 52.87818622589111,
+        "dec_time_s": 0.020677852630615234
+      },
+      "jpeg": {
+        "psnr_db": 29.988676267994894,
+        "ssim": 0.6800078225530796,
+        "size_bytes": 6680
+      },
+      "webp": {
+        "psnr_db": 30.61100028906725,
+        "ssim": 0.7593534133381776,
+        "size_bytes": 6644
+      },
+      "avif": {
+        "psnr_db": 31.2263392993422,
+        "ssim": 0.7847003812804364,
+        "size_bytes": 6704
+      },
+      "psnr_diff_siren_minus_avif": -2.7266575337192087,
+      "ssim_diff_siren_minus_avif": -0.3455788016867614
+    },
+    {
+      "image_id": "kodim04",
+      "laplacian_variance": 2.604902505874634,
+      "siren": {
+        "psnr_db": 41.65447309050678,
+        "ssim": 0.9750656102822006,
+        "size_bytes": 6562,
+        "enc_time_s": 47.096625089645386,
+        "dec_time_s": 0.020821619033813476
+      },
+      "jpeg": {
+        "psnr_db": 51.632745934309156,
+        "ssim": 0.9929504204565649,
+        "size_bytes": 6394
+      },
+      "webp": {
+        "psnr_db": 47.653130553669605,
+        "ssim": 0.9845734808732678,
+        "size_bytes": 2518
+      },
+      "avif": {
+        "psnr_db": 54.20222483515247,
+        "ssim": 0.9961998878287084,
+        "size_bytes": 4809
+      },
+      "psnr_diff_siren_minus_avif": -12.547751744645694,
+      "ssim_diff_siren_minus_avif": -0.021134277546507763
+    },
+    {
+      "image_id": "kodim05",
+      "laplacian_variance": 216.52267456054688,
+      "siren": {
+        "psnr_db": 30.80881552643155,
+        "ssim": 0.7034368850311175,
+        "size_bytes": 6562,
+        "enc_time_s": 48.90612578392029,
+        "dec_time_s": 0.02897019386291504
+      },
+      "jpeg": {
+        "psnr_db": 32.27474567906412,
+        "ssim": 0.8022533191138527,
+        "size_bytes": 6676
+      },
+      "webp": {
+        "psnr_db": 32.66411502347471,
+        "ssim": 0.8361379138773203,
+        "size_bytes": 6516
+      },
+      "avif": {
+        "psnr_db": 33.557183780050664,
+        "ssim": 0.8623566661287045,
+        "size_bytes": 6605
+      },
+      "psnr_diff_siren_minus_avif": -2.7483682536191125,
+      "ssim_diff_siren_minus_avif": -0.1589197810975871
+    },
+    {
+      "image_id": "kodim06",
+      "laplacian_variance": 233.10791015625,
+      "siren": {
+        "psnr_db": 32.98291663051745,
+        "ssim": 0.6650038079523283,
+        "size_bytes": 6562,
+        "enc_time_s": 46.75078201293945,
+        "dec_time_s": 0.01969437599182129
+      },
+      "jpeg": {
+        "psnr_db": 62.37214236356699,
+        "ssim": 0.9997578861348165,
+        "size_bytes": 6553
+      },
+      "webp": {
+        "psnr_db": 58.96435920282772,
+        "ssim": 0.9997369246595528,
+        "size_bytes": 2548
+      },
+      "avif": {
+        "psnr_db": 99.0,
+        "ssim": 1.0,
+        "size_bytes": 3577
+      },
+      "psnr_diff_siren_minus_avif": -66.01708336948255,
+      "ssim_diff_siren_minus_avif": -0.3349961920476717
+    },
+    {
+      "image_id": "kodim07",
+      "laplacian_variance": 142.11517333984375,
+      "siren": {
+        "psnr_db": 28.693485562320337,
+        "ssim": 0.4475774872962641,
+        "size_bytes": 6562,
+        "enc_time_s": 47.95619511604309,
+        "dec_time_s": 0.022106170654296875
+      },
+      "jpeg": {
+        "psnr_db": 30.115380169376426,
+        "ssim": 0.6770530227581815,
+        "size_bytes": 6426
+      },
+      "webp": {
+        "psnr_db": 30.877305931670943,
+        "ssim": 0.7670664338853364,
+        "size_bytes": 6840
+      },
+      "avif": {
+        "psnr_db": 31.446680388487984,
+        "ssim": 0.788771234035084,
+        "size_bytes": 6749
+      },
+      "psnr_diff_siren_minus_avif": -2.753194826167647,
+      "ssim_diff_siren_minus_avif": -0.34119374673881986
+    },
+    {
+      "image_id": "kodim08",
+      "laplacian_variance": 2.604902505874634,
+      "siren": {
+        "psnr_db": 41.65447309050678,
+        "ssim": 0.9750656102822006,
+        "size_bytes": 6562,
+        "enc_time_s": 44.28787803649902,
+        "dec_time_s": 0.017691850662231445
+      },
+      "jpeg": {
+        "psnr_db": 51.632745934309156,
+        "ssim": 0.9929504204565649,
+        "size_bytes": 6394
+      },
+      "webp": {
+        "psnr_db": 47.653130553669605,
+        "ssim": 0.9845734808732678,
+        "size_bytes": 2518
+      },
+      "avif": {
+        "psnr_db": 54.20222483515247,
+        "ssim": 0.9961998878287084,
+        "size_bytes": 4809
+      },
+      "psnr_diff_siren_minus_avif": -12.547751744645694,
+      "ssim_diff_siren_minus_avif": -0.021134277546507763
+    },
+    {
+      "image_id": "kodim09",
+      "laplacian_variance": 216.79989624023438,
+      "siren": {
+        "psnr_db": 30.925682712959155,
+        "ssim": 0.7069051816660354,
+        "size_bytes": 6562,
+        "enc_time_s": 40.17512106895447,
+        "dec_time_s": 0.01580958366394043
+      },
+      "jpeg": {
+        "psnr_db": 32.41254126762755,
+        "ssim": 0.8047577538103357,
+        "size_bytes": 6708
+      },
+      "webp": {
+        "psnr_db": 32.61317038534485,
+        "ssim": 0.8289561732028088,
+        "size_bytes": 6134
+      },
+      "avif": {
+        "psnr_db": 33.64334426382774,
+        "ssim": 0.8623902193385978,
+        "size_bytes": 6572
+      },
+      "psnr_diff_siren_minus_avif": -2.7176615508685877,
+      "ssim_diff_siren_minus_avif": -0.1554850376725624
+    },
+    {
+      "image_id": "kodim10",
+      "laplacian_variance": 110.34524536132812,
+      "siren": {
+        "psnr_db": 33.70072555592715,
+        "ssim": 0.6938297556903708,
+        "size_bytes": 6562,
+        "enc_time_s": 41.091119050979614,
+        "dec_time_s": 0.01786203384399414
+      },
+      "jpeg": {
+        "psnr_db": 64.36899931002736,
+        "ssim": 0.9998594299807526,
+        "size_bytes": 5965
+      },
+      "webp": {
+        "psnr_db": 57.49859256589001,
+        "ssim": 0.9996955265193015,
+        "size_bytes": 2134
+      },
+      "avif": {
+        "psnr_db": 99.0,
+        "ssim": 1.0,
+        "size_bytes": 3033
+      },
+      "psnr_diff_siren_minus_avif": -65.29927444407285,
+      "ssim_diff_siren_minus_avif": -0.30617024430962925
+    },
+    {
+      "image_id": "kodim11",
+      "laplacian_variance": 140.83331298828125,
+      "siren": {
+        "psnr_db": 28.821676880533538,
+        "ssim": 0.4543276861542344,
+        "size_bytes": 6562,
+        "enc_time_s": 42.71406817436218,
+        "dec_time_s": 0.017650413513183593
+      },
+      "jpeg": {
+        "psnr_db": 30.32423741558844,
+        "ssim": 0.6861951258639187,
+        "size_bytes": 6691
+      },
+      "webp": {
+        "psnr_db": 31.00623000776329,
+        "ssim": 0.7664609467103446,
+        "size_bytes": 6682
+      },
+      "avif": {
+        "psnr_db": 31.559929890587853,
+        "ssim": 0.7881460969411095,
+        "size_bytes": 6675
+      },
+      "psnr_diff_siren_minus_avif": -2.738253010054315,
+      "ssim_diff_siren_minus_avif": -0.3338184107868751
+    },
+    {
+      "image_id": "kodim12",
+      "laplacian_variance": 2.604902505874634,
+      "siren": {
+        "psnr_db": 41.65447309050678,
+        "ssim": 0.9750656102822006,
+        "size_bytes": 6562,
+        "enc_time_s": 43.3091402053833,
+        "dec_time_s": 0.018325233459472658
+      },
+      "jpeg": {
+        "psnr_db": 51.632745934309156,
+        "ssim": 0.9929504204565649,
+        "size_bytes": 6394
+      },
+      "webp": {
+        "psnr_db": 47.653130553669605,
+        "ssim": 0.9845734808732678,
+        "size_bytes": 2518
+      },
+      "avif": {
+        "psnr_db": 54.20222483515247,
+        "ssim": 0.9961998878287084,
+        "size_bytes": 4809
+      },
+      "psnr_diff_siren_minus_avif": -12.547751744645694,
+      "ssim_diff_siren_minus_avif": -0.021134277546507763
+    }
+  ],
+  "mean_siren_psnr": 33.49541418382888,
+  "std_siren_psnr": 4.946679866552811,
+  "mean_siren_ssim": 0.7010619417543144,
+  "std_siren_ssim": 0.18745848723391131,
+  "mean_jpeg_psnr": 43.194760214906914,
+  "mean_webp_psnr": 42.34986797013841,
+  "mean_avif_psnr": 54.56622047113084,
+  "mean_avif_ssim": 0.9113915142828986,
+  "mean_enc_time_s": 45.2910382548968,
+  "mean_dec_time_s": 0.019953155517578123,
+  "mean_psnr_diff_siren_avif": -21.07080628730195,
+  "mean_ssim_diff_siren_avif": -0.21032957252858409,
+  "total_time_s": 547.3195271492004
+}
