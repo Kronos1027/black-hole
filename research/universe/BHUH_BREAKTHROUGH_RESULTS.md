@@ -11,9 +11,12 @@
 > (the "Hybrid K=50" result: COIN 28.10 dB → BHUH 31.21 dB) has NOT been
 > re-tested with the same level of control.** That claim — that a shared
 > backbone across clustered images beats per-image COIN — remains as the
-> original claim, pending Experiment 36, which will isolate hierarchical
-> sharing from multi-omega and entropy coding in a fully controlled
-> comparison.
+> original claim, **REFUTED by Experiment 36** — see EXPERIMENT_36_RESULTS.md.
+> In controlled conditions (single omega=30, same entropy coding for
+> both), per-image COIN dominates hierarchical sharing on BOTH axes:
+> COIN 42.20 dB / 4030 B vs BHUH hierarchical 41.09 dB / 4189 B.
+> The original claim was an artifact of comparing BHUH (with multi-omega
+> + entropy coding) to COIN (without either).
 >
 > **Reader discretion**: treat the multi-omega claims in this document as
 > refuted. Treat the hierarchical K=50 sharing claims as UNVERIFIED under

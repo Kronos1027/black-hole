@@ -436,3 +436,17 @@ LR: Constant 1e-3 (NOT cosine)
 - **Key finding 3**: The entropy coding pipeline (KMeans + arithmetic coding) is the real innovation, delivering ~10x size reduction over raw float16.
 - **Final conclusion**: Single-omega SIREN + entropy coding is the optimal configuration. Multi-omega adds complexity without value.
 - **See**: EXPERIMENT_35_RESULTS.md for full comparison and SHA-256 verification.
+
+### #17 — Hierarchical Sharing Isolated (Exp 36) — COIN DOMINATES BHUH hierarchical (definitive, closes the program)
+- **Hypothesis**: Hierarchical K=50 sharing (shared backbone across clustered images) beats per-image COIN when multi-omega and entropy coding are controlled.
+- **Status**: COMPLETED 2026-08-06. **HYPOTHESIS REFUTED — COIN dominates on both axes.**
+- **Method**: Ran COIN (per-image SIREN, omega=30) and BHUH (hierarchical shared backbone, omega=30) with identical entropy coding (KMeans K=50 + arithmetic), 3 seeds, 30 images.
+- **Results**:
+  - COIN (per-image): 42.20 dB, 4030 B
+  - BHUH (hierarchical): 41.09 dB, 4189 B
+  - PSNR diff: -1.11 dB (COIN higher)
+  - Size ratio: 1.04x (BHUH larger)
+  - **Winner: COIN (dominates on both axes)**
+- **Key finding**: The original BHUH "breakthrough" (COIN 28.10 dB → BHUH 31.21 dB) was an artifact of comparing BHUH (with multi-omega + entropy coding) to COIN (without either). When controlled, hierarchical sharing provides NO benefit — shared backbone hurts because it averages diverse images.
+- **Final conclusion**: The ONLY component of BHUH that provides real value is the entropy coding pipeline (KMeans + arithmetic coding). Every architectural innovation (multi-omega, hierarchical sharing, pruning) was refuted under controlled conditions.
+- **See**: EXPERIMENT_36_RESULTS.md for full comparison and SHA-256 verification.
