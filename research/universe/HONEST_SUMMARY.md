@@ -527,3 +527,17 @@ LR: Constant 1e-3 (NOT cosine)
 - **Key finding 3**: AVIF adapts to image complexity (uses higher quality on simple images), SIREN's fixed-size representation cannot — fundamental disadvantage.
 - **Conclusion**: SIREN+QAT is NOT competitive with AVIF on natural photography. Exp 40's positive result was specific to 3 scikit-image photos.
 - **See**: EXPERIMENT_40B_RESULTS.md for full table, correlation analysis, and SHA-256.
+
+### #23 — Structured Pruning + Recovery QAT (Exp 41) — Beats AVIF on scikit-image, but Kodak generalization untested
+- **Hypothesis**: Structured pruning (50% neurons) + recovery QAT maintains SSIM while reducing size by ~50%.
+- **Status**: COMPLETED 2026-08-06. POSITIVE on scikit-image, BUT Kodak generalization NOT tested.
+- **Method**: Trained SIREN+QAT (500 ep), pruned 50% of hidden layer neurons (lowest L2 norm), recovery QAT (300 ep, K=50, STE). 3 scikit-image photos, 3 seeds.
+- **Results**:
+  - SIREN (pruned): PSNR=31.62±0.22 dB, SSIM=0.8424±0.0040, 4703 B
+  - AVIF:           PSNR=30.52±0.00 dB, SSIM=0.6759±0.0000, ~4703 B
+  - Δ: PSNR=+1.10 dB, SSIM=+0.1664 (SIREN wins both)
+- **Key finding 1**: Pruning reduced size by 28% (6562→4703 B) while maintaining quality.
+- **Key finding 2 (CAVEAT)**: Uses same 3 scikit-image photos as Exp 40. Exp 40-B showed this advantage does NOT generalize to Kodak (AVIF won by 21 dB there).
+- **Key finding 3**: "Astronaut effect" drives aggregate — SIREN dominates on astronaut (AVIF can't compress to 4.7 KB) but loses on camera/cell.
+- **Conclusion**: Technique works but fundamental problem remains — SIREN not competitive with AVIF on natural photography.
+- **See**: EXPERIMENT_41_RESULTS.md for full results, per-image breakdown, and SHA-256.
