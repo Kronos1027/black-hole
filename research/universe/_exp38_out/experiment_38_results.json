@@ -1,0 +1,204 @@
+{
+  "experiment": "experiment_38_quantized_psnr_correction",
+  "timestamp": "2026-08-06T15:00:08+0000",
+  "hypothesis": "Measuring PSNR AFTER KMeans quantization (not before) will reveal the true rate-distortion point. If the PSNR drop is large enough, the Exp 37 victory over JPEG/WebP may disappear.",
+  "bug_description": "In Exp 30-37, PSNR was measured on float32 model BEFORE KMeans clustering, while size was measured AFTER clustering. This experiment measures PSNR on the quantized model (codebook[indices] reloaded into model) for the first time.",
+  "config": {
+    "image_size": 256,
+    "hidden_features": 64,
+    "hidden_layers": 2,
+    "omega": 30.0,
+    "epochs": 300,
+    "lr": 0.001,
+    "K": 50,
+    "seeds": [
+      42,
+      123,
+      2024
+    ]
+  },
+  "all_runs": [
+    {
+      "seed": 42,
+      "per_image": [
+        {
+          "name": "astronaut",
+          "psnr_pre_quant_db": 25.31920826869819,
+          "psnr_post_quant_db": 13.774966256699566,
+          "psnr_drop_db": 11.544242011998625,
+          "siren_size_bytes": 4325.666666666667,
+          "jpeg_psnr_db": 5.495681195068957,
+          "jpeg_size_bytes": 1100,
+          "webp_psnr_db": 5.495681195068957,
+          "webp_size_bytes": 176
+        },
+        {
+          "name": "camera",
+          "psnr_pre_quant_db": 26.427139770012356,
+          "psnr_post_quant_db": 16.004892297704874,
+          "psnr_drop_db": 10.422247472307482,
+          "siren_size_bytes": 4247.666666666667,
+          "jpeg_psnr_db": 31.50070853182121,
+          "jpeg_size_bytes": 3889,
+          "webp_psnr_db": 34.571207613589394,
+          "webp_size_bytes": 4100
+        },
+        {
+          "name": "cell",
+          "psnr_pre_quant_db": 40.301578203391344,
+          "psnr_post_quant_db": 21.041500868405056,
+          "psnr_drop_db": 19.26007733498629,
+          "siren_size_bytes": 4147.666666666667,
+          "jpeg_psnr_db": 44.21105232467703,
+          "jpeg_size_bytes": 3794,
+          "webp_psnr_db": 45.61840842462956,
+          "webp_size_bytes": 4238
+        }
+      ],
+      "mean_psnr_pre_quant": 30.68264208070063,
+      "mean_psnr_post_quant": 16.940453140936498,
+      "mean_psnr_drop": 13.742188939764134,
+      "mean_siren_size": 4240.333333333333,
+      "mean_jpeg_psnr": 27.0691473505224,
+      "mean_jpeg_size": 2927.6666666666665,
+      "mean_webp_psnr": 28.561765744429305,
+      "mean_webp_size": 2838.0,
+      "total_time_s": 74.87021255493164,
+      "weights_file": "/home/z/my-project/research/universe/_exp38_out/exp38_weights_seed42.bin",
+      "weights_sha256": "12f3ddb9744c03646078b104e5e63d9ee1714c0493d21b3dacd8c2e163bd4b66"
+    },
+    {
+      "seed": 123,
+      "per_image": [
+        {
+          "name": "astronaut",
+          "psnr_pre_quant_db": 24.872818228139934,
+          "psnr_post_quant_db": 14.52331393265213,
+          "psnr_drop_db": 10.349504295487804,
+          "siren_size_bytes": 4303.666666666667,
+          "jpeg_psnr_db": 5.495681195068957,
+          "jpeg_size_bytes": 1100,
+          "webp_psnr_db": 5.495681195068957,
+          "webp_size_bytes": 176
+        },
+        {
+          "name": "camera",
+          "psnr_pre_quant_db": 25.980098483042795,
+          "psnr_post_quant_db": 16.11435807063903,
+          "psnr_drop_db": 9.865740412403763,
+          "siren_size_bytes": 4233.666666666667,
+          "jpeg_psnr_db": 31.50070853182121,
+          "jpeg_size_bytes": 3889,
+          "webp_psnr_db": 34.571207613589394,
+          "webp_size_bytes": 4100
+        },
+        {
+          "name": "cell",
+          "psnr_pre_quant_db": 40.068455120610395,
+          "psnr_post_quant_db": 20.560365592712934,
+          "psnr_drop_db": 19.50808952789746,
+          "siren_size_bytes": 4093.6666666666665,
+          "jpeg_psnr_db": 44.21105232467703,
+          "jpeg_size_bytes": 3794,
+          "webp_psnr_db": 45.61840842462956,
+          "webp_size_bytes": 4238
+        }
+      ],
+      "mean_psnr_pre_quant": 30.307123943931042,
+      "mean_psnr_post_quant": 17.066012532001366,
+      "mean_psnr_drop": 13.241111411929676,
+      "mean_siren_size": 4210.333333333333,
+      "mean_jpeg_psnr": 27.0691473505224,
+      "mean_jpeg_size": 2927.6666666666665,
+      "mean_webp_psnr": 28.561765744429305,
+      "mean_webp_size": 2838.0,
+      "total_time_s": 70.7806167602539,
+      "weights_file": "/home/z/my-project/research/universe/_exp38_out/exp38_weights_seed123.bin",
+      "weights_sha256": "77fa341e64a6b39cda854d9b143aacdbd1d878d9b90a66e5807bad4af677bc4a"
+    },
+    {
+      "seed": 2024,
+      "per_image": [
+        {
+          "name": "astronaut",
+          "psnr_pre_quant_db": 25.468240447400255,
+          "psnr_post_quant_db": 14.791653125294575,
+          "psnr_drop_db": 10.67658732210568,
+          "siren_size_bytes": 4442.666666666667,
+          "jpeg_psnr_db": 5.495681195068957,
+          "jpeg_size_bytes": 1100,
+          "webp_psnr_db": 5.495681195068957,
+          "webp_size_bytes": 176
+        },
+        {
+          "name": "camera",
+          "psnr_pre_quant_db": 26.588349146639683,
+          "psnr_post_quant_db": 17.131910065350674,
+          "psnr_drop_db": 9.456439081289009,
+          "siren_size_bytes": 4362.666666666667,
+          "jpeg_psnr_db": 32.19417642989051,
+          "jpeg_size_bytes": 4451,
+          "webp_psnr_db": 34.571207613589394,
+          "webp_size_bytes": 4100
+        },
+        {
+          "name": "cell",
+          "psnr_pre_quant_db": 40.5534263776541,
+          "psnr_post_quant_db": 21.70164925711873,
+          "psnr_drop_db": 18.851777120535367,
+          "siren_size_bytes": 4237.666666666667,
+          "jpeg_psnr_db": 45.941698909196646,
+          "jpeg_size_bytes": 4653,
+          "webp_psnr_db": 45.61840842462956,
+          "webp_size_bytes": 4238
+        }
+      ],
+      "mean_psnr_pre_quant": 30.87000532389801,
+      "mean_psnr_post_quant": 17.875070815921326,
+      "mean_psnr_drop": 12.994934507976684,
+      "mean_siren_size": 4347.666666666667,
+      "mean_jpeg_psnr": 27.877185511385374,
+      "mean_jpeg_size": 3401.3333333333335,
+      "mean_webp_psnr": 28.561765744429305,
+      "mean_webp_size": 2838.0,
+      "total_time_s": 66.05715703964233,
+      "weights_file": "/home/z/my-project/research/universe/_exp38_out/exp38_weights_seed2024.bin",
+      "weights_sha256": "df3b3fe75640721573fdb41080db8844808e96f1612b00cfd812bd0171e7fc98"
+    }
+  ],
+  "aggregated": {
+    "siren_pre_quant": {
+      "mean_psnr_db": 30.61992378284323,
+      "std_psnr_db": 0.2340356819560881
+    },
+    "siren_post_quant": {
+      "mean_psnr_db": 17.293845496286398,
+      "std_psnr_db": 0.41417262448540265
+    },
+    "psnr_drop": {
+      "mean_db": 13.32607828655683,
+      "std_db": 0.31092531128276474
+    },
+    "siren_size": {
+      "mean_bytes": 4266.11111111111,
+      "std_bytes": 58.954680229712785
+    },
+    "jpeg": {
+      "mean_psnr_db": 27.338493404143392,
+      "std_psnr_db": 0.38091284200247694
+    },
+    "webp": {
+      "mean_psnr_db": 28.561765744429305,
+      "std_psnr_db": 0.0
+    }
+  },
+  "corrected_comparison": {
+    "siren_post_minus_jpeg": -10.044647907856994,
+    "siren_post_minus_webp": -11.267920248142907,
+    "winner": "JPEG/WebP (both beat SIREN+entropy post-quant)",
+    "conclusion": "NEGATIVE \u2014 the Exp 37 victory DISAPPEARS after correction",
+    "exp37_pre_quant_psnr": 30.61992378284323,
+    "exp38_post_quant_psnr": 17.293845496286398,
+    "correction_drop_db": 13.32607828655683
+  }
+}

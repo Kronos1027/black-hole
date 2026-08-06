@@ -1,3 +1,23 @@
+> ## ⚠️ CORRECTION NOTICE (2026-08-06) — SUPERSEDED BY EXPERIMENT 38
+>
+> **The results in this document are INFLATED.** The PSNR was measured on the
+> float32 model BEFORE KMeans quantization, while the size was measured AFTER
+> quantization. This mixed two different versions of the model.
+>
+> **Experiment 38 corrected this by measuring PSNR AFTER quantization
+> (reloading codebook[indices] into the model). The corrected results:**
+>
+> - Exp 37 reported: SIREN 30.62 dB (pre-quant, INFLATED)
+> - Exp 38 measured: SIREN 17.29 dB (post-quant, REAL)
+> - PSNR drop from KMeans K=50: 13.33 dB
+> - **SIREN+entropy LOSES to JPEG by 10.04 dB and WebP by 11.27 dB**
+>
+> **The victory over JPEG/WebP reported in this document was an artifact
+> of the measurement bug, not a real result.** See EXPERIMENT_38_RESULTS.md
+> for the corrected measurement.
+
+---
+
 # EXPERIMENT 37 RESULTS — Real Photo Byte Parity Test (the publishable test)
 
 ## Status: COMPLETED — SIREN+entropy BEATS JPEG and WebP on real photos (POSITIVE)

@@ -466,3 +466,18 @@ LR: Constant 1e-3 (NOT cosine)
 - **Publishable result**: This is the ONE positive, validated, reproducible contribution of the BHUH program — single-omega SIREN + entropy coding beats production codecs on real photos.
 - **Caveats**: Only 3 images at 256×256; SIREN training is ~25000x slower than JPEG; no JPEG XL/AVIF comparison.
 - **See**: EXPERIMENT_37_RESULTS.md for full parity table, SHA-256, and caveats.
+
+### #19 — Quantized PSNR Correction (Exp 38) — Exp 37 victory was FAKE, SIREN LOSES to JPEG/WebP by 10+ dB
+- **Hypothesis**: Measuring PSNR AFTER KMeans quantization (not before) will reveal the true rate-distortion point.
+- **Status**: COMPLETED 2026-08-06. **EXP 37 SUPERSEDED — victory was an artifact of measurement bug.**
+- **Bug**: In Exp 30-37, PSNR was measured on float32 model BEFORE KMeans clustering, while size was measured AFTER. Nobody reloaded quantized weights (codebook[indices]) to measure actual PSNR.
+- **Method**: Added dequantize_and_reload() that reconstructs codebook[indices], reloads into model, measures PSNR via forward pass. Same config as Exp 37 (single-omega ω=30, K=50, 256×256 real photos, 3 seeds).
+- **Results**:
+  - SIREN pre-quant: 30.62 ± 0.23 dB (what Exp 37 reported — INFLATED)
+  - SIREN post-quant: 17.29 ± 0.41 dB (the REAL number)
+  - PSNR drop: 13.33 ± 0.31 dB (KMeans K=50 destroys this much)
+  - JPEG: 27.34 ± 0.38 dB (10.04 dB BETTER than SIREN)
+  - WebP: 28.56 ± 0.00 dB (11.27 dB BETTER than SIREN)
+- **Key finding**: SIREN+entropy LOSES to JPEG by 10.04 dB and WebP by 11.27 dB at matched byte budget. The "positive result" of Exp 37 was completely false.
+- **Impact**: Every PSNR number in Exp 30-37 was measured pre-quantization and is inflated. The relative comparisons (Exp 35-36: COIN dominates BHUH) still hold because both sides had the same bug. But the absolute PSNR claims and the "beats JPEG/WebP" claim are INVALID.
+- **Final conclusion**: The BHUH program ends with a purely negative result. No component beats production codecs on real photos. See EXPERIMENT_38_RESULTS.md.

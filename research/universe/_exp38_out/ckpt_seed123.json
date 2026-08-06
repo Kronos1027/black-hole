@@ -1,0 +1,49 @@
+{
+  "seed": 123,
+  "per_image": [
+    {
+      "name": "astronaut",
+      "psnr_pre_quant_db": 24.872818228139934,
+      "psnr_post_quant_db": 14.52331393265213,
+      "psnr_drop_db": 10.349504295487804,
+      "siren_size_bytes": 4303.666666666667,
+      "jpeg_psnr_db": 5.495681195068957,
+      "jpeg_size_bytes": 1100,
+      "webp_psnr_db": 5.495681195068957,
+      "webp_size_bytes": 176
+    },
+    {
+      "name": "camera",
+      "psnr_pre_quant_db": 25.980098483042795,
+      "psnr_post_quant_db": 16.11435807063903,
+      "psnr_drop_db": 9.865740412403763,
+      "siren_size_bytes": 4233.666666666667,
+      "jpeg_psnr_db": 31.50070853182121,
+      "jpeg_size_bytes": 3889,
+      "webp_psnr_db": 34.571207613589394,
+      "webp_size_bytes": 4100
+    },
+    {
+      "name": "cell",
+      "psnr_pre_quant_db": 40.068455120610395,
+      "psnr_post_quant_db": 20.560365592712934,
+      "psnr_drop_db": 19.50808952789746,
+      "siren_size_bytes": 4093.6666666666665,
+      "jpeg_psnr_db": 44.21105232467703,
+      "jpeg_size_bytes": 3794,
+      "webp_psnr_db": 45.61840842462956,
+      "webp_size_bytes": 4238
+    }
+  ],
+  "mean_psnr_pre_quant": 30.307123943931042,
+  "mean_psnr_post_quant": 17.066012532001366,
+  "mean_psnr_drop": 13.241111411929676,
+  "mean_siren_size": 4210.333333333333,
+  "mean_jpeg_psnr": 27.0691473505224,
+  "mean_jpeg_size": 2927.6666666666665,
+  "mean_webp_psnr": 28.561765744429305,
+  "mean_webp_size": 2838.0,
+  "total_time_s": 70.7806167602539,
+  "weights_file": "/home/z/my-project/research/universe/_exp38_out/exp38_weights_seed123.bin",
+  "weights_sha256": "77fa341e64a6b39cda854d9b143aacdbd1d878d9b90a66e5807bad4af677bc4a"
+}
