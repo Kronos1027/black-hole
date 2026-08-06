@@ -1,0 +1,661 @@
+{
+  "experiment": "experiment_40_byte_parity_battlefield",
+  "timestamp": "2026-08-06T16:26:22+0000",
+  "hypothesis": "SIREN+QAT at 6562 B beats JPEG, WebP, AND AVIF at the same byte budget.",
+  "config": {
+    "image_size": 256,
+    "hidden_features": 64,
+    "hidden_layers": 2,
+    "omega": 30.0,
+    "epochs": 500,
+    "lr": 0.001,
+    "seeds": [
+      42,
+      123,
+      2024
+    ],
+    "k_config": {
+      "layer_0": 256,
+      "layer_1": 64,
+      "layer_2": 64,
+      "layer_3": 128
+    },
+    "reg_weight": 0.01,
+    "ste_start_epoch": 200,
+    "codebook_update_interval": 100
+  },
+  "all_runs": [
+    {
+      "seed": 42,
+      "per_image": [
+        {
+          "name": "astronaut",
+          "siren": {
+            "psnr_db": 25.9856280963734,
+            "ssim": 0.7822217243652542,
+            "size_bytes": 6562
+          },
+          "jpeg": {
+            "psnr_db": 5.495681195068957,
+            "ssim": 0.08988810683399906,
+            "size_bytes": 1102,
+            "quality": 97
+          },
+          "webp": {
+            "psnr_db": 5.460874049790365,
+            "ssim": 0.08949451421938225,
+            "size_bytes": 180,
+            "quality": 75
+          },
+          "avif": {
+            "psnr_db": 5.495681195068957,
+            "ssim": 0.08988810683399906,
+            "size_bytes": 315,
+            "quality": 75
+          }
+        },
+        {
+          "name": "camera",
+          "siren": {
+            "psnr_db": 27.128374873130806,
+            "ssim": 0.7538542647071992,
+            "size_bytes": 6562
+          },
+          "jpeg": {
+            "psnr_db": 34.37082011179746,
+            "ssim": 0.9293714051651951,
+            "size_bytes": 6615,
+            "quality": 57
+          },
+          "webp": {
+            "psnr_db": 37.555987569291084,
+            "ssim": 0.9575467899274038,
+            "size_bytes": 6648,
+            "quality": 77
+          },
+          "avif": {
+            "psnr_db": 38.15551938732905,
+            "ssim": 0.9635368002453522,
+            "size_bytes": 6652,
+            "quality": 66
+          }
+        },
+        {
+          "name": "cell",
+          "siren": {
+            "psnr_db": 39.31993937626983,
+            "ssim": 0.9441184553084504,
+            "size_bytes": 6562
+          },
+          "jpeg": {
+            "psnr_db": 48.55795562333565,
+            "ssim": 0.9927762704470462,
+            "size_bytes": 6434,
+            "quality": 85
+          },
+          "webp": {
+            "psnr_db": 48.1104899055838,
+            "ssim": 0.9902700381190368,
+            "size_bytes": 6696,
+            "quality": 95
+          },
+          "avif": {
+            "psnr_db": 51.18930289802968,
+            "ssim": 0.996765706069223,
+            "size_bytes": 6300,
+            "quality": 94
+          }
+        }
+      ],
+      "entropy_analysis": {
+        "layer_0": {
+          "K": 128,
+          "n_weights": 128,
+          "entropy_bits_per_index": 7.0,
+          "raw_bits_per_index": 7,
+          "entropy_bits_total": 896.0,
+          "raw_bits_total": 896,
+          "savings_bits": 0.0,
+          "savings_bytes": 0.0,
+          "savings_percent": 0.0
+        },
+        "layer_1": {
+          "K": 64,
+          "n_weights": 64,
+          "entropy_bits_per_index": 6.0,
+          "raw_bits_per_index": 6,
+          "entropy_bits_total": 384.0,
+          "raw_bits_total": 384,
+          "savings_bits": 0.0,
+          "savings_bytes": 0.0,
+          "savings_percent": 0.0
+        },
+        "layer_2": {
+          "K": 64,
+          "n_weights": 4096,
+          "entropy_bits_per_index": 5.779253280142668,
+          "raw_bits_per_index": 6,
+          "entropy_bits_total": 23671.821435464368,
+          "raw_bits_total": 24576,
+          "savings_bits": 904.1785645356322,
+          "savings_bytes": 113.02232056695402,
+          "savings_percent": 3.679111997622201
+        },
+        "layer_3": {
+          "K": 64,
+          "n_weights": 64,
+          "entropy_bits_per_index": 6.0,
+          "raw_bits_per_index": 6,
+          "entropy_bits_total": 384.0,
+          "raw_bits_total": 384,
+          "savings_bits": 0.0,
+          "savings_bytes": 0.0,
+          "savings_percent": 0.0
+        },
+        "layer_4": {
+          "K": 64,
+          "n_weights": 4096,
+          "entropy_bits_per_index": 5.54813191853356,
+          "raw_bits_per_index": 6,
+          "entropy_bits_total": 22725.148338313462,
+          "raw_bits_total": 24576,
+          "savings_bits": 1850.8516616865381,
+          "savings_bytes": 231.35645771081727,
+          "savings_percent": 7.531134691107333
+        },
+        "layer_5": {
+          "K": 64,
+          "n_weights": 64,
+          "entropy_bits_per_index": 6.0,
+          "raw_bits_per_index": 6,
+          "entropy_bits_total": 384.0,
+          "raw_bits_total": 384,
+          "savings_bits": 0.0,
+          "savings_bytes": 0.0,
+          "savings_percent": 0.0
+        },
+        "layer_6": {
+          "K": 64,
+          "n_weights": 64,
+          "entropy_bits_per_index": 6.0,
+          "raw_bits_per_index": 6,
+          "entropy_bits_total": 384.0,
+          "raw_bits_total": 384,
+          "savings_bits": 0.0,
+          "savings_bytes": 0.0,
+          "savings_percent": 0.0
+        },
+        "layer_7": {
+          "K": 1,
+          "n_weights": 1,
+          "entropy_bits_per_index": -0.0,
+          "raw_bits_per_index": 1,
+          "entropy_bits_total": -0.0,
+          "raw_bits_total": 1,
+          "savings_bits": 1.0,
+          "savings_bytes": 0.125,
+          "savings_percent": 100.0
+        },
+        "_total": {
+          "n_weights": 8577,
+          "raw_bits_total": 51585,
+          "entropy_bits_total": 48828.96977377783,
+          "savings_bits": 2756.0302262221667,
+          "savings_bytes": 344.50377827777083,
+          "savings_percent": 5.342696958848825,
+          "estimated_arithmetic_coded_size_bytes": 6103.621221722229
+        }
+      },
+      "mean_siren_psnr": 30.81131411525801,
+      "mean_siren_ssim": 0.8267314814603012,
+      "mean_siren_size": 6562.0,
+      "mean_jpeg_psnr": 29.474818976734024,
+      "mean_jpeg_ssim": 0.6706785941487468,
+      "mean_jpeg_size": 4717.0,
+      "mean_webp_psnr": 30.37578384155508,
+      "mean_webp_ssim": 0.6791037807552742,
+      "mean_webp_size": 4508.0,
+      "mean_avif_psnr": 31.61350116014256,
+      "mean_avif_ssim": 0.6833968710495247,
+      "mean_avif_size": 4422.333333333333,
+      "total_time_s": 133.4932999610901,
+      "weights_sha256": "a9667f38cf698b3e6aecc54b26a5553b861793dcc90befa0cca8a80f60496162"
+    },
+    {
+      "seed": 123,
+      "per_image": [
+        {
+          "name": "astronaut",
+          "siren": {
+            "psnr_db": 25.565980138023974,
+            "ssim": 0.7715386802636955,
+            "size_bytes": 6562
+          },
+          "jpeg": {
+            "psnr_db": 5.495681195068957,
+            "ssim": 0.08988810683399906,
+            "size_bytes": 1102,
+            "quality": 97
+          },
+          "webp": {
+            "psnr_db": 5.460874049790365,
+            "ssim": 0.08949451421938225,
+            "size_bytes": 180,
+            "quality": 75
+          },
+          "avif": {
+            "psnr_db": 5.495681195068957,
+            "ssim": 0.08988810683399906,
+            "size_bytes": 315,
+            "quality": 75
+          }
+        },
+        {
+          "name": "camera",
+          "siren": {
+            "psnr_db": 26.919400964283838,
+            "ssim": 0.736693809597937,
+            "size_bytes": 6562
+          },
+          "jpeg": {
+            "psnr_db": 34.37082011179746,
+            "ssim": 0.9293714051651951,
+            "size_bytes": 6615,
+            "quality": 57
+          },
+          "webp": {
+            "psnr_db": 37.555987569291084,
+            "ssim": 0.9575467899274038,
+            "size_bytes": 6648,
+            "quality": 77
+          },
+          "avif": {
+            "psnr_db": 38.15551938732905,
+            "ssim": 0.9635368002453522,
+            "size_bytes": 6652,
+            "quality": 66
+          }
+        },
+        {
+          "name": "cell",
+          "siren": {
+            "psnr_db": 38.77097788780796,
+            "ssim": 0.938421364822104,
+            "size_bytes": 6562
+          },
+          "jpeg": {
+            "psnr_db": 48.55795562333565,
+            "ssim": 0.9927762704470462,
+            "size_bytes": 6434,
+            "quality": 85
+          },
+          "webp": {
+            "psnr_db": 48.1104899055838,
+            "ssim": 0.9902700381190368,
+            "size_bytes": 6696,
+            "quality": 95
+          },
+          "avif": {
+            "psnr_db": 51.18930289802968,
+            "ssim": 0.996765706069223,
+            "size_bytes": 6300,
+            "quality": 94
+          }
+        }
+      ],
+      "entropy_analysis": {
+        "layer_0": {
+          "K": 128,
+          "n_weights": 128,
+          "entropy_bits_per_index": 7.0,
+          "raw_bits_per_index": 7,
+          "entropy_bits_total": 896.0,
+          "raw_bits_total": 896,
+          "savings_bits": 0.0,
+          "savings_bytes": 0.0,
+          "savings_percent": 0.0
+        },
+        "layer_1": {
+          "K": 64,
+          "n_weights": 64,
+          "entropy_bits_per_index": 6.0,
+          "raw_bits_per_index": 6,
+          "entropy_bits_total": 384.0,
+          "raw_bits_total": 384,
+          "savings_bits": 0.0,
+          "savings_bytes": 0.0,
+          "savings_percent": 0.0
+        },
+        "layer_2": {
+          "K": 64,
+          "n_weights": 4096,
+          "entropy_bits_per_index": 5.745547644274187,
+          "raw_bits_per_index": 6,
+          "entropy_bits_total": 23533.76315094707,
+          "raw_bits_total": 24576,
+          "savings_bits": 1042.2368490529298,
+          "savings_bytes": 130.27960613161622,
+          "savings_percent": 4.240872595430215
+        },
+        "layer_3": {
+          "K": 64,
+          "n_weights": 64,
+          "entropy_bits_per_index": 6.0,
+          "raw_bits_per_index": 6,
+          "entropy_bits_total": 384.0,
+          "raw_bits_total": 384,
+          "savings_bits": 0.0,
+          "savings_bytes": 0.0,
+          "savings_percent": 0.0
+        },
+        "layer_4": {
+          "K": 64,
+          "n_weights": 4096,
+          "entropy_bits_per_index": 5.5189953166592804,
+          "raw_bits_per_index": 6,
+          "entropy_bits_total": 22605.804817036413,
+          "raw_bits_total": 24576,
+          "savings_bits": 1970.1951829635873,
+          "savings_bytes": 246.2743978704484,
+          "savings_percent": 8.016744722345326
+        },
+        "layer_5": {
+          "K": 64,
+          "n_weights": 64,
+          "entropy_bits_per_index": 6.0,
+          "raw_bits_per_index": 6,
+          "entropy_bits_total": 384.0,
+          "raw_bits_total": 384,
+          "savings_bits": 0.0,
+          "savings_bytes": 0.0,
+          "savings_percent": 0.0
+        },
+        "layer_6": {
+          "K": 64,
+          "n_weights": 64,
+          "entropy_bits_per_index": 6.0,
+          "raw_bits_per_index": 6,
+          "entropy_bits_total": 384.0,
+          "raw_bits_total": 384,
+          "savings_bits": 0.0,
+          "savings_bytes": 0.0,
+          "savings_percent": 0.0
+        },
+        "layer_7": {
+          "K": 1,
+          "n_weights": 1,
+          "entropy_bits_per_index": -0.0,
+          "raw_bits_per_index": 1,
+          "entropy_bits_total": -0.0,
+          "raw_bits_total": 1,
+          "savings_bits": 1.0,
+          "savings_bytes": 0.125,
+          "savings_percent": 100.0
+        },
+        "_total": {
+          "n_weights": 8577,
+          "raw_bits_total": 51585,
+          "entropy_bits_total": 48571.56796798349,
+          "savings_bits": 3013.4320320165134,
+          "savings_bytes": 376.6790040020642,
+          "savings_percent": 5.841682721753442,
+          "estimated_arithmetic_coded_size_bytes": 6071.445995997936
+        }
+      },
+      "mean_siren_psnr": 30.41878633003859,
+      "mean_siren_ssim": 0.8155512848945788,
+      "mean_siren_size": 6562.0,
+      "mean_jpeg_psnr": 29.474818976734024,
+      "mean_jpeg_ssim": 0.6706785941487468,
+      "mean_jpeg_size": 4717.0,
+      "mean_webp_psnr": 30.37578384155508,
+      "mean_webp_ssim": 0.6791037807552742,
+      "mean_webp_size": 4508.0,
+      "mean_avif_psnr": 31.61350116014256,
+      "mean_avif_ssim": 0.6833968710495247,
+      "mean_avif_size": 4422.333333333333,
+      "total_time_s": 133.9118127822876,
+      "weights_sha256": "183df798e8a8b82b8dc000b8ee3d5d4ee95f1861848cb7fcf0d9fe6a0c6279d0"
+    },
+    {
+      "seed": 2024,
+      "per_image": [
+        {
+          "name": "astronaut",
+          "siren": {
+            "psnr_db": 26.027940051004464,
+            "ssim": 0.7745599534761355,
+            "size_bytes": 6562
+          },
+          "jpeg": {
+            "psnr_db": 5.495681195068957,
+            "ssim": 0.08988810683399906,
+            "size_bytes": 1102,
+            "quality": 97
+          },
+          "webp": {
+            "psnr_db": 5.460874049790365,
+            "ssim": 0.08949451421938225,
+            "size_bytes": 180,
+            "quality": 75
+          },
+          "avif": {
+            "psnr_db": 5.495681195068957,
+            "ssim": 0.08988810683399906,
+            "size_bytes": 315,
+            "quality": 75
+          }
+        },
+        {
+          "name": "camera",
+          "siren": {
+            "psnr_db": 27.49895675729638,
+            "ssim": 0.7613629300397935,
+            "size_bytes": 6562
+          },
+          "jpeg": {
+            "psnr_db": 34.37082011179746,
+            "ssim": 0.9293714051651951,
+            "size_bytes": 6615,
+            "quality": 57
+          },
+          "webp": {
+            "psnr_db": 37.555987569291084,
+            "ssim": 0.9575467899274038,
+            "size_bytes": 6648,
+            "quality": 77
+          },
+          "avif": {
+            "psnr_db": 38.15551938732905,
+            "ssim": 0.9635368002453522,
+            "size_bytes": 6652,
+            "quality": 66
+          }
+        },
+        {
+          "name": "cell",
+          "siren": {
+            "psnr_db": 39.55817394825497,
+            "ssim": 0.9455222182582327,
+            "size_bytes": 6562
+          },
+          "jpeg": {
+            "psnr_db": 48.55795562333565,
+            "ssim": 0.9927762704470462,
+            "size_bytes": 6434,
+            "quality": 85
+          },
+          "webp": {
+            "psnr_db": 48.1104899055838,
+            "ssim": 0.9902700381190368,
+            "size_bytes": 6696,
+            "quality": 95
+          },
+          "avif": {
+            "psnr_db": 51.18930289802968,
+            "ssim": 0.996765706069223,
+            "size_bytes": 6300,
+            "quality": 94
+          }
+        }
+      ],
+      "entropy_analysis": {
+        "layer_0": {
+          "K": 128,
+          "n_weights": 128,
+          "entropy_bits_per_index": 7.0,
+          "raw_bits_per_index": 7,
+          "entropy_bits_total": 896.0,
+          "raw_bits_total": 896,
+          "savings_bits": 0.0,
+          "savings_bytes": 0.0,
+          "savings_percent": 0.0
+        },
+        "layer_1": {
+          "K": 64,
+          "n_weights": 64,
+          "entropy_bits_per_index": 6.0,
+          "raw_bits_per_index": 6,
+          "entropy_bits_total": 384.0,
+          "raw_bits_total": 384,
+          "savings_bits": 0.0,
+          "savings_bytes": 0.0,
+          "savings_percent": 0.0
+        },
+        "layer_2": {
+          "K": 64,
+          "n_weights": 4096,
+          "entropy_bits_per_index": 5.78461308009278,
+          "raw_bits_per_index": 6,
+          "entropy_bits_total": 23693.775176060026,
+          "raw_bits_total": 24576,
+          "savings_bits": 882.2248239399742,
+          "savings_bytes": 110.27810299249677,
+          "savings_percent": 3.5897819984536707
+        },
+        "layer_3": {
+          "K": 64,
+          "n_weights": 64,
+          "entropy_bits_per_index": 6.0,
+          "raw_bits_per_index": 6,
+          "entropy_bits_total": 384.0,
+          "raw_bits_total": 384,
+          "savings_bits": 0.0,
+          "savings_bytes": 0.0,
+          "savings_percent": 0.0
+        },
+        "layer_4": {
+          "K": 64,
+          "n_weights": 4096,
+          "entropy_bits_per_index": 5.604625247346992,
+          "raw_bits_per_index": 6,
+          "entropy_bits_total": 22956.54501313328,
+          "raw_bits_total": 24576,
+          "savings_bits": 1619.45498686672,
+          "savings_bytes": 202.43187335834,
+          "savings_percent": 6.589579210883463
+        },
+        "layer_5": {
+          "K": 64,
+          "n_weights": 64,
+          "entropy_bits_per_index": 6.0,
+          "raw_bits_per_index": 6,
+          "entropy_bits_total": 384.0,
+          "raw_bits_total": 384,
+          "savings_bits": 0.0,
+          "savings_bytes": 0.0,
+          "savings_percent": 0.0
+        },
+        "layer_6": {
+          "K": 64,
+          "n_weights": 64,
+          "entropy_bits_per_index": 6.0,
+          "raw_bits_per_index": 6,
+          "entropy_bits_total": 384.0,
+          "raw_bits_total": 384,
+          "savings_bits": 0.0,
+          "savings_bytes": 0.0,
+          "savings_percent": 0.0
+        },
+        "layer_7": {
+          "K": 1,
+          "n_weights": 1,
+          "entropy_bits_per_index": -0.0,
+          "raw_bits_per_index": 1,
+          "entropy_bits_total": -0.0,
+          "raw_bits_total": 1,
+          "savings_bits": 1.0,
+          "savings_bytes": 0.125,
+          "savings_percent": 100.0
+        },
+        "_total": {
+          "n_weights": 8577,
+          "raw_bits_total": 51585,
+          "entropy_bits_total": 49082.320189193306,
+          "savings_bits": 2502.679810806694,
+          "savings_bytes": 312.83497635083677,
+          "savings_percent": 4.851565010771919,
+          "estimated_arithmetic_coded_size_bytes": 6135.290023649163
+        }
+      },
+      "mean_siren_psnr": 31.028356918851937,
+      "mean_siren_ssim": 0.827148367258054,
+      "mean_siren_size": 6562.0,
+      "mean_jpeg_psnr": 29.474818976734024,
+      "mean_jpeg_ssim": 0.6706785941487468,
+      "mean_jpeg_size": 4717.0,
+      "mean_webp_psnr": 30.37578384155508,
+      "mean_webp_ssim": 0.6791037807552742,
+      "mean_webp_size": 4508.0,
+      "mean_avif_psnr": 31.61350116014256,
+      "mean_avif_ssim": 0.6833968710495247,
+      "mean_avif_size": 4422.333333333333,
+      "total_time_s": 137.7891228199005,
+      "weights_sha256": "ce66c988b0abffe8db6cd060e348901db1ad04b2315d9ceff26fa5caad1177a5"
+    }
+  ],
+  "aggregated": {
+    "siren": {
+      "mean_psnr_db": 30.752819121382846,
+      "std_psnr_db": 0.2522701249559086,
+      "mean_ssim": 0.8231437112043114,
+      "std_ssim": 0.005371353112803174
+    },
+    "jpeg": {
+      "mean_psnr_db": 29.474818976734024,
+      "std_psnr_db": 0.0,
+      "mean_ssim": 0.6706785941487468,
+      "std_ssim": 0.0
+    },
+    "webp": {
+      "mean_psnr_db": 30.37578384155508,
+      "std_psnr_db": 0.0,
+      "mean_ssim": 0.6791037807552742,
+      "std_ssim": 0.0
+    },
+    "avif": {
+      "mean_psnr_db": 31.61350116014256,
+      "std_psnr_db": 0.0,
+      "mean_ssim": 0.6833968710495247,
+      "std_ssim": 0.0
+    }
+  },
+  "comparison": {
+    "psnr_diffs": {
+      "siren_minus_jpeg": 1.2780001446488214,
+      "siren_minus_webp": 0.37703527982776563,
+      "siren_minus_avif": -0.860682038759716
+    },
+    "winner": "32 dB codec wins",
+    "conclusion": "NEGATIVE \u2014 SIREN+QAT loses at matched byte budget",
+    "entropy_analysis_summary": {
+      "n_weights": 8577,
+      "raw_bits_total": 51585,
+      "entropy_bits_total": 48828.96977377783,
+      "savings_bits": 2756.0302262221667,
+      "savings_bytes": 344.50377827777083,
+      "savings_percent": 5.342696958848825,
+      "estimated_arithmetic_coded_size_bytes": 6103.621221722229
+    }
+  }
+}

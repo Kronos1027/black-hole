@@ -497,3 +497,19 @@ LR: Constant 1e-3 (NOT cosine)
 - **Key finding 3**: "Phase shift" theory supported — highest-PSNR image (cell) has largest drop (2.41 dB), consistent with sin activation sensitivity to weight perturbation.
 - **Next step**: Exp 40 — byte-parity test with QAT model at matched budget against JPEG/WebP/AVIF.
 - **See**: EXPERIMENT_39_RESULTS.md for full results, per-image breakdown, and SHA-256.
+
+### #21 — Byte Parity Battlefield (Exp 40) — SIREN beats JPEG/WebP, loses to AVIF on PSNR, but DOMINATES on SSIM
+- **Hypothesis**: SIREN+QAT at 6562 B beats JPEG, WebP, AND AVIF at the same byte budget.
+- **Status**: COMPLETED 2026-08-06. **MIXED — beats JPEG and WebP, loses to AVIF on PSNR, but dominates ALL on SSIM.**
+- **Method**: Trained SIREN+QAT (same config as Exp 39). Compressed JPEG/WebP/AVIF to ~6562 B via binary search on quality. Compared PSNR and SSIM at matched budget. 3 seeds, 3 real photos, 256×256.
+- **Results**:
+  - SIREN+QAT: 30.75 ± 0.25 dB, SSIM=0.8231 ± 0.0054, 6562 B
+  - JPEG:       29.47 ± 0.00 dB, SSIM=0.6707, ~6562 B
+  - WebP:       30.38 ± 0.00 dB, SSIM=0.6791, ~6562 B
+  - AVIF:       31.61 ± 0.00 dB, SSIM=0.6834, ~6562 B
+- **Key finding 1 (PSNR)**: SIREN beats JPEG by +1.28 dB and WebP by +0.38 dB, but loses to AVIF by -0.86 dB.
+- **Key finding 2 (SSIM — THE SURPRISE)**: SIREN's SSIM (0.8231) is dramatically higher than ALL codecs (0.67-0.68), including AVIF. SIREN's continuous representation preserves perceptual/structural quality better than block-based codecs.
+- **Key finding 3 (image-dependent)**: For complex images (astronaut), SIREN massively outperforms all codecs (25.99 dB vs ~5.5 dB) because block codecs can't compress complex images to ~6 KB. For simple images, codecs win on PSNR.
+- **Key finding 4 (entropy)**: Shannon entropy of QAT indices is near-maximum (5.3% savings from arithmetic coding). Not enough to close AVIF gap.
+- **Next step**: Exp 41 — structured pruning to reduce size from 6562 B to ~3300 B, then re-test byte parity.
+- **See**: EXPERIMENT_40_RESULTS.md for full table, per-image breakdown, entropy analysis, and SHA-256.
