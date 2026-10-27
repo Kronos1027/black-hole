@@ -6,6 +6,11 @@ on:
     paths:
       - "research/universe/experiment_55_contiguous_dem.py"
       - ".github/workflows/exp55.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/universe/experiment_55_contiguous_dem.py"
+      - ".github/workflows/exp55.yml"
   workflow_dispatch:
 
 jobs:
