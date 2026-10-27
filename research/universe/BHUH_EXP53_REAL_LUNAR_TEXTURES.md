@@ -29,6 +29,8 @@ SIREN width 16, depth 1, omega 30, 300 epochs; shared arm K=1, 4-dimensional per
 
 **Finding:** WebP q10 dominates the K=1 sharing configuration on both file size and mean fidelity. One should **not** generalize the synthetic-surface success to spatially related real imagery.
 
+**Official GitHub reproduction confirmed:** The exact repository implementation reproduced every neural and WebP row above on 2026-10-27. The Exp 53 workflow job completed successfully: https://github.com/Kronos1027/black-hole/actions/runs/40454246281 . The workflow saved its results and true serialized model files as artifacts.
+
 The independent local replica was used to generate this table. `experiment_53_real_lunar_tiles.py` on the research branch reproduces the setup using the repository's actual Exp51 `one_run` and `codec_baselines`; GitHub CI is configured to run it and save `results.json` and true `.blkh51` files.
 
 ## Next falsifiable research steps
