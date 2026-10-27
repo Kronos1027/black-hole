@@ -1,10 +1,10 @@
 # BHUH / BLKH Experiment 51 — preliminary independent validation (2026-10-27)
 
-**Status: reproducible exploration, not a validated compression breakthrough.**
+**Status: experiments 51/52 reproduced by GitHub Actions for the correlated synthetic test (2 seeds); still not a general compression breakthrough.**
 
 ## Provenance
 
-These measurements were produced in an isolated Python environment by an **independent reimplementation** of the Exp 51 architecture and BLK51 float16 + zlib serializer, **not** by executing this repository's exact `experiment_51_fair_sharing.py` script. The reference script on this branch now supports `--dataset smooth` and `--compare-codecs`; run its self-tests and new configurations before citing these measurements as repository-verified. The local replication sources, SHA-256s, raw bytes and output records are preserved separately.
+These measurements were produced in an isolated Python environment by an **independent reimplementation** of the Exp 51 architecture and BLK51 float16 + zlib serializer, **not** by executing this repository's exact `experiment_51_fair_sharing.py` script. The reference script on this branch supports `--dataset smooth` and `--compare-codecs`. **The exact repository implementation has now reproduced the two-seed synthetic experiment on GitHub Actions.** The natural-image full-size comparison in Experiment A still refers to the independent local checker. The local replication sources, SHA-256s, raw bytes and output records are preserved separately.
 
 All reported neural quality measurements are calculated **after decompressing, loading quantized float16 model weights and reconstructing the output**, not before quantization. Sizes are total bytes of saved payloads for the **entire six-image set**, including metadata, shared backbone, per-image latent values and indices.
 
@@ -46,7 +46,7 @@ python research/universe/experiment_51_fair_sharing.py --dataset natural --count
 python research/universe/experiment_51_fair_sharing.py --dataset smooth --count 6 --size 64 --epochs 600 --widths 16 --k 1,3 --seeds 42,123 --compare-codecs --out /tmp/exp51-smooth
 ```
 
-The third command can take substantial CPU time. These commands are proposed reproduction steps for the repository implementation, **not claimed as already completed**.
+The third command was run by the repository GitHub Actions job (two seeds, K=1) and the printed neural sizes and post-decode PSNR matched the independent check. The natural-image full-size command remains a proposed repository reproduction step. The exact workflow includes the 64px Exp 52 adaptation with two seeds.
 
 ## Methodological limitations and next hypothesis
 
@@ -69,4 +69,15 @@ An independent local replication trained a conditional SIREN backbone on the fir
 | 42 | 47.86 dB | 41.49 dB | 1,021 B |
 | 123 | 43.91 dB | 42.42 dB | 1,023 B |
 
-The sixth image was not shown during **backbone training**, but its pixels *were* used during latent optimization; this is therefore encoder-side adaptation, **not zero-shot generalization**. The entire six-image recipe size is given, not a separately claimed per-image size. The code to reproduce with the repository's original serialization functions is `research/universe/experiment_52_holdout_latent.py`. The independent local record is exploratory until results from the actual repository implementation are checked. Evaluate leave-one-out across all six images, realistic procedural families, and new real-world scenes.
+The sixth image was not shown during **backbone training**, but its pixels *were* used during latent optimization; this is therefore encoder-side adaptation, **not zero-shot generalization**. The entire six-image recipe size is given, not a separately claimed per-image size. The code to reproduce with the repository's original serialization functions is `research/universe/experiment_52_holdout_latent.py`. The exact repository implementation has now reproduced the two-seed held-out values in GitHub Actions. Its separately serialized five-image base recipe allows direct measurement of the marginal size: **8 bytes for seed 42 and 10 bytes for seed 123** (header/index/zlib differences included). Evaluate leave-one-out across all six images, realistic procedural families, and new real-world scenes.
+
+## GitHub Actions direct reproduction and verification
+
+The dedicated workflow `.github/workflows/exp51.yml` executed the original repository scripts at revision `81c623d6909daaf7e5076bd43767c539ca5d24cd` on 2026-10-27. Workflow run: https://github.com/Kronos1027/black-hole/actions/runs/40453653259
+
+- **Exp 51, synthetic 64×64, 600 epochs, width 16, seeds 42/123:** individual = 4,075 B / 40.47 dB and 4,094 B / 39.22 dB; one shared model = **1,023 B / 47.56 dB** and **1,023 B / 48.07 dB**. All values printed by the exact code after decoding.
+- **Exp 52, same settings, freeze backbone after first five images:** held-out PSNR = **41.49 / 42.42 dB**, six-image model = **1,021 / 1,023 B**, marginal cost of last image = **8 / 10 B**.
+- Self-test, PNG/JPEG/WebP decoding, JSON integrity checks, and checks that the saved bytes equal the measured sizes all passed.
+- Job published `exp51-smoke-artifacts` containing serialized outputs and `results.json` for these runs.
+
+**Scope warning:** all positive rate–distortion measurements here involve a small specially correlated synthetic family. Do not extrapolate to uncorrelated photos, larger systems, or unseen real-world textures without subsequent controlled experiments.
