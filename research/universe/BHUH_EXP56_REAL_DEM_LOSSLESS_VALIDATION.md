@@ -33,8 +33,23 @@ The other eight configurations are single 64² and 128² patches from the same s
 **All 16 configurations:**
 - BH56 beat Pillow's default PNG16 in **16/16** with 26.0–34.5% less serialized bytes.
 - BH56 beat Pillow PNG16 with `optimize=True` in **16/16**; weighted corpus saving **27.75%** (correlated data; an aggregate of test cases, not a population estimate).
-- BH56 beat lossless JPEG2000 in **9/16** configurations. On the 4 × 6-tile bundles it was approximately **3.86% smaller** than JPEG2000 by weighted bytes; on 4 standalone 64×64 tiles approximately **6.51% smaller**. BH56 was **15.13% larger** than JPEG2000 in aggregate over the four 256² cases (equivalently, JPEG2000 used about 13.1% fewer bytes than BH56).
+- BH56 beat lossless JPEG2000 in **9/16** configurations. **Important: this 9/16 figure uses separately encoded tiles for the six-tile cases; see the contiguous-mosaic correction below.** On the 4 × 6-tile bundles it was approximately **3.86% smaller** than JPEG2000 by weighted bytes; on 4 standalone 64×64 tiles approximately **6.51% smaller**. BH56 was **15.13% larger** than JPEG2000 in aggregate over the four 256² cases (equivalently, JPEG2000 used about 13.1% fewer bytes than BH56).
 - Each entry has original-data hash, saved-stream hash, decoded equality check, and source compressed/uncompressed HGT SHA256.
+
+## Critical fairness correction — contiguous mosaic (Exp 56C)
+
+**Official reproduction:** https://github.com/Kronos1027/black-hole/actions/runs/40598130150. The scripts `experiment_56c_contiguous_mosaic.py` and `.github/workflows/exp56.yml` compare all methods on **exactly the same continuous 128×192 image**. This removes the six repeated per-image PNG/JPEG2000 headers and allows those image codecs to exploit spatial correlations across tile boundaries. All methods are lossless and decoded from actual stored bytes.
+
+| HGT source | BH56 mosaic (B) | Optimized PNG mosaic (B) | **Lossless JPEG2000 mosaic (B)** |
+|---|---:|---:|---:|
+| N37W119 | 9,179 | 12,011 | **8,047** |
+| N37W122 | 12,728 | 17,581 | **11,655** |
+| N40W106 (held out) | 9,953 | 13,809 | **8,592** |
+| N46W122 (held out) | 10,871 | 13,760 | **9,469** |
+
+**Conclusion of this critical control:** BH56 remained below optimized PNG in 4/4 continuous mosaics, but **lost to JPEG2000 in all four**. Total BH56 bytes for mosaics = 42,731 B versus JPEG2000 = 37,763 B (**BH56 is 13.2% larger**). The 4/4 favorable BH56-versus-JPEG2000 result for *separately packed small tiles* does **not** demonstrate an intrinsic codec advantage once the rival is given the option of contiguous storage.
+
+**Scope:** preserving independently retrievable tile boundaries may still matter for some applications. A fair random-access benchmark must explicitly count any region index/cropping/decode costs for both methods. Do not claim a general JPEG2000 win from the small-tiles-only subset.
 
 ## Encoding and decoding cost
 
