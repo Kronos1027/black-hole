@@ -150,7 +150,7 @@ def baseline_png16(original: np.ndarray) -> tuple[bytes, np.ndarray]:
     for tile in original:
         values = (tile.astype(np.int32) - lo).astype(np.uint16)
         buffer = io.BytesIO()
-        Image.fromarray(values, mode="I;16").save(buffer, format="PNG")
+        Image.fromarray(values).save(buffer, format="PNG")
         block = buffer.getvalue()
         payload += struct.pack("<I", len(block)) + block
         with Image.open(io.BytesIO(block)) as restored:
