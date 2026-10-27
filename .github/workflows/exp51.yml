@@ -67,6 +67,35 @@ jobs:
           assert (root/rec['base_file']).stat().st_size == rec['total_bytes_without_new_image']
           print('PASS: frozen-backbone latent-only adaptation and full roundtrip')
           PY
+      - name: Controlled full-size synthetic comparison
+        run: |
+          python research/universe/experiment_51_fair_sharing.py \
+            --dataset smooth --size 64 --count 6 --widths 16 --k 1 \
+            --epochs 600 --seeds 42,123 --compare-codecs \
+            --out /tmp/exp51-full-smooth
+          python research/universe/experiment_52_holdout_latent.py \
+            --size 64 --count 6 --width 16 --epochs 600 \
+            --adapt-epochs 600 --seeds 42,123 \
+            --out /tmp/exp52-full-smooth
+      - name: Verify large-run saved models and metrics
+        run: |
+          python - <<'PY'
+          import json, math, pathlib
+          dirs = [pathlib.Path('/tmp/exp51-full-smooth'), pathlib.Path('/tmp/exp52-full-smooth')]
+          a = json.loads((dirs[0]/'results.json').read_text())
+          b = json.loads((dirs[1]/'results.json').read_text())
+          assert len(a['results']) == 4 and len(b['results']) == 2
+          for rec in a['results']:
+              assert rec['verified_post_decode'] is True
+              assert (dirs[0]/rec['encoded_file']).stat().st_size == rec['bytes']
+              assert math.isfinite(rec['mean_psnr_db'])
+          for rec in b['results']:
+              assert rec['verified_post_decode'] is True
+              assert (dirs[1]/rec['full_file']).stat().st_size == rec['total_bytes_with_new_image']
+              assert math.isfinite(rec['heldout_psnr_db'])
+          assert any(x['codec'] == 'WEBP' for x in a['codec_baselines'])
+          print('PASS: Exp 51/52 large-run serialization and decoded metrics')
+          PY
       - name: Verify JSON evidence
         run: |
           python - <<'PY'
@@ -94,4 +123,6 @@ jobs:
             /tmp/exp51-smoke/
             /tmp/exp51-smooth-smoke/
             /tmp/exp52-smoke/
+            /tmp/exp51-full-smooth/
+            /tmp/exp52-full-smooth/
           retention-days: 14
