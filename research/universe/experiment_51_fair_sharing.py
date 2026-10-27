@@ -119,6 +119,61 @@ def collect_images(size: int, images_dir: str | None, count: int) -> tuple[np.nd
     return np.stack(output), names
 
 
+
+def collect_smooth_images(size: int, count: int) -> tuple[np.ndarray, list[str]]:
+    """Deterministic, correlated analytic textures; NOT independent photographs."""
+    y, x = np.mgrid[0:size, 0:size].astype(np.float32)
+    x = x / (size - 1) * 2 - 1
+    y = y / (size - 1) * 2 - 1
+    images, names = [], []
+    for i in range(count):
+        amplitude = 0.18 + 0.03 * (i % 4)
+        phase = 0.14 * i
+        surface = (
+            0.5 + amplitude * np.sin(3.8 * x + 0.6 * y + phase)
+            + 0.14 * np.cos(3.1 * y - 0.8 * x + 0.65 * phase)
+            + 0.09 * np.sin(2.2 * x + 2.6 * y - 0.3 * phase)
+        )
+        images.append(np.clip(surface, 0, 1).astype(np.float32))
+        names.append(f"synthetic_smooth_{i}")
+    return np.stack(images), names
+
+
+def codec_baselines(images: np.ndarray) -> list[dict]:
+    """Ordinary independent PNG/JPEG/WebP files; all bytes and headers counted."""
+    from PIL import Image
+    import io
+    result = []
+    for codec, qualities in [
+        ("PNG", [None]), ("JPEG", [10, 25, 40, 60, 80, 95]),
+        ("WEBP", [10, 25, 40, 60, 80, 95]),
+    ]:
+        for quality in qualities:
+            sizes, decoded = [], []
+            for img in images:
+                # Reference remains the original float32 tensor for both arms.
+                pixels = np.rint(img * 255).clip(0, 255).astype(np.uint8)
+                bio = io.BytesIO()
+                kwargs = {} if quality is None else {"quality": quality}
+                Image.fromarray(pixels).save(bio, format=codec, **kwargs)
+                payload = bio.getvalue()
+                sizes.append(len(payload))
+                with Image.open(io.BytesIO(payload)) as restored:
+                    decoded.append(
+                        np.asarray(restored.convert("L"), dtype=np.float32) / 255.0
+                    )
+            encoded_bytes = sum(sizes)
+            score = metrics(images, np.stack(decoded), bytes(encoded_bytes))
+            result.append({
+                "codec": codec, "quality": quality,
+                "bytes": encoded_bytes, "bpp": score["bpp"],
+                "mean_psnr_db": score["mean_psnr_db"],
+                "min_psnr_db": score["min_psnr_db"],
+                "note": "8-bit grayscale rounding; each image is a separate file",
+            })
+    return result
+
+
 def cluster_images(images: np.ndarray, k: int, seed: int) -> list[list[int]]:
     from sklearn.cluster import KMeans
     n = len(images)
@@ -338,6 +393,8 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--self-test", action="store_true")
     ap.add_argument("--images-dir", default=None)
+    ap.add_argument("--dataset", choices=["natural", "smooth"], default="natural")
+    ap.add_argument("--compare-codecs", action="store_true")
     ap.add_argument("--count", type=int, default=10)
     ap.add_argument("--size", type=int, default=32)
     ap.add_argument("--widths", default="8,16")
@@ -355,7 +412,13 @@ def main() -> None:
         return
     if args.size < 4 or args.epochs < 1 or args.count < 2:
         ap.error("Require size>=4, epochs>=1, count>=2")
-    images, names = collect_images(args.size, args.images_dir, args.count)
+    if args.dataset == "smooth" and args.images_dir:
+        ap.error("Choose either --dataset smooth or --images-dir")
+    images, names = (
+        collect_smooth_images(args.size, args.count)
+        if args.dataset == "smooth"
+        else collect_images(args.size, args.images_dir, args.count)
+    )
     widths = [int(v) for v in args.widths.split(",")]
     k_values = [int(v) for v in args.k.split(",")]
     seeds = [int(v) for v in args.seeds.split(",")]
@@ -382,8 +445,12 @@ def main() -> None:
     manifest = {
         "experiment": 51,
         "reproducibility": "float16 model bytes + zlib; decode and evaluate",
-        "data_type": "independent input files" if args.images_dir else "10 distinct scikit-image subjects",
+        "data_type": ("independent input files" if args.images_dir else
+                       "correlated analytic textures" if args.dataset == "smooth" else
+                       "10 distinct scikit-image subjects"),
         "image_names": names,
+        "dataset": args.dataset,
+        "codec_baselines": codec_baselines(images) if args.compare_codecs else [],
         "image_sha256": hashlib.sha256(images.tobytes()).hexdigest(),
         "note": "No SOTA claim. Compare full RD curves and training cost. "
                 "This is a model-sharing ablation, not a matched-quality codec leaderboard.",
