@@ -1,0 +1,54 @@
+name: exp51 research reproducibility
+
+on:
+  push:
+    branches: [research/exp51-fair-shared-siren]
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/universe/experiment_51_fair_sharing.py"
+      - ".github/workflows/exp51.yml"
+  workflow_dispatch:
+
+jobs:
+  exp51-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install experimental dependencies
+        run: |
+          python -m pip install numpy torch scikit-image scikit-learn pillow
+      - name: Check Python syntax
+        run: python -m py_compile research/universe/experiment_51_fair_sharing.py
+      - name: Round-trip self-test
+        run: python research/universe/experiment_51_fair_sharing.py --self-test
+      - name: Reproducible smoke comparison
+        run: |
+          python research/universe/experiment_51_fair_sharing.py             --size 16 --count 6 --widths 8 --k 1,3             --epochs 15 --seeds 42 --out /tmp/exp51-smoke
+      - name: Verify JSON evidence
+        run: |
+          python - <<'PY'
+          import json, math, pathlib
+          root = pathlib.Path('/tmp/exp51-smoke')
+          payload = json.loads((root/'results.json').read_text())
+          runs = payload['results']
+          assert len(runs) == 3, len(runs)
+          assert all(r['verified_post_decode'] for r in runs)
+          assert all(math.isfinite(r['mean_psnr_db']) for r in runs)
+          assert all((root/r['encoded_file']).stat().st_size == r['bytes'] for r in runs)
+          assert [r['actual_shared_images'] for r in runs] == [0, 6, 6]
+          print('Verified experiment outputs:', json.dumps([
+            {k:r[k] for k in ('mode','k','bytes','bpp','mean_psnr_db','actual_shared_images')}
+            for r in runs
+          ], indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: exp51-smoke-artifacts
+          path: /tmp/exp51-smoke/
+          retention-days: 14
