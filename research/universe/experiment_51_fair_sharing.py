@@ -163,12 +163,15 @@ def codec_baselines(images: np.ndarray) -> list[dict]:
                         np.asarray(restored.convert("L"), dtype=np.float32) / 255.0
                     )
             encoded_bytes = sum(sizes)
-            score = metrics(images, np.stack(decoded), bytes(encoded_bytes))
+            restored_images = np.stack(decoded)
+            mse = np.square(images - restored_images).mean(axis=(1, 2))
+            psnr = -10 * np.log10(np.maximum(mse, 1e-12))
             result.append({
                 "codec": codec, "quality": quality,
-                "bytes": encoded_bytes, "bpp": score["bpp"],
-                "mean_psnr_db": score["mean_psnr_db"],
-                "min_psnr_db": score["min_psnr_db"],
+                "bytes": encoded_bytes,
+                "bpp": 8 * encoded_bytes / images.size,
+                "mean_psnr_db": float(psnr.mean()),
+                "min_psnr_db": float(psnr.min()),
                 "note": "8-bit grayscale rounding; each image is a separate file",
             })
     return result
