@@ -33,7 +33,7 @@ The other eight configurations are single 64² and 128² patches from the same s
 **All 16 configurations:**
 - BH56 beat Pillow's default PNG16 in **16/16** with 26.0–34.5% less serialized bytes.
 - BH56 beat Pillow PNG16 with `optimize=True` in **16/16**; weighted corpus saving **27.75%** (correlated data; an aggregate of test cases, not a population estimate).
-- BH56 beat lossless JPEG2000 in **9/16** configurations. On the 4 × 6-tile bundles it was approximately **3.86% smaller** than JPEG2000 by weighted bytes; on 4 standalone 64×64 tiles approximately **6.51% smaller**. JPEG2000 was **15.13% smaller** in aggregate than BH56 on the four 256² cases (computed by comparing total bytes: BH56 is 15.13% larger than JPEG2000 in that group).
+- BH56 beat lossless JPEG2000 in **9/16** configurations. On the 4 × 6-tile bundles it was approximately **3.86% smaller** than JPEG2000 by weighted bytes; on 4 standalone 64×64 tiles approximately **6.51% smaller**. BH56 was **15.13% larger** than JPEG2000 in aggregate over the four 256² cases (equivalently, JPEG2000 used about 13.1% fewer bytes than BH56).
 - Each entry has original-data hash, saved-stream hash, decoded equality check, and source compressed/uncompressed HGT SHA256.
 
 ## Encoding and decoding cost
