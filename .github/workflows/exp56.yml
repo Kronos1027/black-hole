@@ -5,11 +5,13 @@ on:
     branches: [research/exp51-fair-shared-siren]
     paths:
       - "research/universe/experiment_56_reversible_dem.py"
+      - "research/universe/experiment_56b_competing_codecs.py"
       - ".github/workflows/exp56.yml"
   pull_request:
     branches: [main]
     paths:
       - "research/universe/experiment_56_reversible_dem.py"
+      - "research/universe/experiment_56b_competing_codecs.py"
       - ".github/workflows/exp56.yml"
   workflow_dispatch:
 
@@ -63,9 +65,31 @@ jobs:
                         "BH56", row["bytes"], "saving%", round(row["saving_vs_png16_percent"], 2))
           print("EXP56: VERIFIED 16/16 EXACT LOSSLESS ROUNDTRIPS, INCLUDING HELD-OUT DATA")
           PY
+      - name: Real lossless PNG-opt and JPEG2000 baselines
+        run: |
+          python -m py_compile research/universe/experiment_56b_competing_codecs.py
+          python research/universe/experiment_56b_competing_codecs.py \
+            --cache /tmp/blkh_exp56_skadi_cache \
+            --out /tmp/blkh_exp56_rigorous --repeats 3
+          python - <<'PY'
+          import json,pathlib,math
+          root=pathlib.Path("/tmp/blkh_exp56_rigorous")
+          j=json.loads((root/"results.json").read_text())
+          assert len(j["records"])==16
+          assert sum(x["heldout_region"] for x in j["records"])==8
+          for x in j["records"]:
+              assert x["lossless_verified"]
+              assert x["max_error_meters"]==0
+              assert all(math.isfinite(x[k]) and x[k]>0 for k in
+                 ("encode_seconds_median","decode_seconds_median"))
+              assert min(x["png16_optimized_bytes"],x["j2k_lossless_bytes"])>0
+          print("EXP56B: 16/16 verified lossless, honest stronger codecs")
+          PY
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: exp56-decoded-lossless-terrain
-          path: /tmp/blkh_exp56_real_hgt/
+          path: |
+            /tmp/blkh_exp56_real_hgt/
+            /tmp/blkh_exp56_rigorous/
           retention-days: 30
