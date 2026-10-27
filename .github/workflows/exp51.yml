@@ -29,6 +29,24 @@ jobs:
       - name: Reproducible smoke comparison
         run: |
           python research/universe/experiment_51_fair_sharing.py             --size 16 --count 6 --widths 8 --k 1,3             --epochs 15 --seeds 42 --out /tmp/exp51-smoke
+      - name: Exercise smooth procedural family + real image-codec decoding
+        run: |
+          python research/universe/experiment_51_fair_sharing.py \
+            --dataset smooth --size 16 --count 6 --widths 8 --k 1 \
+            --epochs 15 --seeds 42 --compare-codecs \
+            --out /tmp/exp51-smooth-smoke
+          python - <<'PY'
+          import json, pathlib, math
+          out = pathlib.Path('/tmp/exp51-smooth-smoke/results.json')
+          report = json.loads(out.read_text())
+          assert report['dataset'] == 'smooth'
+          assert len(report['results']) == 2
+          assert all(x['verified_post_decode'] for x in report['results'])
+          baselines = report['codec_baselines']
+          assert {b['codec'] for b in baselines} == {'PNG', 'JPEG', 'WEBP'}
+          assert all(b['bytes'] > 0 and math.isfinite(b['mean_psnr_db']) for b in baselines)
+          print('PASS: procedural corpus, neural decode and 3 decoded image-codec baselines')
+          PY
       - name: Verify JSON evidence
         run: |
           python - <<'PY'
@@ -52,5 +70,7 @@ jobs:
         if: always()
         with:
           name: exp51-smoke-artifacts
-          path: /tmp/exp51-smoke/
+          path: |
+            /tmp/exp51-smoke/
+            /tmp/exp51-smooth-smoke/
           retention-days: 14
