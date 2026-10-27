@@ -59,3 +59,14 @@ The third command can take substantial CPU time. These commands are proposed rep
 - Evaluate terrain RMSE in meters as well as PSNR for real geographic elevation data.
 
 **Working hypothesis for Experiment 52:** parameter sharing can exploit a low-dimensional *family* of structurally related surfaces, but has insufficient inductive bias to compete broadly on unrelated natural images. Test under controlled matched-byte and held-out generalization conditions, not just cherry-picked codec settings.
+
+## Follow-up Experiment 52: frozen shared backbone, new latent only
+
+An independent local replication trained a conditional SIREN backbone on the first **five** of the six correlated synthetic textures (64 × 64, 600 training epochs), then froze **all shared network weights** and optimized **only the sixth texture's 4-value latent vector** for another 600 epochs. Serialized float16 weights were decoded before quality measurement.
+
+| Seed | Mean PSNR for first five | Sixth (held-out for backbone) PSNR | Total decoded recipe size |
+|---|---:|---:|---:|
+| 42 | 47.86 dB | 41.49 dB | 1,021 B |
+| 123 | 43.91 dB | 42.42 dB | 1,023 B |
+
+The sixth image was not shown during **backbone training**, but its pixels *were* used during latent optimization; this is therefore encoder-side adaptation, **not zero-shot generalization**. The entire six-image recipe size is given, not a separately claimed per-image size. The code to reproduce with the repository's original serialization functions is `research/universe/experiment_52_holdout_latent.py`. The independent local record is exploratory until results from the actual repository implementation are checked. Evaluate leave-one-out across all six images, realistic procedural families, and new real-world scenes.
