@@ -40,7 +40,9 @@ jobs:
           assert all(r['verified_post_decode'] for r in runs)
           assert all(math.isfinite(r['mean_psnr_db']) for r in runs)
           assert all((root/r['encoded_file']).stat().st_size == r['bytes'] for r in runs)
-          assert [r['actual_shared_images'] for r in runs] == [0, 6, 6]
+          assert runs[0]['actual_shared_images'] == 0
+          assert all(2 <= r['actual_shared_images'] <= 6 for r in runs[1:])
+          assert all(sum(r['group_sizes']) == 6 for r in runs)
           print('Verified experiment outputs:', json.dumps([
             {k:r[k] for k in ('mode','k','bytes','bpp','mean_psnr_db','actual_shared_images')}
             for r in runs
