@@ -120,7 +120,7 @@ def compare(reference: np.ndarray, neural: list[dict], classic: list[dict]) -> N
 
 
 def self_test() -> None:
-    source=np.arange(SOURCE_SIDE**2,dtype=np.int16).reshape(
+    source=(np.arange(SOURCE_SIDE**2,dtype=np.int32)%4096).astype(np.int16).reshape(
         SOURCE_SIDE,SOURCE_SIDE,
     )
     full=np.zeros((1600,1600),dtype=np.int16)
@@ -187,7 +187,6 @@ def main() -> None:
                 "max_height_m":float(original.max()),
                 "neural":nets,"classical":classics,
             })
-            report["regions"][-1:]=report["regions"][-1:]
             (out/"results.json").write_text(json.dumps(
                 {**report,"regions":report["regions"]+[region]},indent=2
             ),encoding="utf-8")
