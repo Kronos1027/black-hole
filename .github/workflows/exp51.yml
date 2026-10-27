@@ -3,6 +3,11 @@ name: exp51 research reproducibility
 on:
   push:
     branches: [research/exp51-fair-shared-siren]
+    paths:
+      - "research/universe/experiment_51_fair_sharing.py"
+      - "research/universe/experiment_52_holdout_latent.py"
+      - "research/universe/experiment_53_real_lunar_tiles.py"
+      - ".github/workflows/exp51.yml"
   pull_request:
     branches: [main]
     paths:
