@@ -1,0 +1,117 @@
+name: exp70 conditioned linear image corpus vs quality-matched atlases
+
+on:
+  push:
+    branches: [research/exp51-fair-shared-siren]
+    paths:
+      - "research/conditional/experiment_70_shared_linear_font_atlas.py"
+      - "research/conditional/BHUH_EXP70_PROTOCOL.md"
+      - ".github/workflows/exp70.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/conditional/experiment_70_shared_linear_font_atlas.py"
+      - ".github/workflows/exp70.yml"
+  workflow_dispatch:
+
+jobs:
+  conditional-atlas:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      OPENBLAS_NUM_THREADS: 1
+      OMP_NUM_THREADS: 1
+      MKL_NUM_THREADS: 1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install source font faces and scientific decoders
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y fonts-dejavu-core fonts-lato fonts-liberation
+          python -m pip install numpy pillow scikit-image
+      - name: Syntax, corruption handling and serialized model tests
+        run: |
+          python -m py_compile research/conditional/experiment_70_shared_linear_font_atlas.py
+          python research/conditional/experiment_70_shared_linear_font_atlas.py \
+            --self-test --out /tmp/blkh_exp70_selftest
+      - name: Run 4 font faces, 48 glyphs each, 4 ranks and 16 atlas baselines
+        run: |
+          python research/conditional/experiment_70_shared_linear_font_atlas.py \
+            --out /tmp/blkh_exp70
+      - name: Independently decode saved source, model and image atlases
+        run: |
+          python - <<'PY'
+          import hashlib,json,pathlib,sys,numpy as np
+          from PIL import Image
+          sys.path.insert(0,'research/conditional')
+          from experiment_70_shared_linear_font_atlas import (
+              FONT_NAMES,RANKS,WEBP_QUALITIES,render_face,font_path,
+              decode_atlas,decode_model,fidelity,baseline_quality_match,
+              pack_atlas
+          )
+          root=pathlib.Path('/tmp/blkh_exp70')
+          data=json.loads((root/'results.json').read_text())
+          assert data['experiment']==70
+          assert data['font_faces']==list(FONT_NAMES)
+          assert len(data['results'])==4
+          total_models=0
+          total_better=0
+          for record in data['results']:
+              face=record['font_face']
+              assert face in FONT_NAMES and record['rasterized_images']==48
+              out=root/face.replace('.ttf','')
+              font=font_path(face)
+              assert hashlib.sha256(font.read_bytes()).hexdigest()==record['font_sha256']
+              original=render_face(font)
+              src=pack_atlas(original)
+              assert hashlib.sha256(src.tobytes()).hexdigest()==record['source_sha256']
+              with Image.open(out/record['source_atlas_file']) as img:
+                  assert np.array_equal(np.asarray(img),src)
+              assert len(record['baseline_atlases'])==16
+              baselines={}
+              for mode,recorded in record['baseline_atlases'].items():
+                  raw=(out/recorded['file']).read_bytes()
+                  assert len(raw)==recorded['complete_file_bytes']
+                  assert hashlib.sha256(raw).hexdigest()==recorded['file_sha256']
+                  decoded,meta=decode_atlas(raw)
+                  assert meta==record['source_manifest']
+                  q=fidelity(original,decoded)
+                  assert abs(q['mse']-recorded['quality']['mse'])<=1e-8
+                  assert abs(q['mean_glyph_ssim']-recorded['quality']['mean_glyph_ssim'])<=1e-8
+                  if 'lossless' in mode: assert q['exact']
+                  baselines[mode]=recorded
+              assert set(record['shared_conditioned_linear_models'])==set(map(str,RANKS))
+              for rank,scores in record['shared_conditioned_linear_models'].items():
+                  raw=(out/scores['file']).read_bytes()
+                  assert len(raw)==scores['complete_file_bytes']
+                  assert hashlib.sha256(raw).hexdigest()==scores['file_sha256']
+                  decoded,meta,k=decode_model(raw)
+                  assert k==int(rank) and meta==record['source_manifest']
+                  q=fidelity(original,decoded)
+                  assert abs(q['mse']-scores['quality']['mse'])<=1e-8
+                  assert abs(q['mean_glyph_ssim']-scores['quality']['mean_glyph_ssim'])<=1e-8
+                  candidates=[(b['complete_file_bytes'],name)
+                      for name,b in baselines.items()
+                      if baseline_quality_match(q,b['quality'])]
+                  best,name=min(candidates)
+                  assert scores['best_quality_matched_atlas_bytes']==best
+                  assert scores['best_quality_matched_atlas']==name
+                  assert scores['wins_matched_baseline']==(len(raw)<best)
+                  total_models+=1
+                  total_better+=int(len(raw)<best)
+                  print(face,'rank',rank,'model',len(raw),'matched',best,
+                        'psnr',q['psnr_db'],'ssim',q['mean_glyph_ssim'])
+          assert total_models==16
+          print('EXP70 PASS: all 16 serialized conditioned models and 64 comparable atlas selections, wins',total_better)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: exp70-shared-latent-fidelity-matched-fonts
+          path: |
+            /tmp/blkh_exp70/
+            /tmp/blkh_exp70_selftest/
+          retention-days: 30
