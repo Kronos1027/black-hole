@@ -263,7 +263,7 @@ def decode_baseline(payload:bytes,codec:str)->np.ndarray:
             count=round(duration/DURATION_MS)
             if (count<1 or abs(duration-count*DURATION_MS)>1.0
                     or len(expanded)+count>COUNT):
-                raise ValueError("Animation frame timing was not preserved")
+                raise ValueError(f"Animation frame timing invalid: {codec} frame={j} n_frames={im.n_frames} duration={duration} count={count} already={len(expanded)} info={dict(im.info)}")
             expanded.extend(picture.copy() for _ in range(count))
         if len(expanded)!=COUNT:
             raise ValueError(f"Expected {COUNT} timed RGB animation frames, got {len(expanded)}")
