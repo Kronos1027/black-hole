@@ -28,8 +28,7 @@ jobs:
           python - <<'PY'
           import rasterio
           print('Rasterio/GDAL:',rasterio.__version__,rasterio.__gdal_version__)
-          with rasterio.Env() as env:
-              print('GTiff driver:',rasterio.drivers()['GTiff'])
+          print('GTiff validation occurs through actual encode/read self-test')
           PY
       - name: Python syntax and georeferenced exact-data roundtrip
         run: |
