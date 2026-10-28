@@ -6,6 +6,8 @@
 
 **Code:** `research/universe/experiment_60_geotiff_roi.py` and `.github/workflows/exp60.yml`.
 
+> **IMPORTANT POST-PUBLICATION CORRECTION (Experiment 61, verified):** The apparent faster BH60 ROI read from opening and closing datasets per request **reverses with persistent warm GeoTIFF handles**. GDAL GeoTIFF median warm-window reads were approximately **0.020–0.028 ms** versus BH60's **0.097–0.103 ms** across the same 12 real data cases. The BH60 *file-size* advantage in Exp60 remains real for the tested fixed-32px GeoTIFF settings; the *general speed* claim does not. Full independent reproduction and methods: [Exp61 warm-cache report](BHUH_EXP61_WARM_CACHE_GEOTIFF.md). Do not cite the Exp60 benchmark latency without this correction.
+
 ## What changed relative to Exp58/59
 
 Exp58/59 established a vectorized reversible codec and compared against identically indexed JPEG2000. Exp60 added a container `BH60G` with **counted geospatial metadata** (EPSG:4326 coordinate reference, sample-centre derived affine geotransform, signed int16 elevations, meter units, source tile ID, `-32768` NoData sentinel and image geometry). It was compared with real GDAL/Rasterio tiled GeoTIFF, also storing CRS, affine, NoData, source ID and vertical units. The same original signed meter grids and fixed 32×32 independent tile geometry were used in both arms.
