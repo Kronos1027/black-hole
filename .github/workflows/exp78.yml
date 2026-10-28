@@ -1,0 +1,104 @@
+name: exp78 real CC0 RGBA sprites vs lossless atlas and dedup
+
+on:
+  push:
+    branches: [research/exp51-fair-shared-siren]
+    paths:
+      - "research/dedup/experiment_78_real_cc0_rgba_sprites.py"
+      - "research/dedup/BHUH_EXP78_REAL_CC0_RGBA_PROTOCOL.md"
+      - ".github/workflows/exp78.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/dedup/experiment_78_real_cc0_rgba_sprites.py"
+      - ".github/workflows/exp78.yml"
+  workflow_dispatch:
+
+jobs:
+  exact-cc0-rgba:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      OPENBLAS_NUM_THREADS: 1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install independent lossless image and zstandard libraries
+        run: python -m pip install "numpy<3" "pillow>=11.2" zstandard
+      - name: Syntax, hidden-transparent-RGB and all lossless file self-tests
+        run: |
+          python -m py_compile research/dedup/experiment_78_real_cc0_rgba_sprites.py
+          python research/dedup/experiment_78_real_cc0_rgba_sprites.py --self-test
+      - name: Fetch original Kenney CC0 pack and run frozen 32/64/96 RGBA images
+        run: |
+          python research/dedup/experiment_78_real_cc0_rgba_sprites.py \
+            --out /tmp/blkh_exp78 --cache /tmp/blkh_exp78_cache
+      - name: Independently reopen every saved archive and original source PNG
+        run: |
+          python - <<'PY'
+          import hashlib,json,pathlib,sys,numpy as np,io
+          from PIL import Image
+          sys.path.insert(0,"research/dedup")
+          from experiment_78_real_cc0_rgba_sprites import (
+              NESTED,CODECS,fetch_zip,discover,pack_assets,base_manifest,
+              decode_case,sha
+          )
+          root=pathlib.Path("/tmp/blkh_exp78")
+          all_data=json.loads((root/"results.json").read_text())
+          assert all_data["experiment"]==78
+          assert all_data["nested_subset_sizes"]==list(NESTED)
+          assert len(all_data["results"])==3
+          z,h=fetch_zip(pathlib.Path("/tmp/blkh_exp78_cache"))
+          assert h==all_data["source_zip_sha256"]
+          images=discover(z,h,root)
+          assert len(images)==96
+          for case in all_data["results"]:
+              n=case["sprite_count"]
+              assert n in NESTED and case["source_zip_sha256"]==h
+              original=images[:n]
+              atlas,layout=pack_assets(original)
+              meta=base_manifest(h,len(z),original,atlas,layout)
+              assert meta==case["exact_rgba_manifest"]
+              folder=root/f"sprites_{n:03}"
+              with Image.open(folder/case["source_rgba_atlas"]) as im:
+                  assert np.array_equal(np.asarray(im.convert("RGBA")),atlas)
+              assert sha((folder/case["source_rgba_atlas"]).read_bytes())==case["source_rgba_atlas_sha256"]
+              assert set(case["codecs"])==set(CODECS)
+              for mode,item in case["codecs"].items():
+                  path=folder/item["filename"]
+                  encoded=path.read_bytes()
+                  assert len(encoded)==item["complete_bytes"]
+                  assert sha(encoded)==item["sha256"]
+                  assert item["encode_seconds"]>0 and item["decode_seconds"]>0
+                  original_sprites,manifest=decode_case(encoded)
+                  assert manifest=={**meta,"codec":mode}
+                  assert len(original_sprites)==n
+                  for i,(got,src) in enumerate(zip(original_sprites,original)):
+                      assert got.dtype==np.uint8 and got.shape==src["rgba"].shape
+                      assert np.array_equal(got,src["rgba"]),f"{mode} sprite {i}: RGBA mismatch"
+                  if mode.startswith("tile"):
+                      assert item["tile_references"]>=item["unique_tiles"]
+                      assert item["tile_index_bytes"]==2*item["tile_references"]
+              selected,specific=min((v["complete_bytes"],key)
+                    for key,v in case["codecs"].items() if key.startswith("tile"))
+              standard,ref=min((v["complete_bytes"],key)
+                    for key,v in case["codecs"].items() if not key.startswith("tile"))
+              assert (selected,specific)==(case["best_indexed_dedup_bytes"],
+                                          case["best_indexed_dedup"])
+              assert (standard,ref)==(case["best_conventional_bytes"],
+                                     case["best_conventional"])
+              assert case["custom_smaller_than_best_conventional"]==(selected<standard)
+              print("EXP78 CHECK",n,"assets","BLKH",specific,selected,
+                    "best baseline",ref,standard,
+                    "exact RGBA originals verified")
+          print("EXP78 VERIFIED: three nested Kenney CC0 sets, 21 actual saved exact RGBA archives, original PNG and hidden colors checked")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: exp78-real-kenney-ui-rgba-lossless
+          path: |
+            /tmp/blkh_exp78/
+          retention-days: 30
