@@ -115,7 +115,8 @@ def unwrap(blob:bytes)->tuple[str,dict,bytes]:
     if (manifest.get("frame_size_rgb")!=[SIDE,SIDE,3] or
             manifest.get("frame_count")!=COUNT or
             manifest.get("frame_duration_ms")!=DURATION_MS or
-            manifest.get("source") not in SOURCES or
+            not isinstance(manifest.get("source"),str) or
+            not (1<=len(manifest["source"])<=128) or
             manifest.get("codec") not in MODES):
         raise ValueError("BL74 source/sequence metadata mismatch")
     return manifest["codec"],manifest,blob[end:]
