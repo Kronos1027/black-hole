@@ -1,0 +1,111 @@
+name: exp69 256-1024px full-JPEG2000 real terrain ROI scaling
+
+on:
+  push:
+    branches: [research/exp51-fair-shared-siren]
+    paths:
+      - "research/universe/experiment_69_geoscale_full_j2k.py"
+      - ".github/workflows/exp69.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/universe/experiment_69_geoscale_full_j2k.py"
+      - ".github/workflows/exp69.yml"
+  workflow_dispatch:
+
+jobs:
+  scaling:
+    runs-on: ubuntu-latest
+    timeout-minutes: 23
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Scientific codecs and GDAL environment
+        run: python -m pip install numpy pillow brotli rasterio
+      - name: Syntax and randomized int16 full decoder tests
+        run: |
+          python -m py_compile research/universe/experiment_69_geoscale_full_j2k.py
+          python research/universe/experiment_69_geoscale_full_j2k.py \
+            --self-test --out /tmp/blkh_exp69_selftest
+      - name: Measure true 256 to 1024 pixel full-codestream geographic ROI
+        run: |
+          python research/universe/experiment_69_geoscale_full_j2k.py \
+            --out /tmp/blkh_exp69
+      - name: Validate downloaded source, all payloads and every ROI
+        run: |
+          python - <<'PY'
+          import hashlib,json,pathlib,sys,struct,numpy as np,rasterio
+          from rasterio.windows import Window
+          sys.path.insert(0,"research/universe")
+          from experiment_69_geoscale_full_j2k import (
+              REGIONS,SIZES,THRESHOLD,BLOCK,full_source,OpenBH69
+          )
+          from experiment_60_geotiff_roi import PRELUDE
+          root=pathlib.Path("/tmp/blkh_exp69")
+          data=json.loads((root/"results.json").read_text())
+          rows=data["records"]
+          assert len(rows)>=2
+          assert data["sources_predefined"]==list(REGIONS)
+          assert data["resolutions"]==list(SIZES)
+          assert {r["region"] for r in rows}==set(REGIONS)
+          assert len({(r["region"],r["pixels"]) for r in rows})==len(rows)
+          for r in rows:
+              region,n=r["region"],r["pixels"]
+              original,prov=full_source(region,n,pathlib.Path("/tmp/blkh_exp69_skadi_cache"))
+              assert prov==r["source"]
+              assert hashlib.sha256(original.tobytes()).hexdigest()==r["source_sha256"]
+              assert r["frozen_hybrid_selector"]==THRESHOLD==0.20
+              assert r["all_lossless"] and r["zero_elevation_error_m"]==0
+              root_case=root/region/str(n)
+              for method in ("bh69","j2k_full"):
+                  f=root_case/r["file"][method]
+                  raw=f.read_bytes()
+                  assert len(raw)==r["size_bytes"][method]
+                  assert hashlib.sha256(raw).hexdigest()==r["sha256"][method]
+                  assert r["encode_seconds"][method]>0
+              with OpenBH69(root_case/r["file"]["bh69"]) as bh:
+                  assert bh.info==r["geospatial_metadata"]
+                  assert len(bh.entries)==(n//BLOCK)**2
+                  restored=np.empty_like(original)
+                  for y in range(n//BLOCK):
+                      for x in range(n//BLOCK):
+                          restored[y*BLOCK:(y+1)*BLOCK,x*BLOCK:(x+1)*BLOCK]=bh.read(y,x)
+                  assert np.array_equal(restored,original)
+              wrapper=(root_case/r["file"]["j2k_full"]).read_bytes()
+              magic,vers,metalen=PRELUDE.unpack(wrapper[:PRELUDE.size])
+              assert magic==b"J2G69" and vers==1
+              lo=struct.unpack("<i",wrapper[PRELUDE.size+metalen:PRELUDE.size+metalen+4])[0]
+              raw_jp2=(root_case/r["jp2_gdal_file"]).read_bytes()
+              assert hashlib.sha256(raw_jp2).hexdigest()==r["jp2_gdal_sha256"]
+              with rasterio.open(root_case/r["jp2_gdal_file"]) as ds:
+                  assert (ds.height,ds.width)==(n,n)
+                  assert np.array_equal(ds.read(1).astype(np.int32)+lo,original)
+                  for y,x in ((0,0),(n//BLOCK//2,n//BLOCK//2),(n//BLOCK-1,n//BLOCK-1)):
+                      assert np.array_equal(
+                        ds.read(1,window=Window(x*BLOCK,y*BLOCK,BLOCK,BLOCK)).astype(np.int32)+lo,
+                        original[y*BLOCK:(y+1)*BLOCK,x*BLOCK:(x+1)*BLOCK])
+              for key,num in (("distinct64",64),("repeat64x3",192)):
+                  assert r["roi"][key]["positions"]==num
+                  for method in ("bh69","j2k_full"):
+                      assert r["roi"][key]["mean_ms"][method]>0
+                      assert r["roi"][key]["median_ms"][method]>0
+              print(region,n,"BH69",r["size_bytes"]["bh69"],
+                    "FULL JP2",r["size_bytes"]["j2k_full"],
+                    "UNIQUE",r["roi"]["distinct64"]["mean_ms"],
+                    "REPEATS",r["roi"]["repeat64x3"]["mean_ms"])
+          for ex in data["excluded"]:
+              assert ex["region"] in REGIONS and ex["size"] in SIZES
+              assert "NoData" in ex["reason"]
+              print("REGION SIZE EXCLUDED DUE TO MISSING HEIGHTS",ex)
+          print("EXP69: REAL DEM SCALING VERIFIED",len(rows), "COMPLETE CONDITIONS")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: exp69-continuous-jp2-1024-scaling
+          path: |
+            /tmp/blkh_exp69/
+            /tmp/blkh_exp69_selftest/
+          retention-days: 30
