@@ -1,0 +1,124 @@
+name: exp72 independent RGB photo conditional compression
+
+on:
+  push:
+    branches: [research/exp51-fair-shared-siren]
+    paths:
+      - "research/conditional/experiment_72_real_photo_families.py"
+      - "research/conditional/BHUH_EXP72_PROTOCOL.md"
+      - ".github/workflows/exp72.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/conditional/experiment_72_real_photo_families.py"
+      - ".github/workflows/exp72.yml"
+  workflow_dispatch:
+
+jobs:
+  real-photo-conditioned-codec:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      OPENBLAS_NUM_THREADS: 1
+      OMP_NUM_THREADS: 1
+      MKL_NUM_THREADS: 1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install standard image source and lossless comparison tools
+        run: |
+          python -m pip install numpy pillow "scikit-image==0.25.2" pooch
+          python -c "import torch; print('torch',torch.__version__)" || \
+            python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+      - name: Verify input source, serialization and corrupted stream handling
+        run: |
+          python -m py_compile research/conditional/experiment_72_real_photo_families.py
+          python research/conditional/experiment_72_real_photo_families.py \
+            --self-test --out /tmp/blkh_exp72_selftest
+      - name: Train and encode four independent natural RGB original photos
+        run: |
+          python research/conditional/experiment_72_real_photo_families.py \
+            --out /tmp/blkh_exp72
+      - name: Audit every saved RGB source, atlas and conditional network
+        run: |
+          python - <<'PY'
+          import hashlib,json,pathlib,sys,numpy as np
+          from PIL import Image
+          sys.path.insert(0,"research/conditional")
+          from experiment_72_real_photo_families import (
+              SOURCES,HOLDOUT,CONFIGS,STEP_COUNT,WEBP_Q,JPEG_Q,
+              source_photo,crop_to_blocks,decode_baseline,decode_model,
+              fidelity,quality_meets
+          )
+          root=pathlib.Path("/tmp/blkh_exp72")
+          report=json.loads((root/"results.json").read_text())
+          assert report["sources"]==list(SOURCES)
+          assert report["holdout_source"]==HOLDOUT=="rocket"
+          assert report["step_count"]==STEP_COUNT==1500
+          assert len(report["results"])==4
+          wins=usable=valid=0
+          for row in report["results"]:
+              name=row["source"]
+              assert name in SOURCES
+              photo,blocks,meta=source_photo(name)
+              assert meta==row["source_manifest"]
+              assert row["independent_original_photo"]
+              directory=root/name
+              with Image.open(directory/row["source_image_file"]) as image:
+                  assert np.array_equal(np.asarray(image.convert("RGB")),photo)
+              assert len(row["baseline_atlases"])==3+len(WEBP_Q)+len(JPEG_Q)
+              checked={}
+              for kind,info in row["baseline_atlases"].items():
+                  path=directory/info["file"]
+                  raw=path.read_bytes()
+                  assert len(raw)==info["bytes"]
+                  assert hashlib.sha256(raw).hexdigest()==info["sha256"]
+                  decoded,manifest=decode_baseline(raw)
+                  assert manifest==meta
+                  score=fidelity(blocks,decoded)
+                  assert abs(score["mse"]-info["decoded_quality"]["mse"])<1e-8
+                  assert abs(score["ssim_mean_rgb_tiles"]-info["decoded_quality"]["ssim_mean_rgb_tiles"])<1e-8
+                  if kind in ("png","webp_lossless","j2k_lossless"):
+                      assert score["lossless"]
+                  checked[kind]=info
+              assert len(row["conditional_networks"])==3
+              for key,info in row["conditional_networks"].items():
+                  assert (info["hidden"],info["latent"]) in CONFIGS
+                  path=directory/info["file"]
+                  raw=path.read_bytes()
+                  assert len(raw)==info["complete_bytes"]
+                  assert hashlib.sha256(raw).hexdigest()==info["sha256"]
+                  decoded,manifest,shape=decode_model(raw)
+                  assert manifest==meta and shape==(info["hidden"],info["latent"])
+                  score=fidelity(blocks,decoded)
+                  assert abs(score["mse"]-info["decoded_quality"]["mse"])<1e-8
+                  assert abs(score["ssim_mean_rgb_tiles"]-info["decoded_quality"]["ssim_mean_rgb_tiles"])<1e-8
+                  best,key=min(
+                      (val["bytes"],baseline_name) for baseline_name,val in checked.items()
+                      if quality_meets(val["decoded_quality"],score)
+                  )
+                  assert info["best_matched_baseline"]==key
+                  assert info["best_matched_baseline_bytes"]==best
+                  assert info["smaller_than_matched_baseline"]==(len(raw)<best)
+                  gate=(score["psnr_db"] is not None and score["psnr_db"]>=30
+                        and score["ssim_mean_rgb_tiles"]>=0.90)
+                  assert info["passes_usable_gate"]==gate
+                  assert info["release_candidate"]==(gate and len(raw)<best)
+                  valid+=1
+                  wins+=int(len(raw)<best)
+                  usable+=int(gate)
+                  print(name,key,info["complete_bytes"],"vs",best,
+                        "PSNR",score["psnr_db"],"SSIM",score["ssim_mean_rgb_tiles"])
+          assert valid==12
+          print("EXP72 VERIFIED: 4 independent real photos, 12 decoded RGB models, 88 decoded conventional baselines; matched size wins",wins,"usable quality",usable)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: exp72-real-public-photo-neural-vs-atlas
+          path: |
+            /tmp/blkh_exp72/
+            /tmp/blkh_exp72_selftest/
+          retention-days: 30
