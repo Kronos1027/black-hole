@@ -354,7 +354,7 @@ def decode_case(blob:bytes)->tuple[list[np.ndarray],dict]:
         source_atlas[y:y+h,x:x+w]=image
     if sha(source_atlas.tobytes())!=meta["original_rgba_atlas_sha256"]:
         raise ValueError("Historical RGBA atlas checksum mismatch")
-    return images,meta
+    return images,{k:v for k,v in meta.items() if k!="payload_sha256"}
 
 
 def self_test():
