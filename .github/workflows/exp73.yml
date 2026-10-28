@@ -1,0 +1,122 @@
+name: exp73 cross-source learned probabilities and rANS exact RGB
+
+on:
+  push:
+    branches: [research/exp51-fair-shared-siren]
+    paths:
+      - "research/conditional/experiment_73_cross_source_rans.py"
+      - "research/conditional/BHUH_EXP73_PROTOCOL.md"
+      - ".github/workflows/exp73.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/conditional/experiment_73_cross_source_rans.py"
+      - ".github/workflows/exp73.yml"
+  workflow_dispatch:
+
+jobs:
+  learned-rans-exact:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      OPENBLAS_NUM_THREADS: 1
+      OMP_NUM_THREADS: 1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install public RGB source library and conventional image codecs
+        run: python -m pip install numpy pillow "scikit-image==0.25.2"
+      - name: Validate rANS state machine, exact RGB decode and corruption handling
+        run: |
+          python -m py_compile research/conditional/experiment_73_cross_source_rans.py
+          python research/conditional/experiment_73_cross_source_rans.py --self-test
+      - name: Run frozen 3 training + 2 new external RGB source comparison
+        run: |
+          python research/conditional/experiment_73_cross_source_rans.py \
+            --out /tmp/blkh_exp73
+      - name: Independent persisted-byte scientific audit
+        run: |
+          python - <<'PY'
+          import hashlib,json,pathlib,sys,numpy as np
+          from PIL import Image
+          sys.path.insert(0,"research/conditional")
+          from experiment_73_cross_source_rans import (
+              TRAIN,HOLDOUT,SOURCES,BASES,HEAD,MAGIC,BASE,TABLE_BYTES,
+              sha,get_photo,decode_bundle,decode_zlib_bundle,decode_baseline,
+          )
+          folder=pathlib.Path("/tmp/blkh_exp73")
+          r=json.loads((folder/"results.json").read_text())
+          assert r["experiment"]==73
+          assert r["all_lossless_verified"]
+          assert set(r["source_manifest"])==set(SOURCES)
+          assert r["learned_rans"]["training_sources"]==list(TRAIN)
+          assert r["learned_rans"]["holdout_sources"]==list(HOLDOUT)
+          for name in SOURCES:
+              source,info=get_photo(name)
+              assert r["source_manifest"][name]==info
+              with Image.open(folder/f"source_{name}.png") as decoded:
+                  assert np.array_equal(np.asarray(decoded.convert("RGB")),source)
+          learned=r["learned_rans"]
+          archive=(folder/learned["filename"]).read_bytes()
+          assert len(archive)==learned["complete_bytes"]
+          assert hashlib.sha256(archive).hexdigest()==learned["sha256"]
+          assert learned["shared_model_table_bytes"]==TABLE_BYTES==3072
+          all_decoded,manifest=decode_bundle(archive)
+          assert manifest["model"]["training_sources"]==list(TRAIN)
+          assert manifest["model_table_sha256"]==learned["shared_model_table_sha256"]
+          assert all(np.array_equal(all_decoded[name],get_photo(name)[0]) for name in SOURCES)
+          zitem=r["paeth_zlib_ablation"]
+          zbytes=(folder/zitem["filename"]).read_bytes()
+          assert len(zbytes)==zitem["complete_bytes"]
+          assert sha(zbytes)==zitem["sha256"]
+          zdecoded=decode_zlib_bundle(zbytes)
+          assert all(np.array_equal(zdecoded[name],get_photo(name)[0]) for name in SOURCES)
+          assert set(r["conventional"])==set(BASES)
+          assert len(r["baseline_files"])==len(BASES)*(len(SOURCES)+1)
+          meta=json.dumps({
+              "sources":list(SOURCES),
+              "sources_manifest":r["source_manifest"],
+              "trained_on":list(TRAIN),
+              "held_out_from_probability_training":list(HOLDOUT),
+              "format":"uint8_RGB_128x128",
+              "atlas_layout":"one row, five original RGB crops side by side",
+              "atlas_shape":[128,640,3],
+              "codec_schema":"BL73R-v1",
+              "data_notes":"scikit-image standard sample images; upstream image provenance/licensing applies",
+          },sort_keys=True,separators=(",",":")).encode()
+          for filename,info in r["baseline_files"].items():
+              blob=(folder/filename).read_bytes()
+              assert len(blob)==info["bytes"] and sha(blob)==info["sha256"]
+              magic,version,n=HEAD.unpack(blob[:HEAD.size])
+              assert magic==BASE and version==1 and n==len(meta)
+              assert blob[HEAD.size:HEAD.size+n]==meta
+              imagebytes=blob[HEAD.size+n:]
+              if info["original_photo"]=="five-photo joint atlas":
+                  expected=np.concatenate([get_photo(name)[0] for name in SOURCES],axis=1)
+              else:
+                  expected=get_photo(info["original_photo"])[0]
+              actual=decode_baseline(imagebytes,expected.shape)
+              assert np.array_equal(actual,expected)
+          for codec in BASES:
+              b=r["conventional"][codec]
+              indiv=sum(r["baseline_files"][f"{codec}_{name}.bl73"]["bytes"] for name in SOURCES)
+              joint=r["baseline_files"][f"{codec}_joint_atlas.bl73"]["bytes"]
+              assert b["individual_complete_files_total_bytes"]==indiv
+              assert b["joint_atlas_complete_bytes"]==joint
+              assert b["best_actual_complete_bytes"]==min(indiv,joint)
+          least,codec=min((v["best_actual_complete_bytes"],k)
+                          for k,v in r["conventional"].items())
+          assert r["smallest_conventional_complete_bytes"]==least
+          assert r["smallest_conventional_complete_bundle"]==codec
+          assert r["learned_smaller_than_best_lossless_baseline"]==(len(archive)<least)
+          print("EXP73 VERIFIED: five RGB source images, one counted learned model and five actual rANS payloads, 18 independently decoded lossless baseline files")
+          print("LEARNED RANS",len(archive),"PAETH ZLIB",len(zbytes),"BEST ATLAS",codec,least)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: exp73-learned-static-context-rans-lossless
+          path: /tmp/blkh_exp73/
+          retention-days: 30
