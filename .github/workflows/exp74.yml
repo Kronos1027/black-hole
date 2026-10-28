@@ -1,0 +1,106 @@
+name: exp74 verified exact block reuse vs WebP animation and APNG
+
+on:
+  push:
+    branches: [research/exp51-fair-shared-siren]
+    paths:
+      - "research/dedup/experiment_74_cross_frame_exact_blocks.py"
+      - "research/dedup/BHUH_EXP74_PROTOCOL.md"
+      - ".github/workflows/exp74.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/dedup/experiment_74_cross_frame_exact_blocks.py"
+      - ".github/workflows/exp74.yml"
+  workflow_dispatch:
+
+jobs:
+  exact-animation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      OPENBLAS_NUM_THREADS: 1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install real source and animation codecs
+        run: python -m pip install "numpy<3" "pillow>=11.2" "scikit-image==0.25.2"
+      - name: Test exact tile dictionary, WebP lossless animation, APNG, zlib
+        run: |
+          python -m py_compile research/dedup/experiment_74_cross_frame_exact_blocks.py
+          python research/dedup/experiment_74_cross_frame_exact_blocks.py --self-test
+      - name: Execute frozen 20 scenarios of 8 frames with 7 codecs each
+        run: |
+          python research/dedup/experiment_74_cross_frame_exact_blocks.py \
+            --out /tmp/blkh_exp74
+      - name: Independently verify every saved compressed archive and frame
+        run: |
+          python - <<'PY'
+          import hashlib,json,pathlib,sys,numpy as np
+          sys.path.insert(0,"research/dedup")
+          from experiment_74_cross_frame_exact_blocks import (
+              SOURCES,EDIT_COUNTS,MODES,COUNT,frames_for,decode_case
+          )
+          root=pathlib.Path("/tmp/blkh_exp74")
+          experiment=json.loads((root/"results.json").read_text())
+          assert experiment["experiment"]==74
+          assert experiment["sources"]==list(SOURCES)
+          assert experiment["edit_counts"]==list(EDIT_COUNTS)
+          assert experiment["frame_count"]==COUNT==8
+          assert len(experiment["records"])==20
+          wins={n:0 for n in EDIT_COUNTS}
+          seen=set()
+          for record in experiment["records"]:
+              source=record["source"]
+              edits=record["changed_tiles_per_transition"]
+              assert source in SOURCES and edits in EDIT_COUNTS
+              assert (source,edits) not in seen
+              seen.add((source,edits))
+              images,original=frames_for(SOURCES.index(source),edits)
+              assert record["manifest"]==original
+              assert record["all_8_frames_exact"]
+              assert record["frame_sha256"]==original["frame_rgb_sha256"]
+              assert set(record["codecs"])==set(MODES)
+              folder=root/source/f"edit_{edits:02d}"
+              for codec,info in record["codecs"].items():
+                  data=(folder/info["file"]).read_bytes()
+                  assert len(data)==info["bytes"]
+                  assert hashlib.sha256(data).hexdigest()==info["sha256"]
+                  assert info["encode_seconds"]>0
+                  assert info["decode_seconds"]>0
+                  frames,manifest=decode_case(data)
+                  assert np.array_equal(frames,images)
+                  assert manifest=={**original,"codec":codec}
+                  if codec in ("raw_zlib","webp_dictionary"):
+                      assert 1<=info["unique_tiles"]<=COUNT*64
+                      assert info["total_tile_references"]==512
+                      assert info["exact_reused_tile_references"]==512-info["unique_tiles"]
+                      assert info["tile_index_bytes"]==1024
+              reference_size,reference_name=min(
+                  (record["codecs"][codec]["bytes"],codec)
+                  for codec in MODES if codec not in ("raw_zlib","webp_dictionary")
+              )
+              our_size,our_name=min(
+                  (record["codecs"][codec]["bytes"],codec)
+                  for codec in ("raw_zlib","webp_dictionary")
+              )
+              assert record["best_reference_complete_bytes"]==reference_size
+              assert record["best_reference"]==reference_name
+              assert record["best_dedup_complete_bytes"]==our_size
+              assert record["best_dedup"]==our_name
+              assert record["dedup_smaller_than_best_valid_standard"]==(our_size<reference_size)
+              wins[edits]+=int(our_size<reference_size)
+              print(source,edits,"dedup",our_name,our_size,
+                    "standard",reference_name,reference_size,
+                    "saved refs",record["codecs"]["raw_zlib"]["exact_reused_tile_references"])
+          assert len(seen)==20
+          print("EXP74 VERIFIED: 20 real-photo-based simulated sequences, 140 decoded exact RGB archives, wins by edit intensity",wins)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: exp74-true-lossless-animation-vs-crossframe-dedup
+          path: /tmp/blkh_exp74/
+          retention-days: 30
