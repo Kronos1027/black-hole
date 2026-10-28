@@ -1,5 +1,7 @@
 # BLKH Experiment 66 — PRE-REGISTERED external regional confirmation
 
+> **Critical follow-up correction (Exp67):** GDAL JP2OpenJPEG can read exact 32×32 windows directly from a single whole-image JPEG2000 codestream. On the SAME four HGT inputs, this whole-JP2 representation was **40.9% smaller in total than BH65**, and had lower mean ROI latency in 3/4 same-run cases. The original Exp66 3/4 result applies ONLY to separately indexed J2K files and must not be generalized to JPEG2000 ROI capability. See [Exp67 full-JP2 validation](BHUH_EXP67_WHOLE_JPEG2000_ROI_CORRECTION.md) and [official run](https://github.com/Kronos1027/black-hole/actions/runs/40614674008). No public best-in-class claim is justified.
+
 **Status:** ✅ GitHub Actions completed successfully, all source HGT input bytes and encoded files verified. This is a **narrow regional validation of an engineering trade-off**, **not** a novel compression theorem or proof of across-codec superiority.
 
 **Pre-registration committed before data access:** [BHUH_EXP66_PREREGISTERED_PROTOCOL.md](BHUH_EXP66_PREREGISTERED_PROTOCOL.md), commit `f4cf3c1f226e40b6b90fe502b32dc31142896234`.  
