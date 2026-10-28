@@ -1,0 +1,132 @@
+name: exp71 nonlinear conditional sine decoding vs quality-matched atlases
+
+on:
+  push:
+    branches: [research/exp51-fair-shared-siren]
+    paths:
+      - "research/conditional/experiment_71_conditioned_sine_fonts.py"
+      - "research/conditional/BHUH_EXP71_PROTOCOL.md"
+      - ".github/workflows/exp71.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/conditional/experiment_71_conditioned_sine_fonts.py"
+      - ".github/workflows/exp71.yml"
+  workflow_dispatch:
+
+jobs:
+  conditioned-sine:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      OPENBLAS_NUM_THREADS: 1
+      OMP_NUM_THREADS: 1
+      MKL_NUM_THREADS: 1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install public font sources and model/runtime dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y fonts-dejavu-core fonts-lato fonts-liberation
+          python -m pip install numpy pillow scikit-image
+          python -c "import torch; print('torch:',torch.__version__)" || \
+            python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+      - name: Verify syntax and independent NumPy decoder
+        run: |
+          python -m py_compile research/conditional/experiment_71_conditioned_sine_fonts.py
+          PYTHONPATH=research/conditional python research/conditional/experiment_71_conditioned_sine_fonts.py \
+            --self-test --out /tmp/blkh_exp71_selftest
+      - name: Train 12 fixed nonlinear models and save complete source/codec bytes
+        run: |
+          PYTHONPATH=research/conditional python research/conditional/experiment_71_conditioned_sine_fonts.py \
+            --out /tmp/blkh_exp71
+      - name: Independently decode all 12 models and quality-matched atlas files
+        run: |
+          python - <<'PY'
+          import hashlib,json,pathlib,sys,numpy as np
+          from PIL import Image
+          sys.path.insert(0,"research/conditional")
+          from experiment_70_shared_linear_font_atlas import (
+              FONT_NAMES,render_face,font_path,decode_atlas,
+              fidelity,baseline_quality_match,pack_atlas
+          )
+          from experiment_71_conditioned_sine_fonts import (
+              CONFIGS,STEPS,SEED,decode_saved
+          )
+          root=pathlib.Path("/tmp/blkh_exp71")
+          experiment=json.loads((root/"results.json").read_text())
+          assert experiment["experiment"]==71
+          assert experiment["steps"]==STEPS==1600
+          assert experiment["seed"]==SEED==710071
+          assert experiment["font_faces"]==list(FONT_NAMES)
+          assert len(experiment["results"])==4
+          wins=0
+          usable=0
+          for face in experiment["results"]:
+              font_name=face["font_face"]
+              assert font_name in FONT_NAMES
+              root_font=root/font_name.replace(".ttf","")
+              font=font_path(font_name)
+              actual=render_face(font)
+              assert hashlib.sha256(font.read_bytes()).hexdigest()==face["manifest"]["font_sha256"]
+              assert hashlib.sha256(pack_atlas(actual).tobytes()).hexdigest()==face["manifest"]["source_atlas_sha256"]
+              with Image.open(root_font/"source_atlas.png") as img:
+                  assert np.array_equal(np.asarray(img),pack_atlas(actual))
+              baselines=face["baselines"]
+              assert len(baselines)==16
+              verified_baselines={}
+              for name,item in baselines.items():
+                  b=(root_font/item["file"]).read_bytes()
+                  assert len(b)==item["bytes"]
+                  assert hashlib.sha256(b).hexdigest()==item["sha256"]
+                  decoded,meta=decode_atlas(b)
+                  assert meta==face["manifest"]
+                  q=fidelity(actual,decoded)
+                  assert abs(q["mse"]-item["quality"]["mse"])<1e-8
+                  assert abs(q["mean_glyph_ssim"]-item["quality"]["mean_glyph_ssim"])<1e-8
+                  if "lossless" in name: assert q["exact"]
+                  verified_baselines[name]=item
+              assert len(face["models"])==3
+              for label,info in face["models"].items():
+                  b=(root_font/info["file"]).read_bytes()
+                  assert len(b)==info["bytes"]
+                  assert hashlib.sha256(b).hexdigest()==info["sha256"]
+                  decoded,meta,arch=decode_saved(b)
+                  assert arch==(info["hidden"],info["latent"])
+                  assert (info["hidden"],info["latent"]) in CONFIGS
+                  assert meta==face["manifest"]
+                  q=fidelity(actual,decoded)
+                  assert abs(q["mse"]-info["quality_after_float16_decode"]["mse"])<1e-8
+                  assert abs(q["mean_glyph_ssim"]-info["quality_after_float16_decode"]["mean_glyph_ssim"])<1e-8
+                  best_size,best_name=min(
+                      (v["bytes"],k) for k,v in verified_baselines.items()
+                      if baseline_quality_match(q,v["quality"])
+                  )
+                  assert info["baseline_matched_bytes"]==best_size
+                  assert info["smallest_equal_or_higher_quality_baseline"]==best_name
+                  assert info["size_win_at_matched_quality"]==(len(b)<best_size)
+                  assert info["passes_useful_quality_gate"]==(
+                      q["psnr_db"] is not None and q["psnr_db"]>=30
+                      and q["mean_glyph_ssim"]>=0.90
+                  )
+                  assert info["release_candidate"]==(
+                      info["passes_useful_quality_gate"] and info["size_win_at_matched_quality"]
+                  )
+                  wins+=int(info["size_win_at_matched_quality"])
+                  usable+=int(info["passes_useful_quality_gate"])
+                  print(font_name,label,"bytes",len(b),"matched_atlas",best_size,
+                        "PSNR",q["psnr_db"],"SSIM",q["mean_glyph_ssim"])
+          print("EXP71 VERIFIED: 12 TRUE NONLINEAR SERIALIZED MODELS, matched wins",wins,
+                "usable quality models",usable)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: exp71-nonlinear-conditioned-sine-glyphs
+          path: |
+            /tmp/blkh_exp71/
+            /tmp/blkh_exp71_selftest/
+          retention-days: 30
