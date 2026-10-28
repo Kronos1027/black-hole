@@ -145,7 +145,7 @@ def benchmark(region:str,original:np.ndarray,source:dict,root:Path)->dict:
         "exact_lossless":True,
         "height_max_error_m":0,
         "full_j2k_has_direct_gdal_window_access":True,
-        "full_j2k_dominates_bh65_size_and_mean_roi":(
+        "full_j2k_dominates_bh65_size_and_mean_roi":bool(
             len(full_bytes)<trial["sizes_bytes"]["bh65_fixed20"]
             and np.mean(samples["j2k_full_window"])<=np.mean(samples["bh65_indexed"])
         ),
