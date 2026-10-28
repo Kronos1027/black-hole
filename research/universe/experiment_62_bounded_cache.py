@@ -195,7 +195,7 @@ def main():
         src,_=(read_holdout(region,Path(a.cache))
                if region in MORE_REGIONS else source_hgt(region,Path(a.cache)))
         for case,img in source_cases(src):
-            rows.append(benchmark_case(region,case,img,root/region/case,a.repeats))
+            rows.append(benchmark_case(region,case,img,root,a.repeats))
         (root/"results.json").write_text(json.dumps({
             "experiment":62,
             "purpose":"bounded cached BH60 read vs naturally GDAL-cached persistent GeoTIFF",
