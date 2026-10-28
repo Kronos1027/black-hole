@@ -267,7 +267,7 @@ def encode_case(pairs:list[dict],manifest:dict,mode:str)->bytes:
         packed=encode_png(atlas)
     else:
         packed=compress(atlas.tobytes())
-    metadata=json.dumps({**manifest,"codec":mode},sort_keys=True,
+    metadata=json.dumps({**manifest,"codec":mode,"payload_sha256":sha(packed)},sort_keys=True,
                         separators=(",",":")).encode()
     if not 0<len(metadata)<180_000:
         raise ValueError("Metadata too large")
@@ -294,6 +294,8 @@ def decode_case(blob:bytes)->tuple[list[np.ndarray],dict]:
     if len(shape)!=3 or shape[2]!=4 or int(np.prod(shape))>MAX_ATLAS_PIXELS*4:
         raise ValueError("Invalid lossless RGBA output size")
     encoded=blob[HEAD.size+n:]
+    if sha(encoded)!=meta.get("payload_sha256"):
+        raise ValueError("Saved codec payload was truncated or modified")
     if mode=="original_png_zstd":
         input_data=decompress(encoded,pair_count*2*(MAX_SOURCE_PNG_BYTES+4))
         off=0
