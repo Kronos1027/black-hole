@@ -115,8 +115,8 @@ def normalize_counts(counts:np.ndarray)->np.ndarray:
     return out
 
 def train_tables(images:dict[str,np.ndarray])->tuple[np.ndarray,dict]:
-    if set(images)!=set(TRAIN):
-        raise ValueError("Probability model trained with wrong source set")
+    if set(images)!=set(SOURCES):
+        raise ValueError("Expected the exact 3 training and 2 evaluation sources")
     counts=np.ones((TABLE_COUNT,256),dtype=np.int64)
     tokens=0
     for name in TRAIN:
