@@ -241,7 +241,29 @@ def encode_baseline(frames:np.ndarray,codec:str)->bytes:
     raise ValueError("Unknown baseline")
 
 
-def decode_baseline(payload:bytes,codec:str)->np.ndarray:
+def webp_frame_durations(payload:bytes)->list[int]:
+    """Read original exact ANMF durations; Pillow 13 exposes a zero duration."""
+    if len(payload)<12 or payload[:4]!=b"RIFF" or payload[8:12]!=b"WEBP":
+        raise ValueError("Invalid RIFF/WebP animation")
+    pos=12
+    durations=[]
+    while pos+8<=len(payload):
+        kind=payload[pos:pos+4]
+        length=int.from_bytes(payload[pos+4:pos+8],"little")
+        start=pos+8
+        if start+length>len(payload):
+            raise ValueError("Truncated WebP RIFF chunk")
+        if kind==b"ANMF":
+            if length<16:
+                raise ValueError("Invalid WebP frame header")
+            durations.append(int.from_bytes(payload[start+12:start+15],"little"))
+        pos=start+length+(length&1)
+    if pos!=len(payload):
+        raise ValueError("Trailing WebP RIFF bytes")
+    return durations
+
+
+def decode_baseline(payload:bytes,codec:str,expected_hashes:list[str])->np.ndarray:
     if codec=="frame_zlib":
         dec=zlib.decompressobj()
         raw=dec.decompress(payload,COUNT*SIDE*SIDE*3+1)
@@ -255,18 +277,34 @@ def decode_baseline(payload:bytes,codec:str)->np.ndarray:
             return unpack(np.asarray(im.convert("RGB"),dtype=np.uint8))
         if codec not in ("webp_animation","apng_animation"):
             raise ValueError("Unsupported animation codec")
+        if not isinstance(expected_hashes,list) or len(expected_hashes)!=COUNT:
+            raise ValueError("Missing decoded frame checksum constraints")
+        webp_durations=(webp_frame_durations(payload)
+                        if codec=="webp_animation" else [])
+        # Native image encoders may collapse an entirely static animation to
+        # one frame. Exact timing and frame count remain represented by the
+        # shared outer manifest, whose every source SHA256 must still verify.
+        if im.n_frames==1 and len(set(expected_hashes))==1:
+            im.seek(0)
+            picture=np.asarray(im.convert("RGB"),dtype=np.uint8)
+            return np.stack([picture.copy() for _ in range(COUNT)])
+        if codec=="webp_animation" and len(webp_durations)!=im.n_frames:
+            raise ValueError("Missing real WebP animation frame duration fields")
         expanded=[]
         for j in range(im.n_frames):
             im.seek(j)
             picture=np.asarray(im.convert("RGB"),dtype=np.uint8)
-            duration=float(im.info.get("duration",DURATION_MS))
-            count=round(duration/DURATION_MS)
-            if (count<1 or abs(duration-count*DURATION_MS)>1.0
-                    or len(expanded)+count>COUNT):
-                raise ValueError(f"Animation frame timing invalid: {codec} frame={j} n_frames={im.n_frames} duration={duration} count={count} already={len(expanded)} info={dict(im.info)}")
-            expanded.extend(picture.copy() for _ in range(count))
+            duration=(webp_durations[j] if codec=="webp_animation"
+                      else float(im.info.get("duration",0)))
+            repetitions=round(duration/DURATION_MS)
+            if (repetitions<1 or abs(duration-repetitions*DURATION_MS)>1.0
+                    or len(expanded)+repetitions>COUNT):
+                raise ValueError(
+                    f"Invalid native animation duration: {codec} frame={j} "
+                    f"duration={duration} expanded={len(expanded)}")
+            expanded.extend(picture.copy() for _ in range(repetitions))
         if len(expanded)!=COUNT:
-            raise ValueError(f"Expected {COUNT} timed RGB animation frames, got {len(expanded)}")
+            raise ValueError(f"Expected {COUNT} ordered RGB frames, got {len(expanded)}")
         return np.stack(expanded)
 
 
@@ -282,7 +320,7 @@ def decode_case(raw:bytes)->tuple[np.ndarray,dict]:
     codec,meta,stream=unwrap(raw)
     frames=(reconstruct_dictionary(stream,codec)
             if codec in ("raw_zlib","webp_dictionary")
-            else decode_baseline(stream,codec))
+            else decode_baseline(stream,codec,meta.get("frame_rgb_sha256")))
     if frames.shape!=(COUNT,SIDE,SIDE,3) or frames.dtype!=np.uint8:
         raise ValueError("Incorrect RGB frame geometry")
     expected=meta.get("frame_rgb_sha256")
