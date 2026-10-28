@@ -1,0 +1,103 @@
+name: exp63 cache-miss and encoding-cost geospatial benchmark
+
+on:
+  push:
+    branches: [research/exp51-fair-shared-siren]
+    paths:
+      - "research/universe/experiment_63_cache_miss_roi.py"
+      - ".github/workflows/exp63.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/universe/experiment_63_cache_miss_roi.py"
+      - ".github/workflows/exp63.yml"
+  workflow_dispatch:
+
+jobs:
+  cache-stress:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install scientific and GIS runtime
+        run: |
+          python -m pip install numpy pillow brotli rasterio
+      - name: Compile and test deterministic cache-thrashing protocol
+        run: |
+          python -m py_compile research/universe/experiment_63_cache_miss_roi.py
+          python research/universe/experiment_63_cache_miss_roi.py \
+            --self-test --out /tmp/blkh_exp63_selftest
+      - name: Run 6 source-region lossless workloads and encoding trials
+        run: |
+          python research/universe/experiment_63_cache_miss_roi.py \
+            --out /tmp/blkh_exp63
+      - name: Independently verify all serialized files and workloads
+        run: |
+          python - <<'PY'
+          import hashlib,json,pathlib,sys
+          import numpy as np,rasterio
+          sys.path.insert(0,"research/universe")
+          from experiment_60_geotiff_roi import CODECS,REGIONS,bh60_decode_full
+          from experiment_63_cache_miss_roi import BH_MODES,ALL_MODES,PIXEL_BYTES
+          root=pathlib.Path("/tmp/blkh_exp63")
+          obj=json.loads((root/"results.json").read_text())
+          cases=obj["results"]
+          assert len(cases)==6
+          assert {c["region"] for c in cases}==set(REGIONS)
+          for case in cases:
+              assert case["geometry"]==[256,256] and case["tile_count"]==64
+              data=case["prepared_files"]
+              assert set(data["files"])==set(CODECS)
+              bhfile=root/case["region"]/data["files"]["bh60"]
+              img,meta=bh60_decode_full(bhfile)
+              assert img.shape==(256,256) and img.dtype==np.int16
+              assert meta==data["metadata"]
+              assert hashlib.sha256(img.tobytes()).hexdigest()==data["source_sha256"]
+              for codec in CODECS:
+                  path=root/case["region"]/data["files"][codec]
+                  raw=path.read_bytes()
+                  assert len(raw)==data["sizes"][codec]
+                  assert hashlib.sha256(raw).hexdigest()==data["sha256"][codec]
+                  assert len(data["encode_seconds_samples"][codec])==3
+                  assert data["encode_seconds_median"][codec]>0
+                  if codec!="bh60":
+                      with rasterio.open(path) as ds:
+                          assert np.array_equal(ds.read(1),img)
+                          assert ds.crs.to_string()=="EPSG:4326"
+                          assert ds.block_shapes[0]==(32,32)
+              assert {w["workload"] for w in case["workloads"]}=={
+                  "cyclic64","uniform256","hotspot256"}
+              for workload in case["workloads"]:
+                  size=workload["request_count"]
+                  assert size==(192 if workload["workload"]=="cyclic64" else 256)
+                  assert len(workload["roi_ids"])==size
+                  assert workload["verified_lossless"]
+                  for codec in ALL_MODES:
+                      assert workload["median_ms"][codec]>0
+                      assert workload["p95_ms"][codec]>0
+                  for mode in BH_MODES:
+                      stat=workload["cache_stats"][mode]
+                      assert stat["hits"]+stat["misses"]==size
+                      cap=int(mode.split("lru")[1])
+                      assert stat["decoded_cache_pixel_bytes"]<=cap*PIXEL_BYTES
+                  if workload["workload"]=="cyclic64":
+                      assert workload["cache_stats"]["bh60_lru32"]["misses"]==192
+                      assert workload["cache_stats"]["bh60_lru64"]["misses"]==64
+                      assert workload["cache_stats"]["bh60_lru64"]["hits"]==128
+              print(case["region"],"encoding_seconds",data["encode_seconds_median"])
+              for w in case["workloads"]:
+                  print(w["workload"],"misses_32",w["cache_stats"]["bh60_lru32"]["misses"],
+                        "med_ms",w["median_ms"])
+          print("EXP63 VALIDATED: 6 REAL DEM regions, 18 workloads, exact bytes and bounds")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: exp63-real-dem-cache-miss-artifacts
+          path: |
+            /tmp/blkh_exp63/
+            /tmp/blkh_exp63_selftest/
+          retention-days: 30
