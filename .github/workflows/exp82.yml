@@ -1,0 +1,70 @@
+name: exp82 audit real OpenGFX2 licensed graphical source revisions
+
+on:
+  push:
+    branches: [research/exp51-fair-shared-siren]
+    paths:
+      - "research/dedup/experiment_82_opengfx2_revision_source_audit.py"
+      - "research/dedup/BHUH_EXP82_OPENGFX2_SOURCE_AUDIT_PROTOCOL.md"
+      - ".github/workflows/exp82.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/dedup/experiment_82_opengfx2_revision_source_audit.py"
+      - ".github/workflows/exp82.yml"
+  workflow_dispatch:
+
+jobs:
+  source-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      OPENBLAS_NUM_THREADS: 1
+      GIT_TERMINAL_PROMPT: "0"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Original RGBA scientific source audit prerequisites
+        run: python -m pip install "numpy<3" "pillow>=11.2"
+      - name: Qualify 120 fixed Git revisions without benchmarking compression
+        run: |
+          python -m py_compile research/dedup/experiment_82_opengfx2_revision_source_audit.py
+          python research/dedup/experiment_82_opengfx2_revision_source_audit.py \
+            --out /tmp/blkh_exp82 --cache /tmp/blkh_exp82_git
+      - name: Independent source SHA256 and selected revision checks
+        run: |
+          python - <<'PY'
+          import json,pathlib,sys
+          sys.path.insert(0,"research/dedup")
+          from experiment_82_opengfx2_revision_source_audit import (
+              HEAD,COMMIT_COUNT,MAX_SELECTED,clone,git,decode_png,sha
+          )
+          data=json.loads(pathlib.Path("/tmp/blkh_exp82/source_audit.json").read_text())
+          assert data["experiment"]==82
+          assert data["kind"]=="source-qualification-audit-not-codec-benchmark"
+          assert data["fixed_head_sha"]==HEAD
+          assert data["fixed_commit_count"]==COMMIT_COUNT
+          assert data["consecutive_transitions"]==119
+          assert len(data["all_modified_png_records"])==data["modified_png_paths_seen_in_diff"]
+          assert len(data["selected_first_24"])==min(MAX_SELECTED,data["qualified_edited_rgba_pairs"])
+          source=clone(pathlib.Path("/tmp/blkh_exp82_git"))
+          for row in data["selected_first_24"]:
+              assert row["qualified"] is True
+              b=git(source,"show",f"{row['parent_commit']}:{row['original_path']}")
+              a=git(source,"show",f"{row['child_commit']}:{row['original_path']}")
+              assert sha(b)==row["before_png_sha256"] and sha(a)==row["after_png_sha256"]
+              prior,later=decode_png(b),decode_png(a)
+              assert prior.shape==later.shape
+              assert sha(prior.tobytes())==row["before_rgba_sha256"]
+              assert sha(later.tobytes())==row["after_rgba_sha256"]
+              assert row["changed_rgba_channel_values"]>0
+          print("EXP82 AUDIT VERIFIED: immutable 120-commit OpenGFX2 source, real changed PNG hashes and exact RGBA source identity; qualified",data["qualified_edited_rgba_pairs"])
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: exp82-opengfx2-real-git-source-audit
+          path: /tmp/blkh_exp82/
+          retention-days: 30
