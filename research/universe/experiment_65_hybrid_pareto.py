@@ -19,6 +19,7 @@ trade-off, not new theoretical neural compression.
 """
 from __future__ import annotations
 import argparse
+import brotli
 from contextlib import ExitStack
 import hashlib
 import json
@@ -66,6 +67,8 @@ def candidates(image: np.ndarray) -> list[tuple[bytes, bytes]]:
 
 def pack(image: np.ndarray, info: dict,
          blocks: list[tuple[bytes, bytes]], max_overhead: float) -> tuple[bytes, dict]:
+    if image.shape != (256,256) or image.dtype != np.int16:
+        raise ValueError("Invalid input image")
     if len(blocks) != 64 or not (0 <= max_overhead <= 1):
         raise ValueError("Invalid sweep")
     meta = json.dumps(info, sort_keys=True, separators=(",", ":")).encode("utf-8")
@@ -117,6 +120,11 @@ class OpenHybrid:
                 raise ValueError("Incorrect BH65 index dimensions")
             if self.metadata.get("image_shape") != [256, 256]:
                 raise ValueError("Geospatial dimension mismatch")
+            if (self.metadata.get("crs")!="EPSG:4326"
+                    or self.metadata.get("sample_unit")!="meter"
+                    or self.metadata.get("dtype")!="int16"
+                    or self.metadata.get("block_side")!=ROI_SIDE):
+                raise ValueError("Unsupported BH65 geospatial schema")
             idx = self.file.read(nbytes)
             if len(idx) != nbytes:
                 raise ValueError("Truncated BH65 index")
@@ -178,10 +186,8 @@ def self_test(out: Path):
         try:
             path.write_bytes(packed[:-1])
             check_full(path,data,info)
-        except (ValueError,Exception) as err:
-            # Invalid bitstream can raise a codec-specific decoding exception.
-            if isinstance(err, AssertionError):
-                raise
+        except (ValueError, brotli.error):
+            pass
         else:
             raise AssertionError("Truncated archive should fail")
     print("EXP65 SELF-TEST PASS: 4 versions, all 64 tiles lossless and invalid streams rejected")
