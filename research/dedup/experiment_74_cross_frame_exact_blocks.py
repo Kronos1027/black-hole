@@ -331,8 +331,10 @@ def main():
     ap.add_argument("--out",default="/tmp/blkh_exp74")
     ap.add_argument("--self-test",action="store_true")
     a=ap.parse_args()
-    if not features.check("webp") or not features.check("webp_anim"):
-        raise RuntimeError("WebP animation support mandatory")
+    if not features.check("webp"):
+        raise RuntimeError("WebP codec support mandatory")
+    # Pillow 13 removed the webp_anim feature flag; the lossless animated
+    # WebP write/read self-test below is the reliable capability check.
     if a.self_test:
         self_test()
         return
