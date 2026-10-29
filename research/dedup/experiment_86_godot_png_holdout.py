@@ -12,6 +12,7 @@ import argparse
 import json
 from pathlib import Path
 import platform
+import urllib.request
 import numpy as np
 from PIL import __version__ as PIL_VERSION
 import zstandard as zstd
@@ -52,6 +53,19 @@ def configure_sources() -> None:
     baseline.LICENSE = SOURCE_LICENSE
 
 
+def first_parent(commit_sha: str) -> str:
+    # Unlike Pixelorama's original commits, Godot's art redraw is a merge.
+    # Its first-parent diff is fixed in the preregistered protocol.
+    endpoint = f"https://api.github.com/repos/{SOURCE_REPO}/commits/{commit_sha}"
+    info = json.loads(baseline.request_bytes(endpoint, 500_000))
+    if info.get("sha") != commit_sha or not info.get("parents"):
+        raise ValueError("Missing expected historical source commit/first parent")
+    parent = info["parents"][0]["sha"]
+    if len(parent) != 40:
+        raise ValueError("Invalid source Git first parent SHA")
+    return parent
+
+
 def source_license(out: Path) -> None:
     ref = SOURCE_GROUPS[0][1]
     url = f"https://raw.githubusercontent.com/{SOURCE_REPO}/{ref}/LICENSE.md"
@@ -75,7 +89,7 @@ def discover(out: Path) -> tuple[list[dict], dict]:
     items = []
     provenance = {}
     for group, sha, paths in SOURCE_GROUPS:
-        parent = baseline.get_parent(sha)
+        parent = first_parent(sha)
         paths_info = []
         altered = 0
         for index, path in enumerate(paths):
