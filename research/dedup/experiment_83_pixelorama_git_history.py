@@ -6,7 +6,7 @@ not synthesized colorways. All file bytes and decoded uint8 RGBA source pixel
 hashes counted, exact RGBA under alpha=0 kept. Aggregate + per-commit
 comparisons to strong original-PNG ZSTD and spatial atlas baselines.
 
-Pre-registered: research/dedup/BHUH_EXP83P_GIT_REAL_REVISIONS_PROTOCOL.md
+Pre-registered: research/dedup/BHUH_EXP83_PIXELORAMA_HISTORICAL_PROTOCOL.md
 """
 from __future__ import annotations
 import argparse
@@ -340,7 +340,7 @@ def run_group(items:list[dict],inventory:dict,name:str,root:Path)->dict:
         started=time.perf_counter_ns()
         stream,extras=encode(items,meta,method)
         elapsed_encode=(time.perf_counter_ns()-started)/1e9
-        target=folder/(method+".bl81")
+        target=folder/(method+".bl83p")
         target.write_bytes(stream)
         started=time.perf_counter_ns()
         images,manifest=decode(target.read_bytes())
@@ -436,7 +436,7 @@ def main():
               "win",row["delta_smaller_than_all_prior_references"],flush=True)
         (root/"results.json").write_text(json.dumps({
             "experiment":83,
-            "protocol":"research/dedup/BHUH_EXP83P_GIT_REAL_REVISIONS_PROTOCOL.md",
+            "protocol":"research/dedup/BHUH_EXP83_PIXELORAMA_HISTORICAL_PROTOCOL.md",
             "source_inventory":inventory,
             "data_source":"Orama-Interactive/Pixelorama MIT Git source, 3 historical commits",
             "source_revision_pairs":19,
