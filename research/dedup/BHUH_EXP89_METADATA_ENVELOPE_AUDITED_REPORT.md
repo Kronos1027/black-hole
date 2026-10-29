@@ -45,7 +45,7 @@ CI explicitly:
 4. Checked strict codec identities and original known aggregate sizes (Wesnoth 64,802/65,259 and SuperTux 430,620/374,887) as drift guards; emitted all 8 outcomes and alternative zlib9 values.
 5. Passed corruption/truncation/adversarial header-self-tests, including both original archive magic families and both wrapper formats.
 
-**The frozen engineering threshold passed**: at least 10 of 14 codecs became smaller in both aggregate sources after including full new-wrapper overhead; in fact every codec became smaller under Zstd9 (per actual byte listings in the 55 MB artifact). This must not be interpreted as an independently verified compression state-of-the-art.
+**The frozen engineering threshold passed**: at least 10 of 14 codecs became smaller in both aggregate sources under one of the two fixed metadata-envelope modes, after including full new-wrapper overhead. The complete per-codec byte counts are in the saved CI results; the audit directly recomputed the frozen ≥10/14 threshold and returned true. This must not be interpreted as an independently verified compression state-of-the-art.
 
 ## Scientific limits and next step
 
