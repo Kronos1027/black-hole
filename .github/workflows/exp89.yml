@@ -1,0 +1,158 @@
+name: exp89 self-contained lossless compressed-metadata envelope vs all 14 codecs on two known projects
+
+on:
+  push:
+    branches: [research/exp51-fair-shared-siren]
+    paths:
+      - "research/dedup/experiment_89_metadata_envelope.py"
+      - "research/dedup/BHUH_EXP89_METADATA_ENVELOPE_PROTOCOL.md"
+      - ".github/workflows/exp89.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/dedup/experiment_89_metadata_envelope.py"
+      - ".github/workflows/exp89.yml"
+  workflow_dispatch:
+
+jobs:
+  independently-audit-persisted-exact-archives:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      OPENBLAS_NUM_THREADS: 1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install the same 14 research codec dependencies
+        run: python -m pip install "numpy<3" "pillow>=11.2" zstandard bsdiff4
+      - name: Syntax and adversarial original archive reconstruction self-test
+        run: |
+          python -m py_compile research/dedup/experiment_89_metadata_envelope.py
+          python research/dedup/experiment_89_metadata_envelope.py --self-test
+      - name: Reproduce both original PNG-Git histories and save all 336 real compression archives
+        run: |
+          python research/dedup/experiment_89_metadata_envelope.py --out /tmp/blkh_exp89
+      - name: Independently audit Git status, source PNG hashes, old archive bytes, header wrappers, decoded RGBA and 14-codec rankings
+        run: |
+          python - <<'PY'
+          import json, pathlib, sys, urllib.request
+          import numpy as np
+          sys.path.insert(0, "research/dedup")
+          import experiment_83_pixelorama_git_history as legacy
+          import experiment_84_sparse_pixel_patches as sparse
+          import experiment_89_metadata_envelope as trial
+
+          root = pathlib.Path("/tmp/blkh_exp89")
+          data = json.loads((root/"results.json").read_text())
+          assert data["experiment"] == 89 and data["not_independent_new_holdout"] is True
+          assert data["methods"] == list(sparse.ALL) and len(sparse.ALL) == 14
+          assert data["repacked_algorithms"] == list(trial.COMPRESSORS)
+          assert len(data["datasets"]) == 2
+          originals_checked = wrapped_checked = 0
+          source_pngs_checked = 0
+          for (ds, exp, whole, n_pairs, n_files), saved in zip(trial.DATASETS, data["datasets"]):
+              assert saved["dataset"] == ds and saved["source_original_png_pairs"] == n_pairs
+              assert len(saved["results"]) == 4
+              target = root/ds
+              exp.configure_sources()
+              source, inv = exp.discover(target)
+              assert len(source) == n_files and inv == saved["source_inventory"]
+              assert len({x["meta"]["file_path"] for x in source}) == n_pairs
+              by_group = {whole: source}
+              for group, sha, paths in exp.SOURCE_GROUPS:
+                  assert len(sha) == 40
+                  parent = exp.first_parent(sha)
+                  request = urllib.request.Request(
+                      f"https://api.github.com/repos/{exp.SOURCE_REPO}/compare/{parent}...{sha}",
+                      headers={"User-Agent":"BLKH-exp89-original-Git-independent-audit"})
+                  with urllib.request.urlopen(request, timeout=45) as response:
+                      comparison = json.load(response)
+                  modified = {f["filename"] for f in comparison["files"] if f["status"]=="modified"}
+                  assert set(paths).issubset(modified), (ds, group, set(paths)-modified)
+                  by_group[group] = [item for item in source if item["meta"]["commit_label"] == group]
+                  assert len(by_group[group]) == 2*len(paths)
+                  for i, path in enumerate(paths):
+                      for role, ref in (("old", parent), ("new", sha)):
+                          raw, pixels = legacy.source_png(ref, path)
+                          saved_raw = (target/"sources"/f"{group}_{i:02d}_{role}.png").read_bytes()
+                          assert raw == saved_raw
+                          rows = [x for x in by_group[group] if
+                                  x["meta"]["file_path"] == path and x["meta"]["role"] == role]
+                          assert len(rows) == 1
+                          assert trial.sha(raw) == rows[0]["meta"]["source_png_sha256"]
+                          assert np.array_equal(rows[0]["rgba"], pixels)
+                          source_pngs_checked += 1
+              for result in saved["results"]:
+                  name = result["group"]
+                  cases = by_group[name]
+                  assert len(cases) == 2*result["pair_count"]
+                  assert set(result["files"]) == set(sparse.ALL)
+                  restored = {}
+                  for codec, record in result["files"].items():
+                      old_stream = (target/name/(codec+".bl84")).read_bytes()
+                      assert len(old_stream) == record["original_bytes"]
+                      assert trial.sha(old_stream) == record["original_sha256"]
+                      magic, meta, payload = trial.parse_original(old_stream)
+                      assert len(meta) == record["old_full_metadata_bytes"]
+                      assert len(payload) == record["old_encoded_payload_bytes"]
+                      assert magic.decode("ascii") == record["old_archive_magic"]
+                      decoded, manifest = trial.decode_original(old_stream, codec)
+                      assert len(decoded) == len(cases)
+                      assert all(np.array_equal(a["rgba"], b) for a, b in zip(cases, decoded))
+                      originals_checked += 1
+                      restored[codec] = {}
+                      for algorithm in trial.COMPRESSORS:
+                          expected = record["wrapped"][algorithm]
+                          on_disk = (target/name/expected["file"]).read_bytes()
+                          assert len(on_disk) == expected["bytes"]
+                          assert trial.sha(on_disk) == expected["sha256"]
+                          exact_original = trial.unrewrap(on_disk)
+                          assert exact_original == old_stream
+                          assert trial.sha(exact_original) == expected["restored_original_sha256"]
+                          check_images, check_manifest = trial.decode_original(exact_original, codec)
+                          assert check_manifest == manifest
+                          assert all(np.array_equal(a["rgba"], b) for a, b in zip(cases, check_images))
+                          assert expected["difference_from_original_bytes"] == len(on_disk)-len(old_stream)
+                          restored[codec][algorithm] = len(on_disk)
+                          wrapped_checked += 1
+                  for algorithm in trial.COMPRESSORS:
+                      sparse_best = min((restored[mode][algorithm], mode) for mode in sparse.NEW)
+                      references_best = min((restored[mode][algorithm], mode)
+                                            for mode in (sparse.BINARY,)+sparse.OLD)
+                      expected = result["repacked_best"][algorithm]
+                      assert tuple(expected["best_sparse"]) == sparse_best
+                      assert tuple(expected["best_reference"]) == references_best
+                      assert expected["sparse_strict_win"] == (sparse_best[0]<references_best[0])
+                  original_sparse = min(record["original_bytes"] for method,record in result["files"].items() if method in sparse.NEW)
+                  original_ref = min(record["original_bytes"] for method,record in result["files"].items() if method in (sparse.BINARY,)+sparse.OLD)
+                  assert (original_sparse, original_ref) == (
+                      result["original_best_sparse_bytes"], result["original_best_reference_bytes"])
+                  print("EXP89 AUDIT", ds, name, "original sparse/ref", original_sparse, original_ref,
+                        "zstd sparse/ref", result["repacked_best"]["zstd9"]["best_sparse"],
+                        result["repacked_best"]["zstd9"]["best_reference"], flush=True)
+              if ds == "exp87_wesnoth":
+                  assert (saved["results"][0]["original_best_sparse_bytes"],
+                          saved["results"][0]["original_best_reference_bytes"]) == (64802, 65259)
+              if ds == "exp88_supertux":
+                  assert (saved["results"][0]["original_best_sparse_bytes"],
+                          saved["results"][0]["original_best_reference_bytes"]) == (430620, 374887)
+          assert originals_checked == 112 and wrapped_checked == 224 and source_pngs_checked == 100
+          all_aggs = [row["results"][0] for row in data["datasets"]]
+          engineering_good = all(
+              sum(1 for x in agg["files"].values()
+                  if min(x["wrapped"][algo]["bytes"] for algo in trial.COMPRESSORS) < x["original_bytes"]) >= 10
+              for agg in all_aggs)
+          print("EXP89 INDEPENDENT AUDIT PASSED:", originals_checked, "complete original archives,",
+                wrapped_checked, "self-contained repacked archives,", source_pngs_checked,
+                "refetched original historical PNG source files; engineering threshold",engineering_good,
+                flush=True)
+          PY
+      - name: Upload complete results, lossless original/repacked streams and original source provenance
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: exp89-two-source-compressed-metadata-complete-336-archives
+          path: /tmp/blkh_exp89/
+          retention-days: 30
