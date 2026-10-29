@@ -70,7 +70,7 @@ def source_license(out: Path) -> None:
     ref = SOURCE_GROUPS[0][1]
     url = f"https://raw.githubusercontent.com/{SOURCE_REPO}/{ref}/LICENSE.md"
     blob = baseline.request_bytes(url, 150_000)
-    if b"Permission is hereby granted" not in blob or b"MIT" not in SOURCE_LICENSE:
+    if b"Permission is hereby granted" not in blob or "MIT" not in SOURCE_LICENSE:
         raise ValueError("Unverified original project's root MIT license")
     (out / "THIRD_PARTY_GODOT_PROJECT_ROOT_LICENSE.md").write_bytes(blob)
     (out / "SOURCE_ATTRIBUTION.txt").write_text(
