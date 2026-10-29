@@ -7,6 +7,12 @@ on:
       - "research/dedup/experiment_83_pixelorama_git_history.py"
       - "research/dedup/BHUH_EXP83_PIXELORAMA_HISTORICAL_PROTOCOL.md"
       - ".github/workflows/exp83-pixelorama-history.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/dedup/experiment_83_pixelorama_git_history.py"
+      - "research/dedup/BHUH_EXP83_PIXELORAMA_HISTORICAL_PROTOCOL.md"
+      - ".github/workflows/exp83-pixelorama-history.yml"
   workflow_dispatch:
 
 jobs:
