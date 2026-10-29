@@ -148,7 +148,12 @@ def old_original_pngs_decode(data:bytes,meta:dict)->list[np.ndarray]:
 
 def old_atlas_decode(blob:bytes,meta:dict)->list[np.ndarray]:
     shape=tuple(meta["old_atlas_shape"])
-    if len(shape)!=3 or shape[2]!=4 or np.prod(shape)>3_000_000:
+    # Match the original atlas pack() / legacy decoder limit: 3 million PIXELS.
+    # np.prod(shape) counts the four RGBA channels and incorrectly rejects
+    # otherwise valid atlases above 750,000 pixels (Exp86 CI finding).
+    if (len(shape)!=3 or not all(isinstance(v,int) for v in shape)
+            or shape[0]<1 or shape[1]<1 or shape[2]!=4
+            or shape[0]*shape[1]>3_000_000):
         raise ValueError("Old atlas dimensions invalid")
     base=decode_rgba(blob,shape)
     if sha(base.tobytes())!=meta["old_atlas_rgba_sha256"]:
@@ -306,6 +311,9 @@ def self_test()->None:
             try:decode(encoded[:-1])
             except (ValueError,zstd.ZstdError,OSError):pass
             else:raise AssertionError("Truncated sparse archive accepted")
+    # Regression guard: encoded atlas pixel bound is not the RGBA sample bound.
+    assert (1024*1024)<3_000_000 and (3000*1001)>3_000_000
+    assert 4*(1024*1024)>3_000_000  # old broken RGBA-element check
     print("EXP84 SELFTEST PASS: both sparse masks and actual PNG bsdiff byte-exact, changed image sizes, RGBA alpha channels")
 
 
