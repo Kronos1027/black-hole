@@ -45,12 +45,25 @@ SOURCE_GROUPS = [
 ]
 EXPECTED_PAIRS = 14
 PROTOCOL = "research/dedup/BHUH_EXP86_GODOT_SOURCE_HOLDOUT_PROTOCOL.md"
+_ORIGINAL_MANIFEST_FOR = baseline.manifest_for
+
+
+def godot_manifest_for(items: list[dict], inventory: dict) -> dict:
+    # Only correct the inherited Pixelorama-specific provenance label.
+    # Original encoder algorithms, parameters and archive structures remain unchanged.
+    manifest = _ORIGINAL_MANIFEST_FOR(items, inventory)
+    manifest["paired_source_order"] = (
+        "platformer_art_redraw then godotea_sprite_revision; fixed path order; "
+        "first-parent version then Git child version"
+    )
+    return manifest
 
 
 def configure_sources() -> None:
     baseline.REPOSITORY = SOURCE_REPO
     baseline.REPOSITORY_URL = SOURCE_URL
     baseline.LICENSE = SOURCE_LICENSE
+    sparse.manifest_for = godot_manifest_for
 
 
 def first_parent(commit_sha: str) -> str:
