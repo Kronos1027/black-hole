@@ -5,12 +5,16 @@ on:
     branches: [research/exp51-fair-shared-siren]
     paths:
       - "research/dedup/experiment_86_godot_png_holdout.py"
+      - "research/dedup/experiment_84_sparse_pixel_patches.py"
+      - "research/dedup/experiment_83_pixelorama_git_history.py"
       - "research/dedup/BHUH_EXP86_GODOT_SOURCE_HOLDOUT_PROTOCOL.md"
       - ".github/workflows/exp86.yml"
   pull_request:
     branches: [main]
     paths:
       - "research/dedup/experiment_86_godot_png_holdout.py"
+      - "research/dedup/experiment_84_sparse_pixel_patches.py"
+      - "research/dedup/experiment_83_pixelorama_git_history.py"
       - ".github/workflows/exp86.yml"
   workflow_dispatch:
 
