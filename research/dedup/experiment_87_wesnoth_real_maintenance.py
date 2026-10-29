@@ -1,10 +1,10 @@
 """
-BLKH Exp87 — preregistered unrelated Wesnoth demo project's historical PNG edits.
+BLKH Exp87 — preregistered original Wesnoth artist-maintained historical PNG edits.
 
 Original source exact file paths and commits frozen in
-BHUH_EXP87_WESNOTH_SOURCE_HOLDOUT_PROTOCOL.md before accessing source image bytes.
+BHUH_EXP87_WESNOTH_REAL_MAINTENANCE_PROTOCOL.md before accessing source image bytes.
 Reuse Exp84's EXACT 14 existing codec methods, parameters and decoders.
-This is a domain-shift stress test, not claim of universal superiority.
+This is a preregistered independent source test of genuine small sprite maintenance.
 """
 from __future__ import annotations
 
@@ -204,7 +204,7 @@ def execute(out: Path) -> None:
     aggregate_win = results[0]["sparse_smaller_than_best_reference"]
     group_wins = sum(int(x["sparse_smaller_than_best_reference"]) for x in results[1:])
     transfer_win = bool(source_qualified and aggregate_win and group_wins >= 2)
-    decision = ("TRANSFER_WIN_UNDER_LIMITED_TWO_COMMIT_RULE" if transfer_win else
+    decision = ("TRANSFER_WIN_UNDER_LIMITED_THREE_COMMIT_RULE" if transfer_win else
                 "SOURCE_INCONCLUSIVE" if not source_qualified else
                 "PREREGISTERED_TRANSFER_GATE_FAILED")
     payload = {
@@ -232,7 +232,7 @@ def execute(out: Path) -> None:
 
 def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("--out", default="/tmp/blkh_exp86")
+    p.add_argument("--out", default="/tmp/blkh_exp87")
     p.add_argument("--self-test", action="store_true")
     args = p.parse_args()
     if args.self_test:
