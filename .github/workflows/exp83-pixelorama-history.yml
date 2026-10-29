@@ -1,0 +1,123 @@
+name: exp83p Pixelorama real PNG Git revisions 19 pairs
+
+on:
+  push:
+    branches: [research/exp51-fair-shared-siren]
+    paths:
+      - "research/dedup/experiment_83_pixelorama_git_history.py"
+      - "research/dedup/BHUH_EXP83_PIXELORAMA_HISTORICAL_PROTOCOL.md"
+      - ".github/workflows/exp83-pixelorama-history.yml"
+  workflow_dispatch:
+
+jobs:
+  real-versioned-ui-icons:
+    runs-on: ubuntu-latest
+    timeout-minutes: 24
+    env:
+      OPENBLAS_NUM_THREADS: 1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install exact RGBA WebP PNG and zstandard comparison tooling
+        run: python -m pip install "numpy<3" "pillow>=11.2" zstandard
+      - name: Syntactic and complete exact-RGBA codec self-tests
+        run: |
+          python -m py_compile research/dedup/experiment_83_pixelorama_git_history.py
+          python research/dedup/experiment_83_pixelorama_git_history.py --self-test
+      - name: Acquire 19 real modified Git PNG pairs and encode 44 complete archives
+        run: |
+          python research/dedup/experiment_83_pixelorama_git_history.py \
+            --out /tmp/blkh_exp83p
+      - name: Independently audit true source Git modifications and each saved archive
+        run: |
+          python - <<'PY'
+          import hashlib,io,json,pathlib,sys,urllib.request,numpy as np
+          from PIL import Image
+          sys.path.insert(0,"research/dedup")
+          from experiment_83_pixelorama_git_history import (
+              REPOSITORY,COMMIT_GROUPS,CANDIDATES,REFERENCES,ALL_METHODS,
+              get_parent,source_png,decode,pack,sha
+          )
+          folder=pathlib.Path("/tmp/blkh_exp83p")
+          report=json.loads((folder/"results.json").read_text())
+          assert report["experiment"]==83
+          assert report["source_revision_pairs"]==19 and report["source_images"]==38
+          assert len(report["results"])==4
+          assert report["candidate_codecs"]==list(CANDIDATES)
+          assert report["reference_codecs"]==list(REFERENCES)
+          inventory=report["source_inventory"]
+          assert inventory["real_file_pair_count"]==19
+          originals={}
+          for label,commit,paths in COMMIT_GROUPS:
+              parent=get_parent(commit)
+              info=inventory["revision_groups"][label]
+              assert info["first_parent"]==parent and info["commit"]==commit
+              assert info["png_pairs_modified_in_git"]==len(paths)
+              req=urllib.request.Request(
+                  f"https://api.github.com/repos/{REPOSITORY}/compare/{parent}...{commit}",
+                  headers={"User-Agent":"BLKH-exp83p-git-history-audit/1.0"})
+              with urllib.request.urlopen(req,timeout=45) as reply:
+                  compared=json.load(reply)
+              changed={f["filename"] for f in compared["files"] if f["status"]=="modified"}
+              assert set(paths).issubset(changed)
+              images=[]
+              for index,path in enumerate(sorted(paths)):
+                  for role,ref in (("old",parent),("new",commit)):
+                      raw,rgba=source_png(ref,path)
+                      on_disk=(folder/"sources"/f"{label}_{index:02}_{role}.png").read_bytes()
+                      assert raw==on_disk
+                      images.append({"raw":raw,"rgba":rgba,"role":role,"path":path})
+              originals[label]=images
+              visual=sum(a["rgba"].shape!=b["rgba"].shape or
+                         not np.array_equal(a["rgba"],b["rgba"])
+                         for a,b in zip(images[::2],images[1::2]))
+              assert visual==info["png_pairs_really_changed_rgba"]
+              print("EXP83P SOURCE VERIFIED",label,len(paths),"modified PNG",visual,"changed RGBA")
+          cohorts={"all_19_pairs":sum((originals[label] for label,_,_ in COMMIT_GROUPS),[])}
+          cohorts.update(originals)
+          assert len(cohorts)==4
+          for row in report["results"]:
+              key=row["source_commit_group"]
+              images=cohorts[key]
+              assert row["source_pairs"]==len(images)//2
+              assert row["all_original_png_rgba_reconstructed_exactly"]
+              assert set(row["methods"])==set(ALL_METHODS)
+              atlas,_=pack([
+                  {"rgba":im["rgba"],"meta":{"width":im["rgba"].shape[1],
+                   "height":im["rgba"].shape[0]}} for im in images
+              ])
+              meta=row["shared_metadata"]
+              assert meta["atlas_sha256"]==sha(atlas.tobytes())
+              for info,src in zip(meta["source_sprites"],images):
+                  assert info["file_path"]==src["path"]
+                  assert info["role"]==src["role"]
+                  assert info["source_png_sha256"]==sha(src["raw"])
+                  assert info["pixel_rgba_sha256"]==sha(src["rgba"].tobytes())
+              with Image.open(folder/key/row["source_rgba_atlas_file"]) as f:
+                  assert np.array_equal(np.asarray(f.convert("RGBA")),atlas)
+              for codec,stats in row["methods"].items():
+                  archive=(folder/key/stats["file"]).read_bytes()
+                  assert len(archive)==stats["bytes"]
+                  assert sha(archive)==stats["sha256"]
+                  recovered,decoded_meta=decode(archive)
+                  assert decoded_meta=={**meta,"codec":codec}
+                  assert len(recovered)==len(images)
+                  for ref,received in zip(images,recovered):
+                      assert np.array_equal(ref["rgba"],received)
+              candidate,codec=min((v["bytes"],m) for m,v in row["methods"].items() if m in CANDIDATES)
+              baseline,reference=min((v["bytes"],m) for m,v in row["methods"].items() if m in REFERENCES)
+              assert (candidate,codec)==(row["best_new_delta_bytes"],row["best_new_delta"])
+              assert (baseline,reference)==(row["strongest_existing_bytes"],row["strongest_existing_format"])
+              assert row["delta_smaller_than_all_prior_references"]==(candidate<baseline)
+              print("EXP83P COMPLETE",key,"pairs",len(images)//2,
+                    "delta",codec,candidate,"reference",reference,baseline)
+          print("EXP83P INDEPENDENT AUDIT PASS: source Git modification status, 19 historical PNG pairs, 44 byte-accurate RGBA archives")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: exp83p-pixelorama-historical-19-png-pairs
+          path: /tmp/blkh_exp83p/
+          retention-days: 30
