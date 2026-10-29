@@ -2,7 +2,7 @@
 BLKH Exp88 — preregistered SuperTux original pixel-art and PNG metadata Git edits.
 
 Original source exact file paths and commits frozen in
-BHUH_EXP88_WESNOTH_REAL_MAINTENANCE_PROTOCOL.md before accessing source image bytes.
+BHUH_EXP88_SUPERTUX_PREREGISTERED_PROTOCOL.md before accessing source image bytes.
 Reuse Exp84's EXACT 14 existing codec methods, parameters and decoders.
 Source families are frozen before reading pixels, with a PNG metadata-only control group.
 """
