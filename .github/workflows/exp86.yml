@@ -56,7 +56,7 @@ jobs:
           assert inventory==data["source_revisions"] and len(originals)==28
           assert inventory["pixel_changed_pairs"]>=0
           for label,sha,paths in exp.SOURCE_GROUPS:
-              parent=old.get_parent(sha)
+              parent=exp.first_parent(sha)
               info=inventory["revision_groups"][label]
               assert info["commit"]==sha and info["first_parent"]==parent
               assert info["png_pairs_modified_in_git"]==len(paths)
