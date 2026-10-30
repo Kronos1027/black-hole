@@ -1,0 +1,109 @@
+name: exp84 actual Git RGBA sparse masks versus source PNG binary bsdiff
+
+on:
+  push:
+    branches: [research/exp51-fair-shared-siren]
+    paths:
+      - "research/dedup/experiment_84_sparse_pixel_patches.py"
+      - "research/dedup/BHUH_EXP84_SPARSE_PIXEL_PROTOCOL.md"
+      - ".github/workflows/exp84.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/dedup/experiment_84_sparse_pixel_patches.py"
+      - ".github/workflows/exp84.yml"
+  workflow_dispatch:
+
+jobs:
+  real-history-sparse-patch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 26
+    env:
+      OPENBLAS_NUM_THREADS: 1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install image, zstandard and actual BSDiff4 binary patch tooling
+        run: python -m pip install "numpy<3" "pillow>=11.2" zstandard bsdiff4
+      - name: Test complete byte-exact old/new PNG binary patch and RGBA sparse streams
+        run: |
+          python -m py_compile research/dedup/experiment_84_sparse_pixel_patches.py
+          python research/dedup/experiment_84_sparse_pixel_patches.py --self-test
+      - name: Encode exact 19 Pixelorama authored Git source edit pairs and 56 complete files
+        run: |
+          python research/dedup/experiment_84_sparse_pixel_patches.py \
+            --out /tmp/blkh_exp84
+      - name: Independently verify historical source bytes and all 56 archived codec decodes
+        run: |
+          python - <<'PY'
+          import json,hashlib,pathlib,sys,numpy as np
+          sys.path.insert(0,"research/dedup")
+          from experiment_83_pixelorama_git_history import (
+              COMMIT_GROUPS,discover,sha,decode as old_decode,
+          )
+          from experiment_84_sparse_pixel_patches import (
+              NEW,OLD,BINARY,ALL,shared_manifest,
+              masked_data,decode
+          )
+          root=pathlib.Path("/tmp/blkh_exp84")
+          report=json.loads((root/"results.json").read_text())
+          assert report["experiment"]==84
+          assert report["source_is_new_holdout"] is False
+          assert report["pair_count"]==19 and report["source_image_count"]==38
+          assert report["new_sparse_candidates"]==list(NEW)
+          assert report["other_prior_references"]==list(OLD)
+          assert report["bsdiff_external_baseline"]==BINARY
+          assert len(report["results"])==4
+          original,inv=discover(root)
+          assert len(original)==38
+          selections={"all_19_pairs":original}
+          for label,commit,paths in COMMIT_GROUPS:
+              subs=[x for x in original if x["meta"]["commit_label"]==label]
+              assert len(subs)==len(paths)*2
+              selections[label]=subs
+          assert {r["group"] for r in report["results"]}==set(selections)
+          for row in report["results"]:
+              key=row["group"];sources=selections[key]
+              assert row["all_original_rgba_exact"]
+              assert row["real_old_new_png_pairs"]==len(sources)//2
+              assert row["shared_source_manifest"]==shared_manifest(sources,inv)
+              actual_binary,stats=masked_data(sources)
+              assert row["changed_rgba_pixel_statistics"]==stats
+              assert len(row["methods"])==len(ALL)==14
+              assert set(row["methods"])==set(ALL)
+              for method,info in row["methods"].items():
+                  saved=(root/key/info["filename"]).read_bytes()
+                  assert len(saved)==info["bytes"]
+                  assert sha(saved)==info["sha256"]
+                  assert info["encode_seconds"]>0 and info["decode_seconds"]>0
+                  reconstructed,meta=(decode(saved) if method in NEW+(BINARY,)
+                                      else old_decode(saved))
+                  assert meta=={**row["shared_source_manifest"],"codec":method}
+                  assert len(reconstructed)==len(sources)
+                  for source,image in zip(sources,reconstructed):
+                      assert image.shape==source["rgba"].shape
+                      assert np.array_equal(image,source["rgba"])
+                      assert sha(image.tobytes())==source["meta"]["pixel_rgba_sha256"]
+              custom,codec=min((row["methods"][m]["bytes"],m) for m in NEW)
+              reference,baseline=min(
+                  (row["methods"][m]["bytes"],m) for m in (BINARY,)+OLD
+              )
+              assert row["best_sparse_bytes"]==custom
+              assert row["best_sparse_codec"]==codec
+              assert row["best_reference_bytes"]==reference
+              assert row["best_of_12_strong_references"]==baseline
+              assert row["sparse_smaller_than_best_reference"]==(custom<reference)
+              print("EXP84 VERIFIED",key,"real edited pairs",len(sources)//2,
+                    "changed pixels",stats["changed_pixel_count"],
+                    "total",stats["full_target_pixel_count"],
+                    "ours",codec,custom,"strongest external",baseline,reference)
+          print("EXP84 AUDIT PASS: 19 original authored historical Git PNG pairs, 56 actual self-contained RGBA archives and byte-identical bsdiff reconstructed PNG files")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: exp84-pixelorama-real-sparse-patches-vs-bsdiff
+          path: /tmp/blkh_exp84/
+          retention-days: 30

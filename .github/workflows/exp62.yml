@@ -1,0 +1,65 @@
+name: exp62 cached geospatial ROI study
+
+on:
+  push:
+    branches: [research/exp51-fair-shared-siren]
+    paths:
+      - "research/universe/experiment_62_bounded_cache.py"
+      - ".github/workflows/exp62.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/universe/experiment_62_bounded_cache.py"
+      - ".github/workflows/exp62.yml"
+  workflow_dispatch:
+
+jobs:
+  cached-roi:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install Geographic baseline dependencies
+        run: python -m pip install numpy pillow brotli rasterio
+      - name: Validate bounded cache and compare real warmed ROI
+        run: |
+          python -m py_compile research/universe/experiment_62_bounded_cache.py
+          python research/universe/experiment_62_bounded_cache.py \
+            --repeats 5 --out /tmp/blkh_exp62
+      - name: Audit all cached geospatial outputs
+        run: |
+          python - <<'PY'
+          import json,pathlib,hashlib,numpy as np,sys,rasterio
+          sys.path.insert(0,"research/universe")
+          from experiment_60_geotiff_roi import REGIONS,CODECS,bh60_decode_full
+          root=pathlib.Path("/tmp/blkh_exp62")
+          rows=json.loads((root/"results.json").read_text())["records"]
+          assert len(rows)==12
+          for row in rows:
+              assert row["lossless_verified"] and row["max_error_m"]==0
+              assert row["bh60_warm_cache_hits"]==120
+              assert row["bh60_warm_cache_misses"]==0
+              assert row["actual_decoded_pixel_cache_bytes"]<=65536
+              assert len(row["sampled_tile_ids"])==24
+              image,info=bh60_decode_full(root/row["region"]/row["case"]/row["files"]["bh60"])
+              assert hashlib.sha256(image.tobytes()).hexdigest()==row["input_sha256"]
+              for method in CODECS:
+                  path=root/row["region"]/row["case"]/row["files"][method]
+                  assert path.stat().st_size==row["full_files_bytes"][method]
+                  assert hashlib.sha256(path.read_bytes()).hexdigest()==row["complete_file_sha256"][method]
+                  assert 0<row["median_ms"][method] and 0<row["p95_ms"][method]
+                  if method!="bh60":
+                      with rasterio.open(path) as ds:
+                          assert np.array_equal(ds.read(1),image)
+              print(row["region"],row["case"],row["median_ms"])
+          print("EXP62 PASS: WARM CACHED ROI, BOUNDED MEMORY, 12 EXACT GEOFILES")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: exp62-bounded-geocache
+          path: /tmp/blkh_exp62/
+          retention-days: 30

@@ -1,0 +1,127 @@
+name: exp85 independent Mindustry Git sprite history versus 12 baselines
+
+on:
+  push:
+    branches: [research/exp51-fair-shared-siren]
+    paths:
+      - "research/dedup/experiment_85_mindustry_history_holdout.py"
+      - "research/dedup/BHUH_EXP85_MINDUSTRY_GIT_SPRITES_PROTOCOL.md"
+      - ".github/workflows/exp85.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/dedup/experiment_85_mindustry_history_holdout.py"
+      - ".github/workflows/exp85.yml"
+  workflow_dispatch:
+
+jobs:
+  real-git-sprite-holdout:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      OPENBLAS_NUM_THREADS: 1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install existing exact RGBA and binary-delta codec dependencies
+        run: python -m pip install "numpy<3" "pillow>=11.2" zstandard bsdiff4
+      - name: Validate immutable source selection and unchanged codec correctness
+        run: |
+          python -m py_compile research/dedup/experiment_85_mindustry_history_holdout.py
+          python research/dedup/experiment_85_mindustry_history_holdout.py --self-test
+      - name: Fetch exact fixed original Mindustry Git PNG versions and evaluate 56 files
+        run: |
+          python research/dedup/experiment_85_mindustry_history_holdout.py \
+            --out /tmp/blkh_exp85
+      - name: Independent audit of author PNG source, true modified Git status and 56 codec files
+        run: |
+          python - <<'PY'
+          import io,json,pathlib,sys,urllib.request,numpy as np
+          from PIL import Image
+          sys.path.insert(0,"research/dedup")
+          import experiment_83_pixelorama_git_history as legacy
+          import experiment_85_mindustry_history_holdout as exp
+          import experiment_84_sparse_pixel_patches as sparse
+          exp.configure_sources()
+          root=pathlib.Path("/tmp/blkh_exp85")
+          data=json.loads((root/"results.json").read_text())
+          assert data["experiment"]==85
+          assert data["source_repo"]=="Anuken/Mindustry"
+          assert data["total_git_status_modified_png_pairs"]==30
+          assert data["source_images"]==60
+          assert data["source_is_new_project_relative_to_Pixelorama"]
+          assert data["candidate_codecs"]==list(sparse.NEW)
+          assert data["reference_codecs"]==list((sparse.BINARY,)+sparse.OLD)
+          assert len(data["results"])==4
+          license_bytes=(root/"THIRD_PARTY_MINDUSTRY_GPLv3_LICENSE.txt").read_bytes()
+          assert b"GNU GENERAL PUBLIC LICENSE" in license_bytes
+          original,inv=exp.discover(root)
+          assert len(original)==60 and inv==data["source_revisions"]
+          for label,sha,paths in exp.SOURCE_GROUPS:
+              parent=legacy.get_parent(sha)
+              info=inv["revision_groups"][label]
+              assert info["commit"]==sha and info["first_parent"]==parent
+              assert info["png_pairs_modified_in_git"]==len(paths)
+              query=f"https://api.github.com/repos/Anuken/Mindustry/compare/{parent}...{sha}"
+              request=urllib.request.Request(query,headers={"User-Agent":"BLKH-exp85-source-diff-audit"})
+              with urllib.request.urlopen(request,timeout=45) as answer:
+                  response=json.load(answer)
+              git_modified={f["filename"] for f in response["files"]
+                            if f["status"]=="modified"}
+              assert set(paths).issubset(git_modified)
+              for i,path in enumerate(paths):
+                  for role,ref in (("old",parent),("new",sha)):
+                      original_png,rgba=legacy.source_png(ref,path)
+                      disk=(root/"sources"/f"{label}_{i:02}_{role}.png").read_bytes()
+                      assert original_png==disk
+                      matching=[x for x in original
+                                if x["meta"]["commit_label"]==label and
+                                   x["meta"]["file_path"]==path and
+                                   x["meta"]["role"]==role]
+                      assert len(matching)==1
+                      assert np.array_equal(matching[0]["rgba"],rgba)
+              print("EXP85 SOURCE AUDIT",label,"modified original PNGs",len(paths),
+                    "actually different RGBA",info["png_pairs_really_changed_rgba"])
+          sets={"all_30_pairs":original}
+          for label,commit,paths in exp.SOURCE_GROUPS:
+              sets[label]=[x for x in original if x["meta"]["commit_label"]==label]
+          assert set(sets)=={row["group"] for row in data["results"]}
+          for row in data["results"]:
+              name=row["group"];items=sets[name]
+              assert len(items)//2==row["real_old_new_png_pairs"]
+              assert row["shared_source_manifest"]==sparse.shared_manifest(items,inv)
+              assert row["all_original_rgba_exact"]
+              _,computed=sparse.masked_data(items)
+              assert row["changed_rgba_pixel_statistics"]==computed
+              assert set(row["methods"])==set(sparse.ALL)
+              for codec,details in row["methods"].items():
+                  bits=(root/name/details["filename"]).read_bytes()
+                  assert len(bits)==details["bytes"]
+                  assert legacy.sha(bits)==details["sha256"]
+                  rebuilt,metadata=(sparse.decode(bits) if codec in sparse.NEW+(sparse.BINARY,)
+                                    else legacy.decode(bits))
+                  assert metadata=={**row["shared_source_manifest"],"codec":codec}
+                  assert len(rebuilt)==len(items)
+                  for image,ref in zip(rebuilt,items):
+                      assert image.shape==ref["rgba"].shape
+                      assert np.array_equal(image,ref["rgba"])
+                      assert legacy.sha(image.tobytes())==ref["meta"]["pixel_rgba_sha256"]
+              ours,method=min((row["methods"][m]["bytes"],m) for m in sparse.NEW)
+              ref,baseline=min((row["methods"][m]["bytes"],m)
+                               for m in (sparse.BINARY,)+sparse.OLD)
+              assert (ours,method)==(row["best_sparse_bytes"],row["best_sparse_codec"])
+              assert (ref,baseline)==(row["best_reference_bytes"],
+                                     row["best_of_12_strong_references"])
+              assert row["sparse_smaller_than_best_reference"]==(ours<ref)
+              print("EXP85 VERIFIED",name,"authored PNG pairs",len(items)//2,
+                    "sparse",ours,method,"best reference",ref,baseline)
+          print("EXP85 INDEPENDENT VERIFICATION PASSED: 30 original real PNG edit pairs from independent Mindustry repository, 56 actual lossless byte-counted codecs, native RGBA + original PNG bytes")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: exp85-genuine-mindustry-source-edits-vs-bsdiff
+          path: /tmp/blkh_exp85/
+          retention-days: 30

@@ -1,0 +1,117 @@
+name: exp80 exact RGBA authored colorway deltas vs best original methods
+
+on:
+  push:
+    branches: [research/exp51-fair-shared-siren]
+    paths:
+      - "research/dedup/experiment_80_rgba_colorway_deltas.py"
+      - "research/dedup/BHUH_EXP80_RGBA_COLORWAY_DELTA_PROTOCOL.md"
+      - ".github/workflows/exp80.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/dedup/experiment_80_rgba_colorway_deltas.py"
+      - ".github/workflows/exp80.yml"
+  workflow_dispatch:
+
+jobs:
+  real-author-variants:
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    env:
+      OPENBLAS_NUM_THREADS: 1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install exact RGBA image / Zstandard codecs
+        run: python -m pip install "numpy<3" "pillow>=11.2" zstandard
+      - name: Test exact RGBA including transparent hidden RGB and corruption
+        run: |
+          python -m py_compile research/dedup/experiment_80_rgba_colorway_deltas.py
+          python research/dedup/experiment_80_rgba_colorway_deltas.py --self-test
+      - name: Reproduce all 33 full encoded asset archives from frozen Kenney source
+        run: |
+          python research/dedup/experiment_80_rgba_colorway_deltas.py \
+            --out /tmp/blkh_exp80 --cache /tmp/blkh_exp78_cache
+      - name: Independent archive and original CC0 PNG bit-accuracy check
+        run: |
+          python - <<'PY'
+          import hashlib,json,pathlib,sys,numpy as np
+          from PIL import Image
+          sys.path.insert(0,"research/dedup")
+          from experiment_79_authored_colorways import (
+              EXPECTED_SHA256,COLORS,SHAPES,authored_colorways
+          )
+          from experiment_78_real_cc0_rgba_sprites import (
+              CODECS,fetch_zip,pack_assets,base_manifest,decode_case,sha
+          )
+          from experiment_80_rgba_colorway_deltas import (
+              METHODS,assert_groups,decode
+          )
+          root=pathlib.Path("/tmp/blkh_exp80")
+          report=json.loads((root/"results.json").read_text())
+          assert report["experiment"]==80
+          assert report["source_sha256"]==EXPECTED_SHA256
+          assert report["color_order"]==list(COLORS)
+          assert report["shape_counts"]==list(SHAPES)
+          assert report["new_modes"]==list(METHODS)
+          assert report["reference_modes"]==list(CODECS)
+          assert report["source_reused_from_exp79_not_new_independent_holdout"]
+          assert len(report["results"])==3
+          zipbytes,source_hash=fetch_zip(pathlib.Path("/tmp/blkh_exp78_cache"))
+          assert source_hash==EXPECTED_SHA256
+          images,inventory=authored_colorways(zipbytes,source_hash,root)
+          for row in report["results"]:
+              shapes=row["shape_count"]
+              assert shapes in SHAPES and row["color_variant_images"]==shapes*4
+              samples=images[:shapes*4]
+              assert_groups(samples)
+              atlas,layout=pack_assets(samples)
+              shared=base_manifest(source_hash,len(zipbytes),samples,atlas,layout)
+              shared["variant_semantics"]="4 genuine Kenney-authored palette/colorways of each selected UI shape, NOT chronological revision files"
+              shared["colors_fixed_order"]=list(COLORS)
+              shared["shape_suffixes"]=inventory["selected_first_24_suffixes"][:shapes]
+              assert row["manifest"]==shared
+              assert row["exact_rgba_reconstruction"]
+              assert set(row["actual_encoded_files"])==set(METHODS+CODECS)
+              folder=root/f"shapes_{shapes:02d}"
+              png=(folder/row["source_atlas_png"]).read_bytes()
+              assert hashlib.sha256(png).hexdigest()==row["source_atlas_png_sha256"]
+              with Image.open(folder/row["source_atlas_png"]) as image:
+                  assert np.array_equal(np.asarray(image.convert("RGBA")),atlas)
+              for method,info in row["actual_encoded_files"].items():
+                  contents=(folder/info["file"]).read_bytes()
+                  assert len(contents)==info["bytes"]
+                  assert sha(contents)==info["sha256"]
+                  assert info["encoding_seconds"]>0 and info["decoding_seconds"]>0
+                  decoded,metadata=(decode(contents)
+                     if method in METHODS else decode_case(contents))
+                  assert metadata=={**shared,"codec":method}
+                  assert len(decoded)==len(samples)
+                  for source,actual in zip(samples,decoded):
+                      assert actual.shape==source["rgba"].shape
+                      assert actual.dtype==np.uint8
+                      assert np.array_equal(actual,source["rgba"])
+                      assert sha(actual.tobytes())==source["meta"]["pixel_rgba_sha256"]
+              best,method=min((v["bytes"],k) for k,v in row["actual_encoded_files"].items()
+                              if k in METHODS)
+              strongest,reference=min(
+                  (v["bytes"],k) for k,v in row["actual_encoded_files"].items()
+                  if k in CODECS)
+              assert (row["best_new_differential_bytes"],
+                      row["best_new_differential"])==(best,method)
+              assert (row["best_unchanged_reference_bytes"],
+                      row["best_unchanged_exp79_reference"])==(strongest,reference)
+              assert row["new_delta_smaller_than_best_preexisting_format"]==(best<strongest)
+              print("EXP80 VERIFIED",shapes,"original authored shapes",
+                    "delta",method,best,"strongest unchanged",reference,strongest)
+          print("EXP80 COMPLETE: 33 real actual saved byte-exact RGBA assets, all 4 channels preserved, full manifest counted")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: exp80-authored-rgba-differential-vs-all-references
+          path: /tmp/blkh_exp80/
+          retention-days: 30

@@ -1,0 +1,73 @@
+name: exp55 contiguous real DEM scaling check
+
+on:
+  push:
+    branches: [research/exp51-fair-shared-siren]
+    paths:
+      - "research/universe/experiment_55_contiguous_dem.py"
+      - ".github/workflows/exp55.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/universe/experiment_55_contiguous_dem.py"
+      - ".github/workflows/exp55.yml"
+  workflow_dispatch:
+
+jobs:
+  continuous-dem:
+    runs-on: ubuntu-latest
+    timeout-minutes: 24
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install scientific dependencies
+        run: |
+          python -m pip install numpy pillow scikit-learn scikit-image
+          python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+      - name: Syntax and controlled downsampling tests
+        run: |
+          python -m py_compile research/universe/experiment_55_contiguous_dem.py
+          python research/universe/experiment_55_contiguous_dem.py --self-test
+      - name: Compare single INR versus real-image codecs at fixed geographic coverage
+        run: |
+          python research/universe/experiment_55_contiguous_dem.py \
+            --regions N37W122,N37W119 --size-list 64,128,256 \
+            --epochs 500 --seeds 42,123 --width 32 --depth 1 \
+            --out /tmp/blkh_exp55_real_contiguous
+      - name: Audit real saved results
+        run: |
+          python - <<'PY'
+          import json, math, pathlib, hashlib
+          out=pathlib.Path("/tmp/blkh_exp55_real_contiguous")
+          d=json.loads((out/"results.json").read_text())
+          assert len(d["regions"])==2
+          for region in d["regions"]:
+              tile=region["provenance"]["hgt_tile_id"]
+              assert len(region["sizes"])==3
+              for sample in region["sizes"]:
+                  n=sample["pixels"]
+                  assert n in (64,128,256)
+                  assert len(sample["neural"])==2
+                  assert len(sample["classical"])==16
+                  for pt in sample["neural"]+sample["classical"]:
+                      raw=(out/tile/str(n)/pt["file"]).read_bytes()
+                      assert len(raw)==pt["bytes"]
+                      assert hashlib.sha256(raw).hexdigest()==pt["sha256"]
+                      assert math.isfinite(pt["rmse_m"])
+                      assert pt["post_decode_verified"]
+                  for pt in sample["neural"]:
+                      print(tile,n,pt["seed"],"B",pt["bytes"],
+                            "RMSE",pt["rmse_m"],
+                            "dominated",bool(pt["dominated_by_classical"]))
+                  assert all(p["rmse_m"]==0 for p in sample["classical"]
+                             if "lossless" in p["method"])
+          print("EXP55 REAL CONTIGUOUS DEM CHECK PASS")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: exp55-contiguous-dem
+          path: /tmp/blkh_exp55_real_contiguous/
+          retention-days: 14
