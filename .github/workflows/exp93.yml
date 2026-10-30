@@ -51,7 +51,7 @@ jobs:
           import experiment_93_wesnoth_motion_retrospective as exp
           import experiment_87_wesnoth_real_maintenance as source
           import experiment_92_motion_shift_patch as motion
-          exp.configure_sources()
+          source.configure_sources()
           root=pathlib.Path("/tmp/blkh_exp93")
           data=json.loads((root/"results.json").read_text())
           assert data["experiment"]==93 and data["source_repo"]==source.SOURCE_REPO and data["retrospective_known_source"] and data["not_independent_replication"]
