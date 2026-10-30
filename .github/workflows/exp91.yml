@@ -1,0 +1,130 @@
+name: exp91 native Git PACK vs Zstandard and PNG bsdiff exact original file bytes
+
+on:
+  push:
+    branches: [research/exp51-fair-shared-siren]
+    paths:
+      - "research/dedup/experiment_91_native_git_pack_png.py"
+      - "research/dedup/BHUH_EXP91_NATIVE_GIT_PNG_BYTES_PROTOCOL.md"
+      - ".github/workflows/exp91.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/dedup/experiment_91_native_git_pack_png.py"
+      - ".github/workflows/exp91.yml"
+  workflow_dispatch:
+
+jobs:
+  independent-native-git-file-byte-verification:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      OPENBLAS_NUM_THREADS: 1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install original exact-lossless PNG binary and source dependencies
+        run: python -m pip install "numpy<3" "pillow>=11.2" zstandard bsdiff4
+      - name: Validate three standalone original PNG-byte formats with metadata-only edits
+        run: |
+          git --version
+          python -m py_compile research/dedup/experiment_91_native_git_pack_png.py
+          python research/dedup/experiment_91_native_git_pack_png.py --self-test
+      - name: Produce 24 real complete source-byte archives with isolated native Git object packs
+        run: python research/dedup/experiment_91_native_git_pack_png.py --out /tmp/blkh_exp91
+      - name: Independent Git status, PNG file hash, complete archive and clean-repo pack decoder audit
+        run: |
+          python - <<'PY'
+          import hashlib,json,pathlib,sys,urllib.request
+          import numpy as np
+          sys.path.insert(0, "research/dedup")
+          import experiment_83_pixelorama_git_history as legacy
+          import experiment_89_metadata_envelope as earlier
+          import experiment_91_native_git_pack_png as trial
+
+          root=pathlib.Path("/tmp/blkh_exp91")
+          report=json.loads((root/"results.json").read_text())
+          assert report["experiment"]==91 and report["previously_seen_source_sets"]
+          assert report["methods"]==list(trial.METHODS)
+          assert report["semantic_contract"].startswith("identical original PNG FILE bytes")
+          assert report["software"]["git"]==trial.git_version()
+          assert len(report["datasets"])==2
+          files_checked=source_verified=0
+          for spec,data in zip(earlier.DATASETS,report["datasets"]):
+              label,source_exp,whole,pair_count,source_count=spec
+              assert data["dataset"]==label and data["source_pair_count"]==pair_count
+              assert len(data["groups"])==4
+              folder=root/label
+              source_exp.configure_sources()
+              source,inventory=source_exp.discover(folder)
+              assert inventory==data["original_git_inventory"] and len(source)==source_count
+              cases={whole:source}
+              for group,sha,paths in source_exp.SOURCE_GROUPS:
+                  parent=source_exp.first_parent(sha)
+                  req=urllib.request.Request(
+                      f"https://api.github.com/repos/{source_exp.SOURCE_REPO}/compare/{parent}...{sha}",
+                      headers={"User-Agent":"BLKH-exp91-Git-source-byte-audit"})
+                  with urllib.request.urlopen(req,timeout=45) as response:
+                      changed=json.load(response)
+                  modified={f["filename"] for f in changed["files"] if f["status"]=="modified"}
+                  assert set(paths).issubset(modified),(label,group,set(paths)-modified)
+                  selected=[x for x in source if x["meta"]["commit_label"]==group]
+                  assert len(selected)==len(paths)*2
+                  cases[group]=selected
+                  for i,path in enumerate(paths):
+                      for role,ref in (("old",parent),("new",sha)):
+                          png,rgba=legacy.source_png(ref,path)
+                          recorded=(folder/"sources"/f"{group}_{i:02d}_{role}.png").read_bytes()
+                          assert recorded==png
+                          candidates=[x for x in selected if
+                                      x["meta"]["file_path"]==path and x["meta"]["role"]==role]
+                          assert len(candidates)==1
+                          assert trial.sha(png)==candidates[0]["meta"]["source_png_sha256"]
+                          assert np.array_equal(candidates[0]["rgba"],rgba)
+                          source_verified+=1
+              for row in data["groups"]:
+                  group=row["group"]
+                  selected=cases[group]
+                  assert len(selected)==2*row["original_git_png_pairs"]
+                  original_bytes=[s["raw"] for s in selected]
+                  assert sum(map(len,original_bytes))==row["original_png_raw_bytes"]
+                  assert len({trial.oid_bytes(b) for b in original_bytes})==row["distinct_git_blob_oids"]
+                  assert set(row["methods"])==set(trial.METHODS)
+                  measurements=[]
+                  for mode,method_data in row["methods"].items():
+                      path=folder/group/method_data["filename"]
+                      stored=path.read_bytes()
+                      assert len(stored)==method_data["bytes"] and trial.sha(stored)==method_data["sha256"]
+                      # decoder creates a new local SHA-1 Git repository from only the saved PACK stream.
+                      decoded,name=trial.decode_framed(stored)
+                      assert name==mode and len(decoded)==len(original_bytes)
+                      assert decoded==original_bytes
+                      assert method_data["exact_original_png_files"]
+                      header_magic,version,method_id,n,packed_n=trial.HEADER.unpack_from(stored)
+                      assert header_magic==trial.MAGIC and version==1
+                      assert trial.METHODS[method_id]==mode
+                      assert n==len(original_bytes)
+                      assert packed_n+trial.HEADER.size+n*trial.METADATA_MEMBER_BYTES==len(stored)
+                      for before,recovered,datum in zip(original_bytes,decoded,selected):
+                          assert recovered==before
+                          assert hashlib.sha256(recovered).hexdigest()==datum["meta"]["source_png_sha256"]
+                          rgba=legacy.decode_rgba(recovered,datum["rgba"].shape)
+                          assert np.array_equal(rgba,datum["rgba"])
+                      measurements.append((len(stored),mode))
+                      files_checked+=1
+                  winner=min(measurements)
+                  assert winner==(row["smallest_source_bytes_size"],row["smallest_source_bytes_method"])
+                  print("EXP91 INDEPENDENT SOURCE BYTE AUDIT",label,group,
+                        "best",winner,"methods",sorted(measurements),flush=True)
+          assert files_checked==24 and source_verified==100
+          print("EXP91 INDEPENDENT VERIFICATION PASSED: 24 real complete exact-PNG-byte archives; 100 original Git source PNGs; native Git PACK decoded in isolated fresh repos",flush=True)
+          PY
+      - name: Upload all original historical PNGs, 24 exact-source archives and experiment analysis
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: exp91-original-png-byte-exact-git-pack-zstd-bsdiff-24
+          path: /tmp/blkh_exp91/
+          retention-days: 30
