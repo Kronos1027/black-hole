@@ -1,0 +1,159 @@
+name: exp92 preregistered Endless Sky source motion correction vs 14 historical codecs
+
+on:
+  push:
+    branches: [research/exp51-fair-shared-siren]
+    paths:
+      - "research/dedup/experiment_92_endless_sky_temporal_holdout.py"
+      - "research/dedup/experiment_92_motion_shift_patch.py"
+      - "research/dedup/experiment_84_sparse_pixel_patches.py"
+      - "research/dedup/experiment_83_pixelorama_git_history.py"
+      - "research/dedup/BHUH_EXP92_ENDLESS_SKY_PREREGISTERED_PROTOCOL.md"
+      - ".github/workflows/exp92.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/dedup/experiment_92_endless_sky_temporal_holdout.py"
+      - "research/dedup/experiment_92_motion_shift_patch.py"
+      - "research/dedup/experiment_84_sparse_pixel_patches.py"
+      - "research/dedup/experiment_83_pixelorama_git_history.py"
+      - ".github/workflows/exp92.yml"
+  workflow_dispatch:
+
+jobs:
+  frozen-real-git-png-holdout:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      OPENBLAS_NUM_THREADS: 1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install existing codec dependencies
+        run: python -m pip install "numpy<3" "pillow>=11.2" zstandard bsdiff4
+      - name: Check code and exact frozen source selection
+        run: |
+          python -m py_compile research/dedup/experiment_92_endless_sky_temporal_holdout.py research/dedup/experiment_92_motion_shift_patch.py
+          python research/dedup/experiment_92_endless_sky_temporal_holdout.py --self-test
+      - name: Fetch original author-edited Endless Sky Git PNG history and save 60 fully decoded archives
+        run: |
+          python research/dedup/experiment_92_endless_sky_temporal_holdout.py --out /tmp/blkh_exp92
+      - name: Independent original source status, checksum and persisted archive verification
+        run: |
+          python - <<'PY'
+          import json,pathlib,sys,urllib.request
+          import numpy as np
+          sys.path.insert(0, "research/dedup")
+          import experiment_83_pixelorama_git_history as old
+          import experiment_84_sparse_pixel_patches as sparse
+          import experiment_92_endless_sky_temporal_holdout as exp
+          import experiment_92_motion_shift_patch as motion
+          exp.configure_sources()
+          root=pathlib.Path("/tmp/blkh_exp92")
+          data=json.loads((root/"results.json").read_text())
+          assert data["experiment"]==92 and data["source_repo"]==exp.SOURCE_REPO
+          assert data["total_git_status_modified_png_pairs"]==11
+          assert data["source_images"]==22 and len(data["results"])==4
+          assert data["candidate_codecs"]==list(sparse.NEW)+[motion.MODE]
+          assert data["reference_codecs"]==list((sparse.BINARY,)+sparse.OLD)
+          assert b"GNU GENERAL PUBLIC LICENSE" in (root/"THIRD_PARTY_ENDLESS_SKY_license.txt").read_bytes()
+          assert b"CC-BY-SA-4.0" in (root/"THIRD_PARTY_ENDLESS_SKY_copyright").read_bytes()
+          assert (root/"THIRD_PARTY_ENDLESS_SKY_credits.txt").stat().st_size > 1000
+          originals,inventory=exp.discover(root)
+          assert inventory==data["source_revisions"] and len(originals)==22
+          assert inventory["pixel_changed_pairs"]>=0
+          for label,sha,paths in exp.SOURCE_GROUPS:
+              parent=exp.first_parent(sha)
+              info=inventory["revision_groups"][label]
+              assert info["commit"]==sha and info["first_parent"]==parent
+              assert info["png_pairs_modified_in_git"]==len(paths)
+              request=urllib.request.Request(
+                  f"https://api.github.com/repos/{exp.SOURCE_REPO}/compare/{parent}...{sha}",
+                  headers={"User-Agent":"BLKH-exp92-independent-Git-status-audit"})
+              with urllib.request.urlopen(request,timeout=45) as stream:
+                  response=json.load(stream)
+              modified={f["filename"] for f in response["files"]
+                        if f["status"]=="modified"}
+              assert set(paths).issubset(modified),(label,set(paths)-modified)
+              for i,path in enumerate(paths):
+                  for role,ref in (("old",parent),("new",sha)):
+                      expected,rgba=old.source_png(ref,path)
+                      raw=(root/"sources"/f"{label}_{i:02d}_{role}.png").read_bytes()
+                      assert raw==expected
+                      matching=[x for x in originals
+                                if x["meta"]["commit_label"]==label
+                                and x["meta"]["file_path"]==path
+                                and x["meta"]["role"]==role]
+                      assert len(matching)==1
+                      assert old.sha(raw)==matching[0]["meta"]["source_png_sha256"]
+                      assert np.array_equal(matching[0]["rgba"],rgba)
+              print("SOURCE GIT VERIFIED",label,len(paths),"png revisions",
+                    info["png_pairs_really_changed_rgba"],"changed pixelwise")
+          groups={"all_11_pairs":originals}
+          for label,_,paths in exp.SOURCE_GROUPS:
+              groups[label]=[x for x in originals if x["meta"]["commit_label"]==label]
+          counted=0
+          for result in data["results"]:
+              name=result["group"];items=groups[name]
+              assert len(items)==2*result["real_old_new_png_pairs"]
+              assert result["all_original_rgba_exact"]
+              assert result["shared_source_manifest"]==sparse.shared_manifest(items,inventory)
+              assert set(result["methods"])==set(sparse.ALL+(motion.MODE,))
+              _,stats=sparse.masked_data(items)
+              assert stats==result["changed_rgba_pixel_statistics"]
+              for method,meta in result["methods"].items():
+                  bitstream=(root/name/meta["filename"]).read_bytes()
+                  assert len(bitstream)==meta["bytes"]
+                  assert old.sha(bitstream)==meta["sha256"]
+                  decoded,payload=(motion.decode(bitstream) if method==motion.MODE else
+                                   sparse.decode(bitstream) if method in sparse.NEW+(sparse.BINARY,) else
+                                   old.decode(bitstream))
+                  assert payload=={**result["shared_source_manifest"],"codec":method}
+                  assert len(decoded)==len(items)
+                  for image,original in zip(decoded,items):
+                      assert image.shape==original["rgba"].shape
+                      assert np.array_equal(image,original["rgba"])
+                      assert old.sha(image.tobytes())==original["meta"]["pixel_rgba_sha256"]
+                  counted+=1
+              ours,candidate=min((result["methods"][m]["bytes"],m) for m in sparse.NEW)
+              ref,reference=min((result["methods"][m]["bytes"],m) for m in (sparse.BINARY,)+sparse.OLD)
+              assert (ours,candidate)==(result["best_sparse_bytes"],result["best_sparse_codec"])
+              assert (ref,reference)==(result["best_reference_bytes"],
+                                       result["best_of_12_strong_references"])
+              assert result["sparse_smaller_than_best_reference"]==(ours<ref)
+              print("EXACT ARCHIVES VERIFIED",name,ours,candidate,"vs",ref,reference)
+          assert counted==60, counted
+          qualified=inventory["pixel_changed_pairs"]>=2
+          whole_win=data["results"][0]["new_motion_bytes"]<min(
+              data["results"][0]["methods"][m]["bytes"] for m in sparse.ALL)
+          group_wins=sum(int(row["new_motion_strict_win_vs_best_12_references"])
+                         for row in data["results"][1:])
+          gate=bool(qualified and whole_win and group_wins>=2)
+          assert data["source_qualified"]==qualified
+          assert data["new_motion_aggregate_win"]==whole_win
+          assert data["new_motion_group_wins_against_reference"]==group_wins
+          assert data["new_motion_preregistered_transfer_win"]==gate
+          for row in data["results"]:
+              new_bytes=row["methods"][motion.MODE]["bytes"]
+              assert row["new_motion_bytes"]==new_bytes
+              assert row["new_motion_strictly_smaller_than_all_old_methods"]==(new_bytes<min(
+                  row["methods"][m]["bytes"] for m in sparse.ALL))
+              assert row["new_motion_strict_win_vs_best_12_references"]==(new_bytes<row["best_reference_bytes"])
+              assert row["new_motion_strict_win_vs_two_previous_sparse"]==(new_bytes<row["best_sparse_bytes"])
+              reference_stats=motion.patch_bytes(groups[row["group"]])[1]
+              for key in ("per_pair_motion","nonzero_motion_pairs",
+                          "motion_after_pixel_difference_fraction",
+                          "changed_pixel_count","target_pixel_count"):
+                  assert row["methods"][motion.MODE][key]==reference_stats[key]
+          print("EXPERIMENT 92 INDEPENDENT VERIFICATION PASSED:",
+                "60 actual saved full PNG-pair RGBA archives", "source changed",
+                inventory["pixel_changed_pairs"],"motion frozen gate",gate,flush=True)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: exp92-endless-sky-shift8-original-60-archives
+          path: /tmp/blkh_exp92/
+          retention-days: 30
