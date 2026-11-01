@@ -56,7 +56,7 @@ jobs:
           data=json.loads((root/"results.json").read_text())
           assert data["experiment"]==93 and data["source_repo"]==source.SOURCE_REPO and data["retrospective_known_source"] and data["not_independent_replication"]
           assert data["source_revisions"]["real_file_pair_count"]==21
-          assert len(data["results"])==4 and data["methods"]==list(sparse.ALL)+(motion.MODE,)
+          assert len(data["results"])==4 and data["methods"]==list(sparse.ALL)+[motion.MODE]
           assert data["candidate_methods"]==list(sparse.NEW)+[motion.MODE]
           assert data["reference_methods"]==list((sparse.BINARY,)+sparse.OLD)
           assert b"GNU GENERAL PUBLIC LICENSE" in (root/"THIRD_PARTY_WESNOTH_ROOT_COPYING").read_bytes()
