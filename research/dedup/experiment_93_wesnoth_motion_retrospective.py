@@ -82,7 +82,7 @@ def execute(out: Path) -> None:
       "retrospective_known_source":True,"not_independent_replication":True,
       "source_revisions":inv,
       "methods":list(sparse.ALL)+[motion.MODE],
-      "candidate_methods":list(sparse.NEW)+(motion.MODE,),
+      "candidate_methods":list(sparse.NEW)+[motion.MODE],
       "reference_methods":list((sparse.BINARY,)+sparse.OLD),
       "software":{"python":platform.python_version(),"numpy":np.__version__,
                   "pillow":PIL_VERSION,"zstandard":zstd.__version__},
