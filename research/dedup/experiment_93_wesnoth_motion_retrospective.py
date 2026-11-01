@@ -81,7 +81,7 @@ def execute(out: Path) -> None:
       "experiment":93,"protocol":PROTOCOL,"source_repo":source.SOURCE_REPO,
       "retrospective_known_source":True,"not_independent_replication":True,
       "source_revisions":inv,
-      "methods":list(sparse.ALL)+(motion.MODE,),
+      "methods":list(sparse.ALL)+[motion.MODE],
       "candidate_methods":list(sparse.NEW)+(motion.MODE,),
       "reference_methods":list((sparse.BINARY,)+sparse.OLD),
       "software":{"python":platform.python_version(),"numpy":np.__version__,
