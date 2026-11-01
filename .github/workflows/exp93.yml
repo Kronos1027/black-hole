@@ -8,7 +8,7 @@ on:
       - "research/dedup/experiment_92_motion_shift_patch.py"
       - "research/dedup/experiment_84_sparse_pixel_patches.py"
       - "research/dedup/experiment_83_pixelorama_git_history.py"
-      - "research/dedup/BHUH_EXP93_WESNOTH_REAL_MAINTENANCE_PROTOCOL.md"
+      - "research/dedup/BHUH_EXP93_WESNOTH_MOTION_RETROSPECTIVE_PROTOCOL.md"
       - ".github/workflows/exp93.yml"
   pull_request:
     branches: [main]
