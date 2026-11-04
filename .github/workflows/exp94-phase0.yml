@@ -1,0 +1,46 @@
+name: exp94 phase0 retrospective negative control and release gate
+
+on:
+  push:
+    branches: [research/exp51-fair-shared-siren]
+    paths:
+      - "research/dedup/experiment_94_phase0_negative_control.py"
+      - ".github/workflows/exp94-phase0.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/dedup/experiment_94_phase0_negative_control.py"
+      - ".github/workflows/exp94-phase0.yml"
+  workflow_dispatch:
+
+jobs:
+  negative-control:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Compile and run falsification controls
+        run: |
+          python -m py_compile research/dedup/experiment_94_phase0_negative_control.py
+          python research/dedup/experiment_94_phase0_negative_control.py --self-test
+          python research/dedup/experiment_94_phase0_negative_control.py --out /tmp/blkh_exp94_phase0
+      - name: Independently check saved negative result
+        run: |
+          python - <<'PY'
+          import json,pathlib
+          p=json.loads(pathlib.Path("/tmp/blkh_exp94_phase0/results.json").read_text())
+          assert p["experiment"]==94 and p["phase"]=="retrospective_negative_control"
+          assert not p["independent_holdout"] and not p["novel_compression_result"]
+          assert not p["release_gate_passed"] and not p["eligible_for_public_demo"]
+          assert len(p["rows"])==4 and not any(x["motion_wins"] for x in p["rows"])
+          assert [r["motion_penalty_bytes"] for r in p["rows"]]==[3249,3229,186,33]
+          print("EXP94 PHASE-0 AUDIT PASSED: retrospective negative only, not a new independent result")
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: exp94-phase0-negative-control
+          path: /tmp/blkh_exp94_phase0/results.json
+          retention-days: 30
