@@ -1,0 +1,78 @@
+name: exp59 independent real terrain random-access validation
+
+on:
+  push:
+    branches: [research/exp51-fair-shared-siren]
+    paths:
+      - "research/universe/experiment_59_independent_roi_regions.py"
+      - ".github/workflows/exp59.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/universe/experiment_59_independent_roi_regions.py"
+      - ".github/workflows/exp59.yml"
+  workflow_dispatch:
+
+jobs:
+  independent-terrain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install codecs
+        run: python -m pip install numpy pillow brotli
+      - name: Syntax check
+        run: python -m py_compile research/universe/experiment_59_independent_roi_regions.py
+      - name: Test two PRESELECTED unseen geographic HGT regions
+        run: |
+          python research/universe/experiment_59_independent_roi_regions.py \
+            --roi-positions 24 --repeats 5 --out /tmp/blkh_exp59_holdout
+      - name: Verify exact roundtrips, sample coverage and scientific evidence
+        run: |
+          python - <<'PY'
+          import json,pathlib,sys,hashlib,numpy as np
+          sys.path.insert(0,"research/universe")
+          from experiment_59_independent_roi_regions import REGIONS,read_holdout
+          from experiment_57_random_access_dem import source_cases,decode_all
+          from experiment_58_vectorized_decoder import decode_indexed,roi_from_file
+          root=pathlib.Path("/tmp/blkh_exp59_holdout")
+          d=json.loads((root/"results.json").read_text())
+          assert d["sources_preregistered"]==list(REGIONS)
+          assert len(d["records"])==4
+          for region in REGIONS:
+              src,_=read_holdout(region,pathlib.Path("/tmp/blkh_exp59_hgt_cache"))
+              cases=dict(source_cases(src))
+              rows=[r for r in d["records"] if r["region"]==region]
+              assert len(rows)==2
+              for r in rows:
+                  original=cases[r["case"]]
+                  assert r["roi_positions_tested"]==24
+                  assert len(r["roi_block_ids"])==24
+                  assert r["roi_repeats_per_position"]==5
+                  assert r["lossless_verified"] and r["max_error_m"]==0
+                  for mode in ("bh56","j2k","vectorized"):
+                      f=root/region/r["case"]/r["archive_files"][mode]
+                      raw=f.read_bytes()
+                      assert hashlib.sha256(raw).hexdigest()==r["archive_sha256"][mode]
+                      assert len(raw)==r["archive_bytes"][mode]
+                      restored=decode_indexed(raw) if mode=="vectorized" else decode_all(raw)
+                      assert np.array_equal(restored,original)
+                      assert r["roi_median_ms"][mode]>0 and r["roi_p95_ms"][mode]>0
+                      assert r["physical_read_bytes_mean"][mode]<len(raw)
+                  b,bytes_read=roi_from_file(
+                      root/region/r["case"]/r["archive_files"]["vectorized"],0,0)
+                  assert np.array_equal(b,original[:32,:32])
+                  assert bytes_read<r["archive_bytes"]["vectorized"]
+                  print(region,r["case"],r["archive_bytes"],
+                        "median",r["roi_median_ms"])
+          print("EXP59 VALIDATION PASS, TWO PRESELECTED UNSEEN REGIONS")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: exp59-independent-hgt-roi
+          path: /tmp/blkh_exp59_holdout/
+          retention-days: 30

@@ -1,0 +1,93 @@
+name: exp76 true-lossless temporal predictors on scientific time series
+
+on:
+  push:
+    branches: [research/exp51-fair-shared-siren]
+    paths:
+      - "research/dedup/experiment_76_temporal_predictor.py"
+      - "research/dedup/BHUH_EXP76_PROTOCOL.md"
+      - ".github/workflows/exp76.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/dedup/experiment_76_temporal_predictor.py"
+      - ".github/workflows/exp76.yml"
+  workflow_dispatch:
+
+jobs:
+  temporal-deltas:
+    runs-on: ubuntu-latest
+    timeout-minutes: 23
+    env:
+      OPENBLAS_NUM_THREADS: 1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install native WebP animation, APNG, scientific video support
+        run: python -m pip install "numpy<3" "pillow>=11.2" "scikit-image==0.25.2" pooch tifffile
+      - name: Exact XOR and modular residual codec self-tests
+        run: |
+          python -m py_compile research/dedup/experiment_76_temporal_predictor.py
+          python research/dedup/experiment_76_temporal_predictor.py --self-test
+      - name: Execute frozen two real temporal scientific video comparisons
+        run: |
+          python research/dedup/experiment_76_temporal_predictor.py \
+            --out /tmp/blkh_exp76
+      - name: Independently check all saved residual streams and reference files
+        run: |
+          python - <<'PY'
+          import json,hashlib,pathlib,sys,numpy as np
+          sys.path.insert(0,"research/dedup")
+          from experiment_75_real_temporal_frames import SOURCES,raw_time_sequence
+          from experiment_76_temporal_predictor import NEW_MODES,open_model,residuals,invert
+          from experiment_74_cross_frame_exact_blocks import MODES,decode_case
+          root=pathlib.Path("/tmp/blkh_exp76")
+          report=json.loads((root/"results.json").read_text())
+          assert report["experiment"]==76
+          assert report["source_movies"]==list(SOURCES)
+          assert set(report["new_coders"])==set(NEW_MODES)
+          assert set(report["standard_coders"])==set(MODES)
+          assert len(report["results"])==2
+          for row in report["results"]:
+              source=row["source"]
+              actual,manifest=raw_time_sequence(source)
+              assert row["original_source_manifest"]==manifest
+              assert hashlib.sha256(actual.tobytes()).hexdigest()==row["original_derived_frame_hash"]
+              assert set(row["codecs"])==set(NEW_MODES+MODES)
+              assert row["all_saved_frames_exactly_restored"]
+              for mode,info in row["codecs"].items():
+                  data=(root/source/info["file"]).read_bytes()
+                  assert len(data)==info["complete_bytes"]
+                  assert hashlib.sha256(data).hexdigest()==info["sha256"]
+                  assert info["encode_seconds"]>0 and info["decode_seconds"]>0
+                  result,meta=(open_model(data) if mode in NEW_MODES else decode_case(data))
+                  assert meta=={**manifest,"codec":mode}
+                  assert np.array_equal(result,actual)
+                  if mode in NEW_MODES:
+                      assert np.array_equal(invert(residuals(actual,mode),mode),actual)
+              reference_bytes,reference_name=min(
+                  (row["codecs"][mode]["complete_bytes"],mode)
+                  for mode in MODES if mode not in ("raw_zlib","webp_dictionary")
+              )
+              ours,ours_name=min(
+                  (row["codecs"][mode]["complete_bytes"],mode)
+                  for mode in NEW_MODES
+              )
+              assert row["best_temporal_complete_bytes"]==ours
+              assert row["best_temporal_mode"]==ours_name
+              assert row["best_reference_complete_bytes"]==reference_bytes
+              assert row["best_reference_mode"]==reference_name
+              assert row["temporal_smaller_than_best_reference"]==(ours<reference_bytes)
+              print(source,"best temporal",ours_name,ours,
+                    "best native lossless RGB",reference_name,reference_bytes,
+                    "wins",row["temporal_smaller_than_best_reference"])
+          print("EXP76 VERIFIED: two real scientific movie sources, 22 full files byte-exact including four temporal prediction schemes")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: exp76-real-temporal-prediction-lossless
+          path: /tmp/blkh_exp76/
+          retention-days: 30

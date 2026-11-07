@@ -1,0 +1,87 @@
+name: exp64 fixed-width reversible DEM ROI decode study
+
+on:
+  push:
+    branches: [research/exp51-fair-shared-siren]
+    paths:
+      - "research/universe/experiment_64_fixed_delta_roi.py"
+      - ".github/workflows/exp64.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/universe/experiment_64_fixed_delta_roi.py"
+      - ".github/workflows/exp64.yml"
+  workflow_dispatch:
+
+jobs:
+  fixed16:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install codecs and geospatial baseline
+        run: python -m pip install numpy pillow brotli rasterio
+      - name: Syntax, wraparound, byte stream and corruption tests
+        run: |
+          python -m py_compile research/universe/experiment_64_fixed_delta_roi.py
+          python research/universe/experiment_64_fixed_delta_roi.py \
+            --self-test --out /tmp/blkh_exp64_selftest
+      - name: Run real DEM cache-miss and encode-size tradeoff
+        run: |
+          python research/universe/experiment_64_fixed_delta_roi.py \
+            --out /tmp/blkh_exp64
+      - name: Independently check every encoded format and byte count
+        run: |
+          python - <<'PY'
+          import json,hashlib,pathlib,sys,numpy as np,rasterio
+          sys.path.insert(0,"research/universe")
+          from experiment_60_geotiff_roi import REGIONS,bh60_decode_full
+          from experiment_64_fixed_delta_roi import decode_image,OpenBH64
+          root=pathlib.Path("/tmp/blkh_exp64")
+          d=json.loads((root/"results.json").read_text())
+          assert len(d["results"])==6
+          assert set(d["sources"])==set(REGIONS)
+          for r in d["results"]:
+              assert r["lossless_verified"] and r["max_height_error_m"]==0
+              assert r["roi_count"]==r["legacy_bh60_cache_misses"]==192
+              assert r["pixels"]==[256,256] and r["block_size"]==32
+              target=root/r["region"]
+              path=target/r["file"]["bh64"]
+              decoded,info=decode_image(path)
+              assert info==r["metadata"]
+              assert hashlib.sha256(decoded.tobytes()).hexdigest()==r["source_sha256"]
+              old,old_info=bh60_decode_full(target/r["file"]["bh60"])
+              assert old_info==info and np.array_equal(old,decoded)
+              with OpenBH64(path) as reader:
+                  for y in range(8):
+                      for x in range(8):
+                          a=reader.read(y,x)
+                          assert np.array_equal(a,decoded[y*32:(y+1)*32,x*32:(x+1)*32])
+              for name in ("bh60","bh64","tiff_zstd","tiff_lzw"):
+                  f=target/r["file"][name]
+                  raw=f.read_bytes()
+                  assert len(raw)==r["size_bytes"][name]
+                  assert hashlib.sha256(raw).hexdigest()==r["file_sha256"][name]
+                  assert r["encode_median_seconds"][name]>0
+                  if name.startswith("tiff_"):
+                      with rasterio.open(f) as ds:
+                          assert np.array_equal(ds.read(1),decoded)
+                          assert ds.crs.to_string()=="EPSG:4326"
+                          assert ds.block_shapes[0]==(32,32)
+              for key in ("bh60_miss32","bh64_fixed","tiff_zstd","tiff_lzw"):
+                  assert r["roi_mean_ms"][key]>0
+                  assert r["roi_median_ms"][key]>0
+              print(r["region"],r["size_bytes"],r["roi_mean_ms"])
+          print("EXP64 PASS: 6 REAL REGION FILES, EXACT INT16 RECONSTRUCTION, 192 MISS-HEAVY QUERIES EACH")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: exp64-fixed16-dem-roi
+          path: |
+            /tmp/blkh_exp64/
+            /tmp/blkh_exp64_selftest/
+          retention-days: 30

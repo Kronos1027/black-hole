@@ -1,0 +1,93 @@
+name: exp60 georeferenced tiled GeoTIFF comparator
+
+on:
+  push:
+    branches: [research/exp51-fair-shared-siren]
+    paths:
+      - "research/universe/experiment_60_geotiff_roi.py"
+      - ".github/workflows/exp60.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/universe/experiment_60_geotiff_roi.py"
+      - ".github/workflows/exp60.yml"
+  workflow_dispatch:
+
+jobs:
+  geo-roi:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install GDAL-backed GeoTIFF comparison environment
+        run: |
+          python -m pip install numpy pillow brotli rasterio
+          python - <<'PY'
+          import rasterio
+          print('Rasterio/GDAL:',rasterio.__version__,rasterio.__gdal_version__)
+          print('GTiff validation occurs through actual encode/read self-test')
+          PY
+      - name: Python syntax and georeferenced exact-data roundtrip
+        run: |
+          python -m py_compile research/universe/experiment_60_geotiff_roi.py
+          python research/universe/experiment_60_geotiff_roi.py --self-test
+      - name: Benchmark 6 REAL HGT areas versus tiled GeoTIFF
+        run: |
+          python research/universe/experiment_60_geotiff_roi.py \
+            --positions 24 --repeats 3 --out /tmp/blkh_exp60
+      - name: Independent on-disk result checks
+        run: |
+          python - <<'PY'
+          import hashlib,json,pathlib,sys, numpy as np, rasterio
+          sys.path.insert(0,'research/universe')
+          from experiment_60_geotiff_roi import (REGIONS, CODECS,bh60_decode_full,bh60_window,roi_tiff)
+          root=pathlib.Path('/tmp/blkh_exp60')
+          p=json.loads((root/'results.json').read_text())
+          records=p['records']
+          assert len(records)==12 and set(p['regions'])==set(REGIONS)
+          for r in records:
+              assert r['all_lossless_verified'] and r['max_error_m']==0
+              assert len(r['roi_block_positions'])==24
+              assert r['num_roi_samples_per_codec']==72
+              assert set(r['complete_file_bytes'])==set(CODECS)
+              assert r['metadata']['crs']=='EPSG:4326'
+              assert r['metadata']['sample_unit']=='meter'
+              target=root/r['region']/r['case']
+              bh=target/r['encoded_file']['bh60']
+              img,meta=bh60_decode_full(bh)
+              assert meta==r['metadata']
+              assert hashlib.sha256(img.tobytes()).hexdigest()==r['input_sha256']
+              for key in CODECS:
+                  f=target/r['encoded_file'][key]
+                  data=f.read_bytes()
+                  assert len(data)==r['complete_file_bytes'][key]
+                  assert hashlib.sha256(data).hexdigest()==r['file_sha256'][key]
+                  assert r['roi_open_read_decode_median_ms'][key]>0
+                  assert r['roi_open_read_decode_p95_ms'][key]>0
+                  if key!='bh60':
+                      with rasterio.open(f) as ds:
+                          assert np.array_equal(ds.read(1),img)
+                          assert ds.crs.to_string()=='EPSG:4326'
+                          assert ds.block_shapes[0]==(32,32)
+                          assert ds.nodata==-32768
+              for k in r['roi_block_positions']:
+                  y,x=divmod(k,img.shape[1]//32)
+                  orig=img[y*32:(y+1)*32,x*32:(x+1)*32]
+                  tile,_=bh60_window(bh,y,x)
+                  assert np.array_equal(tile,orig)
+                  for key in CODECS:
+                      if key!='bh60':
+                          assert np.array_equal(roi_tiff(target/r['encoded_file'][key],y,x),orig)
+              print(r['region'],r['case'],r['complete_file_bytes'],
+                    {k:round(v,3) for k,v in r['roi_open_read_decode_median_ms'].items()})
+          print('EXP60 VALIDATED: 12 georeferenced DEM files, 4 codec modes, lossless ROI')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: exp60-georeferenced-geotiff-comparison
+          path: /tmp/blkh_exp60/
+          retention-days: 30
