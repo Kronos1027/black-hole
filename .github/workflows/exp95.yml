@@ -1,0 +1,63 @@
+name: exp95 retrospective compressed-byte motion selection
+
+on:
+  push:
+    branches: [research/exp51-fair-shared-siren]
+    paths:
+      - "research/dedup/experiment_95_compressed_shift_retrospective.py"
+      - ".github/workflows/exp95.yml"
+  workflow_dispatch:
+
+jobs:
+  compressed-byte-retrospective:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      OPENBLAS_NUM_THREADS: 1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python -m pip install "numpy<3" "pillow>=11.2" zstandard bsdiff4
+      - name: Verify selector and source invariants
+        run: |
+          python -m py_compile research/dedup/experiment_95_compressed_shift_retrospective.py
+          python research/dedup/experiment_95_compressed_shift_retrospective.py --self-test
+      - name: Run complete frozen original Git PNG source experiment
+        run: python research/dedup/experiment_95_compressed_shift_retrospective.py --out /tmp/blkh_exp95
+      - name: Independent persisted exact decode and byte audit
+        run: |
+          python - <<'PY'
+          import json,pathlib,sys,numpy as np
+          sys.path.insert(0,"research/dedup")
+          import experiment_83_pixelorama_git_history as base
+          import experiment_87_wesnoth_real_maintenance as source
+          import experiment_92_motion_shift_patch as motion
+          root=pathlib.Path("/tmp/blkh_exp95")
+          data=json.loads((root/"results.json").read_text())
+          assert data["experiment"]==95 and data["retrospective"] and not data["independent"] and not data["release_eligible"]
+          source.configure_sources()
+          originals,inv=source.discover(root)
+          assert len(originals)==42 and inv["real_file_pair_count"]==21
+          assert len(data["results"])==4
+          for r in data["results"]:
+              items=(originals if r["group"]=="all_21_pairs" else
+                     [x for x in originals if x["meta"]["commit_label"]==r["group"]])
+              for name,size,hashkey in (("mismatch_min.bl92m",r["old_bytes"],"old_sha256"),
+                                        ("compressed_patch_min.bl92m",r["new_bytes"],"new_sha256")):
+                  stream=(root/r["group"]/name).read_bytes()
+                  assert len(stream)==size and base.sha(stream)==r[hashkey]
+                  images,meta=motion.decode(stream)
+                  assert len(images)==len(items)
+                  assert all(np.array_equal(a,b["rgba"]) for a,b in zip(images,items))
+              assert r["difference_bytes"]==r["new_bytes"]-r["old_bytes"]
+              print("AUDITED",r["group"],r["difference_bytes"],flush=True)
+          print("EXP95 AUDIT PASS: 8 persisted exact RGBA archives; retrospective, release HOLD")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: exp95-wesnoth-compressed-byte-shift
+          path: /tmp/blkh_exp95/
+          retention-days: 30
