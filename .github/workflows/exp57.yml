@@ -1,0 +1,79 @@
+name: exp57 indexed DEM random-access fairness
+
+on:
+  push:
+    branches: [research/exp51-fair-shared-siren]
+    paths:
+      - "research/universe/experiment_57_random_access_dem.py"
+      - ".github/workflows/exp57.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/universe/experiment_57_random_access_dem.py"
+      - ".github/workflows/exp57.yml"
+  workflow_dispatch:
+
+jobs:
+  random-access-dem:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install exact lossless codec dependencies
+        run: python -m pip install numpy pillow brotli
+      - name: Test syntax, indexing, corruption and exact reconstruction
+        run: |
+          python -m py_compile research/universe/experiment_57_random_access_dem.py
+          python research/universe/experiment_57_random_access_dem.py --self-test
+      - name: Benchmark 4 real geographic regions with fair indexed J2K baseline
+        run: |
+          python research/universe/experiment_57_random_access_dem.py \
+            --out /tmp/blkh_exp57 --roi-repeats 3
+      - name: Independently check 60 archives and physical ROI reads
+        run: |
+          python - <<'PY'
+          import hashlib,json,pathlib,sys,numpy as np
+          sys.path.insert(0, "research/universe")
+          from experiment_56_reversible_dem import source_hgt,CORE,HELDOUT
+          from experiment_57_random_access_dem import (source_cases,decode_roi_from_file,
+             decode_all)
+          root=pathlib.Path("/tmp/blkh_exp57")
+          result=json.loads((root/"results.json").read_text())
+          records=result["records"]
+          assert len(records)==60, len(records)
+          assert len(result["full_jpeg2000_baselines"])==8
+          assert {r["region"] for r in records}==set(CORE+HELDOUT)
+          for region in CORE+HELDOUT:
+              original,_=source_hgt(region,pathlib.Path("/tmp/blkh_exp56_skadi_cache"))
+              images=dict(source_cases(original))
+              for name,img in images.items():
+                  choices={}
+                  for row in [r for r in records if r["region"]==region and r["case"]==name]:
+                      side=row["block_side"]
+                      path=root/region/name/row["file"]
+                      blob=path.read_bytes()
+                      assert len(blob)==row["size_bytes"]
+                      assert hashlib.sha256(blob).hexdigest()==row["encoded_sha256"]
+                      assert row["lossless_verified"] and row["zero_max_error_m"]
+                      assert np.array_equal(decode_all(blob),img)
+                      assert row["roi_physical_read_bytes_mean"] < row["size_bytes"]
+                      assert 0<row["roi_fraction_file_read_mean"]<1
+                      assert row["num_blocks"] >= 4
+                      block,read=decode_roi_from_file(path,0,0)
+                      assert np.array_equal(block,img[:side,:side])
+                      choices.setdefault(side,{})[row["mode"]]=row["size_bytes"]
+                  for side,v in choices.items():
+                      assert set(v)=={"bh56","j2k","hybrid"}
+                      assert v["hybrid"]<=min(v["bh56"],v["j2k"])
+                      print(region,name,side,"B",v)
+          print("EXP57 VALIDATED: 60 indexed lossless archives, true byte-seek ROI, 4 regions")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: exp57-indexed-roi-artifacts
+          path: /tmp/blkh_exp57/
+          retention-days: 30

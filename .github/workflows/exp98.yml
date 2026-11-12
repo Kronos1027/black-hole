@@ -1,0 +1,73 @@
+name: exp98 retrospective global Zstd motion ablation
+
+on:
+  push:
+    branches: [research/exp51-fair-shared-siren]
+    paths:
+      - "research/dedup/experiment_98_global_motion_ablation.py"
+      - ".github/workflows/exp98.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/dedup/experiment_98_global_motion_ablation.py"
+      - ".github/workflows/exp98.yml"
+  workflow_dispatch:
+
+jobs:
+  joint-entropy-ablation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      OPENBLAS_NUM_THREADS: 1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python -m pip install "numpy<3" "pillow>=11.2" zstandard bsdiff4
+      - name: Validate experiment implementation
+        run: |
+          python -m py_compile research/dedup/experiment_98_global_motion_ablation.py
+          python research/dedup/experiment_98_global_motion_ablation.py --self-test
+      - name: Run frozen Wesnoth joint compressed-byte experiment
+        run: python research/dedup/experiment_98_global_motion_ablation.py --out /tmp/blkh_exp98
+      - name: Independently decode persisted complete archives
+        run: |
+          python - <<'PY'
+          import json,pathlib,sys,numpy as np
+          sys.path.insert(0,"research/dedup")
+          import experiment_83_pixelorama_git_history as base
+          import experiment_84_sparse_pixel_patches as sparse
+          import experiment_87_wesnoth_real_maintenance as source
+          import experiment_92_motion_shift_patch as motion
+          root=pathlib.Path("/tmp/blkh_exp98")
+          data=json.loads((root/"results98.json").read_text())
+          assert data["experiment"]==98 and data["retrospective"]
+          assert not data["independent_holdout"] and not data["release_eligible"]
+          assert len(data["results"])==4
+          source.configure_sources()
+          originals,inv=source.discover(root)
+          assert len(originals)==42 and inv["real_file_pair_count"]==21
+          for row in data["results"]:
+              subset=(originals if row["group"]=="all_21_pairs" else
+                      [x for x in originals if x["meta"]["commit_label"]==row["group"]])
+              assert row["real_pairs"]==len(subset)//2
+              assert row["manifest"]==sparse.shared_manifest(subset,inv)
+              for name,prefix in (("mismatch.bl92m","mismatch"),("local.bl92m","local"),
+                                  ("global.bl92m","global")):
+                  archive=(root/row["group"]/name).read_bytes()
+                  assert len(archive)==row[prefix+"_bytes"]
+                  assert base.sha(archive)==row[prefix+"_sha256"]
+                  decoded,meta=motion.decode(archive)
+                  assert meta=={**row["manifest"],"codec":motion.MODE}
+                  assert all(np.array_equal(x["rgba"],y) for x,y in zip(subset,decoded))
+              print("AUDITED",row["group"],row["global_bytes"],
+                    "vs historical",row["best_historical_bytes"],flush=True)
+          print("EXP98 AUDIT PASS: 12 persisted full exact RGBA archives; retrospective")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: exp98-joint-zstd-audit
+          path: /tmp/blkh_exp98/
+          retention-days: 30

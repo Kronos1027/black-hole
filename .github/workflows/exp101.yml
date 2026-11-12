@@ -1,0 +1,106 @@
+name: exp101 residual transfer Godot and SuperTux
+
+on:
+  push:
+    branches: [research/exp51-fair-shared-siren]
+    paths:
+      - "research/dedup/experiment_101_residual_cross_project.py"
+      - ".github/workflows/exp101.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/dedup/experiment_101_residual_cross_project.py"
+      - ".github/workflows/exp101.yml"
+  workflow_dispatch:
+
+jobs:
+  frozen-cross-project-residual:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      OPENBLAS_NUM_THREADS: 1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install exact codec dependencies
+        run: python -m pip install "numpy<3" "pillow>=11.2" zstandard bsdiff4
+      - name: Compile and test frozen source and reversible codec invariants
+        run: |
+          python -m py_compile research/dedup/experiment_101_residual_cross_project.py
+          python research/dedup/experiment_101_residual_cross_project.py --self-test
+      - name: Evaluate original Godot and SuperTux historical PNG edits with 14 references each
+        run: python research/dedup/experiment_101_residual_cross_project.py --out /tmp/blkh_exp101
+      - name: Independent exact decode/checksum audit of 140 persisted archives
+        run: |
+          python - <<'PY'
+          import json,pathlib,sys
+          import numpy as np
+          sys.path.insert(0,"research/dedup")
+          import experiment_83_pixelorama_git_history as base
+          import experiment_84_sparse_pixel_patches as sparse
+          import experiment_100_residual_transforms as exp
+          import experiment_101_residual_cross_project as batch
+          root=pathlib.Path("/tmp/blkh_exp101")
+          data=json.loads((root/"results101.json").read_text())
+          assert data["experiment"]==101 and data["unique_source_pairs"]==43
+          assert data["retrospective_cross_project"] and not data["independent_blinded_holdout"]
+          assert not data["release_eligible"] and data["total_persisted_archives"]==140
+          assert len(data["results"])==7
+          seen=set()
+          n=0
+          for label,src,expected,aggregate in batch.SOURCES:
+              family=root/label
+              original_inventory=json.loads((family/"real_git_source_inventory.json").read_text())
+              src.configure_sources()
+              originals,inventory=src.discover(family)
+              assert inventory==original_inventory and len(originals)==2*expected
+              rows=[r for r in data["results"] if r["source"]==label]
+              assert len(rows)==1+len(src.SOURCE_GROUPS)
+              for row in rows:
+                  group=row["group"]
+                  assert (label,group) not in seen
+                  seen.add((label,group))
+                  subset=(originals if group==aggregate else
+                          [x for x in originals if x["meta"]["commit_label"]==group])
+                  assert len(subset)==2*row["real_pairs"]
+                  assert row["manifest"]==sparse.shared_manifest(subset,inventory)
+                  assert row["source_repository"]==src.SOURCE_REPO
+                  methods=row["candidate_methods"]
+                  assert len(methods)==6
+                  assert set(methods)=={f"{selector}_{mode}"
+                      for selector in ("mismatch","compressed") for mode in exp.TRANSFORMS}
+                  for key,record in methods.items():
+                      stream=(family/group/record["filename"]).read_bytes()
+                      assert len(stream)==record["bytes"] and base.sha(stream)==record["sha256"]
+                      images,meta=exp.decode(stream)
+                      assert meta=={**row["manifest"],"codec":exp.MODE}
+                      assert all(np.array_equal(x["rgba"],y) for x,y in zip(subset,images))
+                      n+=1
+                  reference=row["reference_results"]
+                  assert reference["shared_source_manifest"]==row["manifest"]
+                  assert set(reference["methods"])==set(sparse.ALL) and len(reference["methods"])==14
+                  for key,record in reference["methods"].items():
+                      archive=(family/group/record["filename"]).read_bytes()
+                      assert len(archive)==record["bytes"] and base.sha(archive)==record["sha256"]
+                      images,meta=(sparse.decode(archive) if key in sparse.NEW+(sparse.BINARY,)
+                                   else base.decode(archive))
+                      assert meta=={**row["manifest"],"codec":key}
+                      assert all(np.array_equal(x["rgba"],y) for x,y in zip(subset,images))
+                      n+=1
+                  best=min(v["bytes"] for v in methods.values())
+                  reference_bytes=min(reference["best_reference_bytes"],reference["best_sparse_bytes"])
+                  assert best==row["best_candidate_bytes"]
+                  assert reference_bytes==row["best_reference_bytes"]
+                  assert best-reference_bytes==row["candidate_minus_reference_bytes"]
+                  print("AUDITED",label,group,"candidate",best,"ref",reference_bytes,flush=True)
+          assert len(seen)==7 and n==140
+          print("EXP101 AUDIT PASS: 140 full exact RGBA archives, retrospective transfer")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: exp101-godot-supertux-all-140-exact-archives
+          path: /tmp/blkh_exp101/
+          retention-days: 30

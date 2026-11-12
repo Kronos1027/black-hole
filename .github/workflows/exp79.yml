@@ -1,0 +1,108 @@
+name: exp79 actual CC0 authored UI colorways vs exact atlas/dedup
+
+on:
+  push:
+    branches: [research/exp51-fair-shared-siren]
+    paths:
+      - "research/dedup/experiment_79_authored_colorways.py"
+      - "research/dedup/BHUH_EXP79_REAL_COLORWAYS_PROTOCOL.md"
+      - ".github/workflows/exp79.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/dedup/experiment_79_authored_colorways.py"
+      - ".github/workflows/exp79.yml"
+  workflow_dispatch:
+
+jobs:
+  real-colorway-variants:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      OPENBLAS_NUM_THREADS: 1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Exact RGBA WebP and zstd format dependencies
+        run: python -m pip install "numpy<3" "pillow>=11.2" zstandard
+      - name: Ensure fixed four-color original source protocol
+        run: |
+          python -m py_compile research/dedup/experiment_79_authored_colorways.py
+          python research/dedup/experiment_79_authored_colorways.py --self-test
+      - name: Reacquire identical zip, select actual authored colorway groups and compress
+        run: |
+          python research/dedup/experiment_79_authored_colorways.py \
+            --out /tmp/blkh_exp79
+      - name: Independently decode all 21 actual stored archives
+        run: |
+          python - <<'PY'
+          import hashlib,json,pathlib,sys,numpy as np
+          from PIL import Image
+          sys.path.insert(0,"research/dedup")
+          from experiment_79_authored_colorways import (
+              EXPECTED_SHA256,COLORS,SHAPES,authored_colorways
+          )
+          from experiment_78_real_cc0_rgba_sprites import (
+              CODECS,fetch_zip,pack_assets,base_manifest,decode_case,sha
+          )
+          root=pathlib.Path("/tmp/blkh_exp79")
+          d=json.loads((root/"results.json").read_text())
+          assert d["experiment"]==79
+          assert d["source_zip_sha256"]==EXPECTED_SHA256
+          assert d["colorways"]==list(COLORS)
+          assert d["shapes"]==list(SHAPES)
+          assert len(d["records"])==3
+          zipped,source_sha=fetch_zip(pathlib.Path("/tmp/blkh_exp78_cache"))
+          assert source_sha==EXPECTED_SHA256
+          images,inventory=authored_colorways(zipped,source_sha,root)
+          assert inventory["selected_first_24_suffixes"]==d["selected_shape_suffixes"]
+          for case in d["records"]:
+              shapes=case["real_shape_count"]
+              n=shapes*4
+              assert case["source_asset_count"]==n
+              subset=images[:n]
+              atlas,layout=pack_assets(subset)
+              expected=base_manifest(source_sha,len(zipped),subset,atlas,layout)
+              expected["variant_semantics"]="4 genuine Kenney-authored palette/colorways of each selected UI shape, NOT chronological revision files"
+              expected["colors_fixed_order"]=list(COLORS)
+              expected["shape_suffixes"]=inventory["selected_first_24_suffixes"][:shapes]
+              assert expected==case["manifest"]
+              assert case["exact_rgba_all_7_decoders"]
+              assert set(case["methods"])==set(CODECS)
+              folder=root/f"colorways_{n:03d}"
+              orig=(folder/case["original_atlas_file"]).read_bytes()
+              assert hashlib.sha256(orig).hexdigest()==case["original_atlas_file_sha256"]
+              with Image.open(folder/case["original_atlas_file"]) as im:
+                  assert np.array_equal(np.asarray(im.convert("RGBA")),atlas)
+              for mode,entry in case["methods"].items():
+                  raw=(folder/entry["file"]).read_bytes()
+                  assert len(raw)==entry["complete_bytes"]
+                  assert sha(raw)==entry["file_sha256"]
+                  assert entry["encode_seconds"]>0 and entry["decode_seconds"]>0
+                  decoded,meta=decode_case(raw)
+                  assert meta=={**expected,"codec":mode}
+                  for original,item in zip(subset,decoded):
+                      assert np.array_equal(original["rgba"],item)
+                  if mode.startswith("tile"):
+                      assert entry["tile_references"]>=entry["unique_tiles"]
+                      assert entry["tile_index_bytes"]==2*entry["tile_references"]
+              ours,ours_mode=min((v["complete_bytes"],m)
+                for m,v in case["methods"].items() if m.startswith("tile"))
+              reference,ref_mode=min((v["complete_bytes"],m)
+                for m,v in case["methods"].items() if not m.startswith("tile"))
+              assert case["best_indexed_bytes"]==ours and case["best_indexed_method"]==ours_mode
+              assert case["best_lossless_reference_bytes"]==reference
+              assert case["best_lossless_reference"]==ref_mode
+              assert case["indexed_smaller_than_best_reference"]==(ours<reference)
+              print("EXP79 CHECK",n,"real colorways","BLKH",ours_mode,ours,
+                    "reference",ref_mode,reference)
+          print("EXP79 VERIFIED: 32, 64, 96 authored CC0 color variants, 21 persisted RGBA archives, no manufactured pixel edits")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: exp79-real-kenney-authored-color-variants
+          path: /tmp/blkh_exp79/
+          retention-days: 30

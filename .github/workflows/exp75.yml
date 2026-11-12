@@ -1,0 +1,91 @@
+name: exp75 genuine temporal microscopy versus block dedup
+
+on:
+  push:
+    branches: [research/exp51-fair-shared-siren]
+    paths:
+      - "research/dedup/experiment_75_real_temporal_frames.py"
+      - "research/dedup/BHUH_EXP75_PROTOCOL.md"
+      - ".github/workflows/exp75.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/dedup/experiment_75_real_temporal_frames.py"
+      - ".github/workflows/exp75.yml"
+  workflow_dispatch:
+
+jobs:
+  temporal-holdout:
+    runs-on: ubuntu-latest
+    timeout-minutes: 23
+    env:
+      OPENBLAS_NUM_THREADS: 1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install scientific source loaders and animated image codecs
+        run: python -m pip install "numpy<3" "pillow>=11.2" "scikit-image==0.25.2" pooch tifffile
+      - name: Exact decoders and original data type preservation self-test
+        run: |
+          python -m py_compile research/dedup/experiment_75_real_temporal_frames.py
+          python research/dedup/experiment_75_real_temporal_frames.py --self-test
+      - name: Test two real time-varying microscope/metal frames without synthetic tile edits
+        run: |
+          python research/dedup/experiment_75_real_temporal_frames.py \
+            --out /tmp/blkh_exp75
+      - name: Independently audit original scientific source and 14 RGB archive decodes
+        run: |
+          python - <<'PY'
+          import json,hashlib,pathlib,sys,numpy as np
+          sys.path.insert(0,"research/dedup")
+          from experiment_75_real_temporal_frames import SOURCES,raw_time_sequence
+          from experiment_74_cross_frame_exact_blocks import MODES,decode_case
+          folder=pathlib.Path("/tmp/blkh_exp75")
+          d=json.loads((folder/"results.json").read_text())
+          assert d["experiment"]==75
+          assert d["sources"]==list(SOURCES)
+          assert d["exclusions"]==[] and d["source_count"]==2
+          assert {r["source"] for r in d["results"]}==set(SOURCES)
+          for row in d["results"]:
+              frames,source_info=raw_time_sequence(row["source"])
+              assert row["manifest"]==source_info
+              assert row["temporal_frames_real_not_synthetic"]
+              assert row["all_8_derived_rgb_frames_exactly_reconstructed"]
+              assert row["codec_input_representation_is_8bit_RGB_not_16bit_native"]
+              assert hashlib.sha256(frames.tobytes()).hexdigest()==row["rgb_sha256"]
+              assert set(row["codecs"])==set(MODES)
+              for codec,info in row["codecs"].items():
+                  f=folder/row["source"]/info["file"]
+                  raw=f.read_bytes()
+                  assert len(raw)==info["complete_bytes"]
+                  assert hashlib.sha256(raw).hexdigest()==info["sha256"]
+                  assert info["encode_seconds"]>0 and info["decode_seconds"]>0
+                  restored,meta=decode_case(raw)
+                  assert meta=={**source_info,"codec":codec}
+                  assert np.array_equal(restored,frames)
+              best,mode=min(
+                  (row["codecs"][k]["complete_bytes"],k)
+                  for k in MODES if k not in ("raw_zlib","webp_dictionary")
+              )
+              candidate,our_mode=min(
+                  (row["codecs"][k]["complete_bytes"],k)
+                  for k in ("raw_zlib","webp_dictionary")
+              )
+              assert best==row["best_standard_complete_bytes"]
+              assert mode==row["best_standard"]
+              assert candidate==row["best_dedup_complete_bytes"]
+              assert our_mode==row["best_dedup"]
+              assert row["custom_smaller_than_best_standard"]==(candidate<best)
+              print("REAL MOVIE",row["source"],"raw dtype",source_info["original_movie_dtype"],
+                    "unique tiles",row["codecs"]["webp_dictionary"]["unique_tiles"],
+                    "our",candidate,"reference",best)
+          print("EXP75 VERIFIED: 2 independently sourced actual time-series, 14 exact 8bit RGB compressed archives, raw scientific source preserved via SHA256")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: exp75-true-temporal-exact-dedup-benchmark
+          path: /tmp/blkh_exp75/
+          retention-days: 30

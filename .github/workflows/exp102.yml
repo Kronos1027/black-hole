@@ -1,0 +1,98 @@
+name: exp102 three new independent original Git PNG source families
+
+on:
+  push:
+    branches: [research/exp51-fair-shared-siren]
+    paths:
+      - "research/dedup/experiment_102_three_new_source_holdout.py"
+      - ".github/workflows/exp102.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/dedup/experiment_102_three_new_source_holdout.py"
+      - ".github/workflows/exp102.yml"
+  workflow_dispatch:
+
+jobs:
+  three-new-real-source-repositories:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      OPENBLAS_NUM_THREADS: 1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python -m pip install "numpy<3" "pillow>=11.2" zstandard bsdiff4
+      - name: Verify frozen source selection and six reversible codecs
+        run: |
+          python -m py_compile research/dedup/experiment_102_three_new_source_holdout.py
+          python research/dedup/experiment_102_three_new_source_holdout.py --self-test
+      - name: Fetch sixteen predeclared actual Git PNG edits from 3 new upstream repositories and compare 14 codecs
+        run: python research/dedup/experiment_102_three_new_source_holdout.py --out /tmp/blkh_exp102
+      - name: Independently refetch upstream original histories and audit all 60 complete archives
+        run: |
+          python - <<'PY'
+          import json,pathlib,sys
+          import numpy as np
+          sys.path.insert(0,"research/dedup")
+          import experiment_83_pixelorama_git_history as base
+          import experiment_84_sparse_pixel_patches as sparse
+          import experiment_100_residual_transforms as residual
+          import experiment_102_three_new_source_holdout as source
+          root=pathlib.Path("/tmp/blkh_exp102")
+          data=json.loads((root/"results102.json").read_text())
+          assert data["experiment"]==102 and data["source_pairs"]==16
+          assert data["new_source_repositories"] and data["independent_source_families"]==3
+          assert not data["release_eligible"] and data["total_persisted_archives"]==60
+          assert len(data["results"])==3
+          audited=0
+          for config,row in zip(source.SOURCES,data["results"]):
+              label=config["label"]
+              family=root/label
+              assert row["source"]==label and row["child_commit"]==config["commit"]
+              assert row["source_repository"]==config["repository"]
+              inventory_before=json.loads((family/"source_inventory.json").read_text())
+              original,inventory=source.discover(family,config)
+              assert inventory==inventory_before
+              assert len(original)==2*len(config["paths"])==2*row["real_pairs"]
+              assert row["pixel_changed_pairs"]==inventory["pixel_changed_pairs"]
+              assert row["manifest"]==sparse.shared_manifest(original,inventory)
+              assert len(row["candidate_methods"])==6
+              assert set(row["candidate_methods"])=={
+                  f"{selector}_{mode}" for selector in ("mismatch","compressed")
+                  for mode in residual.TRANSFORMS}
+              for name,record in row["candidate_methods"].items():
+                  archive=(family/label/record["filename"]).read_bytes()
+                  assert len(archive)==record["bytes"] and base.sha(archive)==record["sha256"]
+                  reconstructed,meta=residual.decode(archive)
+                  assert meta=={**row["manifest"],"codec":residual.MODE}
+                  assert all(np.array_equal(x["rgba"],y) for x,y in zip(original,reconstructed))
+                  audited+=1
+              ref=row["reference_results"]
+              assert ref["shared_source_manifest"]==row["manifest"]
+              assert set(ref["methods"])==set(sparse.ALL) and len(ref["methods"])==14
+              for name,record in ref["methods"].items():
+                  archive=(family/label/record["filename"]).read_bytes()
+                  assert len(archive)==record["bytes"] and base.sha(archive)==record["sha256"]
+                  reconstructed,meta=(sparse.decode(archive) if name in sparse.NEW+(sparse.BINARY,)
+                                      else base.decode(archive))
+                  assert meta=={**row["manifest"],"codec":name}
+                  assert all(np.array_equal(x["rgba"],y) for x,y in zip(original,reconstructed))
+                  audited+=1
+              best=min(x["bytes"] for x in row["candidate_methods"].values())
+              prior=min(ref["best_sparse_bytes"],ref["best_reference_bytes"])
+              assert row["best_candidate_bytes"]==best and row["best_reference_bytes"]==prior
+              assert row["candidate_minus_reference_bytes"]==best-prior
+              print("AUDITED",label,"changed",row["pixel_changed_pairs"],
+                    "candidate",best,"best reference",prior,flush=True)
+          assert audited==60
+          print("EXP102 AUDIT PASS: 60 full exact RGBA archives from THREE NEW source repositories")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: exp102-three-new-git-repos-exact-60
+          path: /tmp/blkh_exp102/
+          retention-days: 30

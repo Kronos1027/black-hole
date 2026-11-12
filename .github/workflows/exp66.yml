@@ -1,0 +1,93 @@
+name: exp66 preregistered independent terrain hybrid validation
+
+on:
+  push:
+    branches: [research/exp51-fair-shared-siren]
+    paths:
+      - "research/universe/experiment_66_preregistered_holdout.py"
+      - "research/universe/BHUH_EXP66_PREREGISTERED_PROTOCOL.md"
+      - ".github/workflows/exp66.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/universe/experiment_66_preregistered_holdout.py"
+      - ".github/workflows/exp66.yml"
+  workflow_dispatch:
+
+jobs:
+  frozen-external-regions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install benchmark dependencies
+        run: python -m pip install numpy pillow brotli rasterio
+      - name: Source syntax and bit-exact codec self-test
+        run: |
+          python -m py_compile research/universe/experiment_66_preregistered_holdout.py
+          python research/universe/experiment_66_preregistered_holdout.py \
+            --self-test --out /tmp/blkh_exp66_selftest
+      - name: Execute frozen protocol on four predeclared unseen Skadi/HGT regions
+        run: |
+          python research/universe/experiment_66_preregistered_holdout.py \
+            --out /tmp/blkh_exp66
+      - name: Independently audit all persisted codec bytes and preregistration
+        run: |
+          python - <<'PY'
+          import hashlib,json,pathlib,sys,math
+          import numpy as np
+          sys.path.insert(0,"research/universe")
+          from experiment_66_preregistered_holdout import (
+             REGIONS,CODECS,FIXED_TOLERANCE,source_hgt,
+             decode_j2k_geo_file,verify_file,
+          )
+          from experiment_64_fixed_delta_roi import decode_image
+          root=pathlib.Path("/tmp/blkh_exp66")
+          d=json.loads((root/"results.json").read_text())
+          assert d["predeclared_regions"]==list(REGIONS)
+          assert d["threshold_frozen"]==FIXED_TOLERANCE==0.20
+          assert d["excluded_regions"]==[]
+          assert d["valid_regions"]==len(REGIONS)==4
+          assert {r["region"] for r in d["records"]}==set(REGIONS)
+          successes=0
+          for r in d["records"]:
+              assert r["verified_lossless"] and r["zero_elevation_error_m"]==0
+              assert r["new_region"] is True
+              assert r["roi_reads_per_method"]==192
+              assert set(r["sizes_bytes"])==set(CODECS)
+              img,provenance=source_hgt(r["region"],pathlib.Path("/tmp/blkh_exp66_hgt_cache"))
+              assert provenance==r["source"]
+              assert hashlib.sha256(img.tobytes()).hexdigest()==r["input_sha256"]
+              info=r["geodata"]
+              assert info["crs"]=="EPSG:4326" and info["sample_unit"]=="meter"
+              for mode in CODECS:
+                  f=root/r["region"]/r["file"][mode]
+                  b=f.read_bytes()
+                  assert len(b)==r["sizes_bytes"][mode]
+                  assert hashlib.sha256(b).hexdigest()==r["file_sha256"][mode]
+                  assert len(r["encode_times_s"][mode])==3
+                  assert all(math.isfinite(t) and t>0 for t in r["encode_times_s"][mode])
+                  assert r["roi_mean_ms"][mode]>0
+                  verify_file(mode,f,img,info)
+              full_j2k=(root/r["region"]/r["full_j2k_nonindexed_file"]).read_bytes()
+              assert len(full_j2k)==r["full_j2k_nonindexed_bytes"]
+              assert hashlib.sha256(full_j2k).hexdigest()==r["full_j2k_nonindexed_sha256"]
+              assert r["frozen_hybrid_success_vs_indexed_j2k"]==(
+                  r["sizes_bytes"]["bh65_fixed20"] < r["sizes_bytes"]["j2k_indexed"]
+                  and r["roi_mean_ms"]["bh65_fixed20"]<=r["roi_mean_ms"]["j2k_indexed"])
+              successes+=int(r["frozen_hybrid_success_vs_indexed_j2k"])
+              print(r["region"],"bytes",r["sizes_bytes"],
+                    "uncached_roi_ms",r["roi_mean_ms"],"success",r["frozen_hybrid_success_vs_indexed_j2k"])
+          print(f"EXP66 VALIDATED: {successes}/4 frozen NEW real regions meet size+latency criterion")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: exp66-frozen-independent-regions
+          path: |
+            /tmp/blkh_exp66/
+            /tmp/blkh_exp66_selftest/
+          retention-days: 30

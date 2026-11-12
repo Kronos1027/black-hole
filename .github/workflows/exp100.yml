@@ -1,0 +1,103 @@
+name: exp100 exact RGBA residual representation factorial
+
+on:
+  push:
+    branches: [research/exp51-fair-shared-siren]
+    paths:
+      - "research/dedup/experiment_100_residual_transforms.py"
+      - "research/dedup/experiment_100_fuzz_regression.py"
+      - ".github/workflows/exp100.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/dedup/experiment_100_residual_transforms.py"
+      - ".github/workflows/exp100.yml"
+  workflow_dispatch:
+
+jobs:
+  real-git-residual-six-way:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      OPENBLAS_NUM_THREADS: 1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install exact codec dependencies
+        run: python -m pip install "numpy<3" "pillow>=11.2" zstandard bsdiff4
+      - name: Compile and exercise all six reversible residual modes
+        run: |
+          python -m py_compile research/dedup/experiment_100_residual_transforms.py
+          python research/dedup/experiment_100_residual_transforms.py --self-test
+          python research/dedup/experiment_100_fuzz_regression.py --trials 120
+      - name: Run frozen real PNG history and all fourteen exact codec references
+        run: python research/dedup/experiment_100_residual_transforms.py --out /tmp/blkh_exp100
+      - name: Independently audit all 80 persisted full lossless archives
+        run: |
+          python - <<'PY'
+          import json,pathlib,sys
+          import numpy as np
+          sys.path.insert(0,"research/dedup")
+          import experiment_83_pixelorama_git_history as base
+          import experiment_84_sparse_pixel_patches as sparse
+          import experiment_87_wesnoth_real_maintenance as source
+          import experiment_100_residual_transforms as exp
+          root=pathlib.Path("/tmp/blkh_exp100")
+          data=json.loads((root/"results100.json").read_text())
+          assert data["experiment"]==100 and data["source_pairs"]==21
+          assert data["retrospective"] and not data["independent_holdout"]
+          assert not data["release_eligible"] and data["total_persisted_archives"]==80
+          assert len(data["results"])==4
+          frozen_inventory=json.loads((root/"real_git_source_inventory.json").read_text())
+          source.configure_sources()
+          originals,inventory=source.discover(root)
+          assert inventory==frozen_inventory and len(originals)==42
+          all_seen=set()
+          count=0
+          for row in data["results"]:
+              group=row["group"]
+              assert group not in all_seen
+              all_seen.add(group)
+              subset=(originals if group=="all_21_pairs" else
+                      [x for x in originals if x["meta"]["commit_label"]==group])
+              assert len(subset)==2*row["real_pairs"]
+              assert row["manifest"]==sparse.shared_manifest(subset,inventory)
+              assert len(row["candidate_methods"])==6
+              assert set(row["candidate_methods"])=={
+                  f"{selection}_{mode}" for selection in ("mismatch","compressed")
+                  for mode in exp.TRANSFORMS}
+              for key,record in row["candidate_methods"].items():
+                  stream=(root/group/record["filename"]).read_bytes()
+                  assert len(stream)==record["bytes"] and base.sha(stream)==record["sha256"]
+                  images,meta=exp.decode(stream)
+                  assert meta=={**row["manifest"],"codec":exp.MODE}
+                  assert all(np.array_equal(x["rgba"],y) for x,y in zip(subset,images))
+                  count+=1
+              baseline=row["reference_results"]
+              assert baseline["shared_source_manifest"]==row["manifest"]
+              assert set(baseline["methods"])==set(sparse.ALL) and len(baseline["methods"])==14
+              for key,record in baseline["methods"].items():
+                  stream=(root/group/record["filename"]).read_bytes()
+                  assert len(stream)==record["bytes"] and base.sha(stream)==record["sha256"]
+                  images,meta=(sparse.decode(stream) if key in sparse.NEW+(sparse.BINARY,)
+                               else base.decode(stream))
+                  assert meta=={**row["manifest"],"codec":key}
+                  assert all(np.array_equal(x["rgba"],y) for x,y in zip(subset,images))
+                  count+=1
+              best=min(v["bytes"] for v in row["candidate_methods"].values())
+              prior=min(baseline["best_sparse_bytes"],baseline["best_reference_bytes"])
+              assert best==row["best_candidate_bytes"] and prior==row["best_reference_bytes"]
+              assert best-prior==row["candidate_minus_reference_bytes"]
+              print("AUDITED",group,"best candidate",best,
+                    "best of 14 references",prior,"difference",best-prior,flush=True)
+          assert count==80
+          print("EXP100 AUDIT PASS: 80 complete exact RGBA archived streams; RETROSPECTIVE ONLY")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: exp100-real-residual-factorial-all-80
+          path: /tmp/blkh_exp100/
+          retention-days: 30

@@ -1,0 +1,101 @@
+name: exp68 continuous stripes vs JPEG2000 ROI
+
+on:
+  push:
+    branches: [research/exp51-fair-shared-siren]
+    paths:
+      - "research/universe/experiment_68_contiguous_stripes.py"
+      - ".github/workflows/exp68.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/universe/experiment_68_contiguous_stripes.py"
+      - ".github/workflows/exp68.yml"
+  workflow_dispatch:
+
+jobs:
+  continuous-stripes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install reproducible raster-codec runtime
+        run: python -m pip install numpy pillow brotli rasterio
+      - name: Syntax and exact reconstruction self-test
+        run: |
+          python -m py_compile research/universe/experiment_68_contiguous_stripes.py
+          python research/universe/experiment_68_contiguous_stripes.py \
+            --self-test --out /tmp/blkh_exp68_selftest
+      - name: Execute independent saved artifact comparisons
+        run: |
+          python research/universe/experiment_68_contiguous_stripes.py \
+            --out /tmp/blkh_exp68
+      - name: Independent round-trip and input SHA-256 verification
+        run: |
+          python - <<'PY'
+          import hashlib,json,pathlib,sys,numpy as np,rasterio
+          sys.path.insert(0,'research/universe')
+          from experiment_66_preregistered_holdout import REGIONS,source_hgt
+          from experiment_68_contiguous_stripes import MODES,BASE,OpenStripes,STRIPES,STRATEGIES
+          from experiment_65_hybrid_pareto import check_full
+          root=pathlib.Path('/tmp/blkh_exp68')
+          data=json.loads((root/'results.json').read_text())
+          assert len(data['records'])==4
+          assert {r['region'] for r in data['records']}==set(REGIONS)
+          for record in data['records']:
+              region=record['region']
+              img,provenance=source_hgt(region,pathlib.Path('/tmp/blkh_exp68_hgt_cache'))
+              assert provenance==record['source']
+              assert hashlib.sha256(img.tobytes()).hexdigest()==record['original_sha256']
+              assert record['lossless'] and record['max_height_error_m']==0
+              assert record['requested_roi_count']==128
+              assert set(record['counted_file_bytes'])==set(MODES+BASE)
+              assert len(record['stripe_config'])==9
+              directory=root/region
+              for mode in MODES+BASE:
+                  p=directory/record['file'][mode]
+                  raw=p.read_bytes()
+                  assert len(raw)==record['counted_file_bytes'][mode]
+                  assert hashlib.sha256(raw).hexdigest()==record['file_sha256'][mode]
+                  assert record['roi_mean_ms'][mode]>0
+                  assert record['encode_seconds'][mode]>0
+                  if mode in MODES:
+                      with OpenStripes(p) as reader:
+                          assert reader.info==record['geographic_metadata']
+                          decoded=np.concatenate(
+                              [reader.read_band(i) for i in range(len(reader.entries))],axis=0)
+                          assert np.array_equal(decoded,img)
+                          for y,x in ((0,0),(3,5),(7,7)):
+                              assert np.array_equal(reader.read(y,x),
+                                  img[y*32:(y+1)*32,x*32:(x+1)*32])
+                  elif mode=='bh65_individual':
+                      check_full(p,img,record['geographic_metadata'])
+                  elif mode=='tiff_zstd':
+                      with rasterio.open(p) as ds:
+                          assert np.array_equal(ds.read(1),img)
+                          assert ds.crs.to_string()=='EPSG:4326'
+                          assert ds.block_shapes[0]==(32,32)
+              fullp=(directory/record['full_jp2_raw_for_gdal_only']).read_bytes()
+              assert hashlib.sha256(fullp).hexdigest()==record['full_jp2_raw_sha256']
+              with rasterio.open(directory/record['full_jp2_raw_for_gdal_only']) as ds:
+                  import struct
+                  whole=(directory/record['file']['jpeg2000_full']).read_bytes()
+                  from experiment_60_geotiff_roi import PRELUDE
+                  _,_,n=PRELUDE.unpack(whole[:PRELUDE.size])
+                  lo=struct.unpack('<i',whole[PRELUDE.size+n:PRELUDE.size+n+4])[0]
+                  assert np.array_equal(ds.read(1).astype(np.int32)+lo,img)
+              print(region,'BH65',record['counted_file_bytes']['bh65_individual'],
+                    'JP2',record['counted_file_bytes']['jpeg2000_full'])
+          print('EXP68 VERIFIED: 4 SRTM REAL DEMS × 9 stripe modes, full source reconstruction')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: exp68-real-terrain-contiguous-stripes
+          path: |
+            /tmp/blkh_exp68/
+            /tmp/blkh_exp68_selftest/
+          retention-days: 30

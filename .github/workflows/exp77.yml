@@ -1,0 +1,94 @@
+name: exp77 original uint16 scientific movies vs FFV1 and JPEG2000
+
+on:
+  push:
+    branches: [research/exp51-fair-shared-siren]
+    paths:
+      - "research/dedup/experiment_77_native_uint16_temporal.py"
+      - "research/dedup/BHUH_EXP77_NATIVE_16BIT_PROTOCOL.md"
+      - ".github/workflows/exp77.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/dedup/experiment_77_native_uint16_temporal.py"
+      - ".github/workflows/exp77.yml"
+  workflow_dispatch:
+
+jobs:
+  native-science:
+    runs-on: ubuntu-latest
+    timeout-minutes: 24
+    env:
+      OPENBLAS_NUM_THREADS: 1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install true native-bit-depth scientific and lossless video codecs
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y ffmpeg
+          python -m pip install "numpy<3" "pillow>=11.2" "scikit-image==0.25.2" rasterio zstandard brotli pooch tifffile
+          ffmpeg -hide_banner -encoders | grep ffv1
+      - name: Self-test native 8-bit and 16-bit full reconstruction in nine codecs
+        run: |
+          python -m py_compile research/dedup/experiment_77_native_uint16_temporal.py
+          python research/dedup/experiment_77_native_uint16_temporal.py --self-test
+      - name: Run original bit-depth two source benchmark without preprocessing loss
+        run: |
+          python research/dedup/experiment_77_native_uint16_temporal.py \
+            --out /tmp/blkh_exp77
+      - name: Independently validate every saved scientific sample and all 18 bitstreams
+        run: |
+          python - <<'PY'
+          import hashlib,json,pathlib,sys,numpy as np
+          sys.path.insert(0,"research/dedup")
+          from experiment_77_native_uint16_temporal import (
+              SOURCES,CODECS,TEMPORAL,BASELINES,raw_sequence,decode_archive,
+              decompress,HEADER,
+          )
+          root=pathlib.Path("/tmp/blkh_exp77")
+          report=json.loads((root/"results.json").read_text())
+          assert report["experiment"]==77
+          assert report["sources"]==list(SOURCES)
+          assert report["methods"]==list(CODECS)
+          assert len(report["results"])==len(SOURCES)==2
+          for row in report["results"]:
+              source=row["source"]
+              original,meta=raw_sequence(source)
+              assert row["scientific_metadata"]==meta
+              assert row["input_dtype_bits"]==(8 if source=="protein_transport" else 16)
+              assert row["exact_native_bit_depth_reconstruction"]
+              assert row["original_canonical_sha256"]==hashlib.sha256(original.tobytes()).hexdigest()
+              assert set(row["codec_files"])==set(CODECS)
+              for codec,info in row["codec_files"].items():
+                  path=root/source/info["filename"]
+                  archive=path.read_bytes()
+                  assert len(archive)==info["complete_bytes"]
+                  assert hashlib.sha256(archive).hexdigest()==info["sha256"]
+                  assert info["encode_seconds"]>0 and info["decode_seconds"]>0
+                  restored,persisted=decode_archive(archive)
+                  assert persisted=={**meta,"codec":codec}
+                  assert np.array_equal(restored,original)
+                  assert restored.dtype.itemsize==original.dtype.itemsize
+                  _,_,meta_len=HEADER.unpack(archive[:HEADER.size])
+                  payload=archive[HEADER.size+meta_len:]
+                  assert np.array_equal(decompress(payload,codec,
+                                        meta["native_sample_bits"]),original)
+              best,nm=min((row["codec_files"][c]["complete_bytes"],c) for c in TEMPORAL)
+              base,cnm=min((row["codec_files"][c]["complete_bytes"],c) for c in BASELINES)
+              assert (row["best_temporal_bytes"],row["best_temporal"])==(best,nm)
+              assert (row["best_native_lossless_bytes"],row["best_native_lossless_baseline"])==(base,cnm)
+              assert row["temporal_smaller_than_all_references"]==(best<base)
+              print(source,"original dtype",original.dtype,
+                    "predictor",nm,best,"strongest",cnm,base,
+                    "exact native sample values")
+          print("EXP77 VERIFIED: two REAL native-bit-depth scientific sequences; 18 decoded and checked full lossless archives, including FFV1, JP2, TIFF")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: exp77-native-uint16-scientific-video-lossless
+          path: /tmp/blkh_exp77/
+          retention-days: 30

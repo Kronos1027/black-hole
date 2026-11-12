@@ -1,0 +1,13 @@
+# BLKH Experiment 93 — separately frozen retrospective motion-patch engineering audit on known Wesnoth corpus
+
+**Engineering and sanity research only**: source `wesnoth/wesnoth` 21 original true PNG Git revision pairs, fixed three original upstream commit groups from Exp87; this source has ALREADY been used for previous compression experiment and is **not** an independent holdout for new temporal-shift method. Both original sparse performance and competitor rankings are public, so do not overstate new positive results.
+
+Exactly reuse the pre-frozen **Exp92 `temporal_shift8_webpold_zstd` algorithm** with 289 candidate integer translations dx/dy within [−8,+8], minimized exact 4-channel changed-pixel count, deterministic tie order, exact old WebP atlas and Zstd9 patch, 100% full canonical shared historical metadata, exact RGBA hashes. **No changes in shift bounds, scoring or codec content after observing original pixels.** Keep unchanged original Exp84–87 14 original lossless codecs, 2 prior sparse and 12 references, with old image pixel data present in every original complete stream. This is a retrospective performance check of whether motion compensation actually produces better data than no-motion sparse.
+
+4 cases: original `all_21_pairs` + frozen `thea_shadow_fix` (14), `dune_firetrooper_cleanup` (4), `ant_sprite_distinction` (3). **4 × 15 = 60 complete real saved archives**, independently decoded and SHA256 confirmed; exactly original Git upstream PNG sources refetched, license attribution retained only in temporary CI artifact, Git `status=modified`/original source SHA and pixels audited.
+
+Report exact full-file sizes and time, motion-shift count, changed pixel fraction with/without motion, comparison to smallest of 12 reference complete streams AND to both prior no-motion sparse streams for each whole/set group. A descriptive strong technical observation would be **aggregate smaller than both prior sparse and all 12 refs plus >=2 of 3 natural group wins**. However any favorable outcome is **RETROSPECTIVE**, not independent transfer evidence, and cannot trigger main/demo updates. Failed technical/source eligibility is INCONCLUSIVE; verified larger files are genuine negative. Do not trim source paths, adjust the scoring or hide any group once test results are seen.
+
+The original independent-source Exp92 was **INCONCLUSIVE** because its frozen 11-pair Endless Sky source exceeded the canonical original historical atlas 3-million-pixel safety bound; this Exp93 is NOT a replacement for that holdout and must never be cited as Exp92 replication.
+
+Release gate remains HOLD; main untouched, draft PR.

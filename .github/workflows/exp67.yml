@@ -1,0 +1,80 @@
+name: exp67 full-image JPEG2000 GDAL ROI countercheck
+
+on:
+  push:
+    branches: [research/exp51-fair-shared-siren]
+    paths:
+      - "research/universe/experiment_67_full_j2k_roi.py"
+      - ".github/workflows/exp67.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/universe/experiment_67_full_j2k_roi.py"
+      - ".github/workflows/exp67.yml"
+  workflow_dispatch:
+
+jobs:
+  jp2-actual-roi:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install GDAL/OpenJPEG-backed libraries
+        run: python -m pip install numpy pillow brotli rasterio
+      - name: Verify syntax and decode full-J2K windows on four real sources
+        run: |
+          python -m py_compile research/universe/experiment_67_full_j2k_roi.py
+          python research/universe/experiment_67_full_j2k_roi.py \
+            --out /tmp/blkh_exp67
+      - name: Independently verify complete saved JPEG2000 and regional ROI records
+        run: |
+          python - <<'PY'
+          import hashlib,json,pathlib,sys
+          import numpy as np,rasterio
+          from rasterio.windows import Window
+          sys.path.insert(0,"research/universe")
+          from experiment_67_full_j2k_roi import REGIONS,split_full_j2k_wrapper
+          from experiment_66_preregistered_holdout import source_hgt
+          root=pathlib.Path("/tmp/blkh_exp67")
+          result=json.loads((root/"results.json").read_text())
+          assert len(result["results"])==4
+          assert set(result["regions"])==set(REGIONS)
+          for case in result["results"]:
+              name=case["region"]
+              image,prov=source_hgt(name,pathlib.Path("/tmp/blkh_exp67_cache"))
+              assert case["source"]==prov
+              assert hashlib.sha256(image.tobytes()).hexdigest()==case["input_sha256"]
+              files=case["files"]
+              wrapper=(root/name/files["j2k_full_wrapper"]).read_bytes()
+              info,lo,codestream=split_full_j2k_wrapper(wrapper)
+              assert len(wrapper)==case["complete_size_bytes"]["j2k_full_window"]
+              assert hashlib.sha256(wrapper).hexdigest()==case["full_j2k_sha256"]
+              assert codestream==(root/name/files["j2k_full_extracted"]).read_bytes()
+              assert len(codestream)==case["jp2_raw_bytes_for_gdal_only"]
+              assert info["crs"]=="EPSG:4326"
+              assert case["full_j2k_has_direct_gdal_window_access"]
+              assert case["exact_lossless"] and case["height_max_error_m"]==0
+              assert case["roi_count"]==192
+              with rasterio.open(root/name/files["j2k_full_extracted"]) as ds:
+                  assert np.array_equal(ds.read(1).astype(np.int32)+lo,image)
+                  for y,x in ((0,0),(3,4),(7,7)):
+                      area=ds.read(1,window=Window(x*32,y*32,32,32))
+                      assert np.array_equal(area.astype(np.int32)+lo,
+                                            image[y*32:(y+1)*32,x*32:(x+1)*32])
+              for key,val in case["roi_mean_ms"].items():
+                  assert val>0
+              print(name,"whole J2K bytes",len(wrapper),
+                    "BH65 indexed bytes",case["complete_size_bytes"]["bh65_indexed"],
+                    "mean_ms",case["roi_mean_ms"],
+                    "full_j2k_dominates",case["full_j2k_dominates_bh65_size_and_mean_roi"])
+          print("EXP67 VERIFIED: four genuine GDAL full-J2K window decoded DEMs")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: exp67-full-jpeg2000-real-roi
+          path: /tmp/blkh_exp67/
+          retention-days: 30
