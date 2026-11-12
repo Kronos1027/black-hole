@@ -1,0 +1,75 @@
+name: exp99 real Wesnoth Zstd level ablation
+
+on:
+  push:
+    branches: [research/exp51-fair-shared-siren]
+    paths:
+      - "research/dedup/experiment_99_zstd_level_ablation.py"
+      - ".github/workflows/exp99.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/dedup/experiment_99_zstd_level_ablation.py"
+      - ".github/workflows/exp99.yml"
+  workflow_dispatch:
+
+jobs:
+  frozen-real-zstd-ablation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      OPENBLAS_NUM_THREADS: 1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python -m pip install "numpy<3" "pillow>=11.2" zstandard bsdiff4
+      - name: Compile and self-test
+        run: |
+          python -m py_compile research/dedup/experiment_99_zstd_level_ablation.py
+          python research/dedup/experiment_99_zstd_level_ablation.py --self-test
+      - name: Test complete archives on original frozen Git PNG pairs
+        run: python research/dedup/experiment_99_zstd_level_ablation.py --out /tmp/blkh_exp99
+      - name: Independent exact persisted archive audit
+        run: |
+          python - <<'PY'
+          import json,pathlib,sys,numpy as np
+          sys.path.insert(0,"research/dedup")
+          import experiment_83_pixelorama_git_history as base
+          import experiment_84_sparse_pixel_patches as sparse
+          import experiment_87_wesnoth_real_maintenance as source
+          import experiment_92_motion_shift_patch as motion
+          root=pathlib.Path("/tmp/blkh_exp99")
+          data=json.loads((root/"results99.json").read_text())
+          assert data["experiment"]==99 and data["zstd_levels"]==[3,9,19]
+          assert data["retrospective"] and not data["independent_holdout"] and not data["release_eligible"]
+          assert len(data["results"])==4
+          source.configure_sources()
+          items,inv=source.discover(root)
+          assert len(items)==42 and inv["real_file_pair_count"]==21
+          n=0
+          for row in data["results"]:
+              subset=(items if row["group"]=="all_21_pairs" else
+                      [x for x in items if x["meta"]["commit_label"]==row["group"]])
+              assert len(subset)==2*row["real_pairs"]
+              assert row["manifest"]==sparse.shared_manifest(subset,inv)
+              assert len(row["methods"])==6
+              for method,meta in row["methods"].items():
+                  stream=(root/row["group"]/meta["filename"]).read_bytes()
+                  assert len(stream)==meta["bytes"] and base.sha(stream)==meta["sha256"]
+                  rebuilt,manifest=motion.decode(stream)
+                  assert manifest=={**row["manifest"],"codec":motion.MODE}
+                  assert all(np.array_equal(x["rgba"],y) for x,y in zip(subset,rebuilt))
+                  n+=1
+              assert row["best_bytes"]==min(v["bytes"] for v in row["methods"].values())
+              print("AUDITED",row["group"],row["best_method"],row["best_bytes"],flush=True)
+          assert n==24
+          print("EXP99 AUDIT PASS: 24 full self-contained exact RGBA archives")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: exp99-zstd-ablation-audit
+          path: /tmp/blkh_exp99/
+          retention-days: 30
