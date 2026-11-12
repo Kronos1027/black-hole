@@ -6,6 +6,11 @@ on:
     paths:
       - "research/dedup/experiment_95_compressed_shift_retrospective.py"
       - ".github/workflows/exp95.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/dedup/experiment_95_compressed_shift_retrospective.py"
+      - ".github/workflows/exp95.yml"
   workflow_dispatch:
 
 jobs:
