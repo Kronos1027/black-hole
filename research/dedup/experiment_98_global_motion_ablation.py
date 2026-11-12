@@ -30,27 +30,29 @@ def optimize(items):
         old,new=a["rgba"],b["rgba"]
         shiftlist=[motion.select_shift(old,new),choose_by_compressed_patch(old,new),(0,0,0)]
         unique={}
+        mapping=[]
         for shift in shiftlist:
             candidate=record(old,new,shift)
-            unique.setdefault(candidate,(shift,candidate))
-        choices.append(list(unique.values()))
+            if candidate not in unique:
+                unique[candidate]=len(unique)
+            mapping.append(unique[candidate])
+        choices.append(([(shiftlist[next(i for i,s in enumerate(shiftlist) if record(old,new,s)==key)],key) for key in unique],mapping))
     states={}
     for strategy in ("mismatch","local_zstd","zero"):
         index={"mismatch":0,"local_zstd":1,"zero":2}[strategy]
         selected=[]
-        for opts in choices:
-            chosen=min(index,len(opts)-1)
-            selected.append(chosen)
+        for opts,mapping in choices:
+            selected.append(mapping[index])
         states[strategy]=selected
     def size(indices):
-        return len(sparse.zcompress(b"".join(choices[i][j][1] for i,j in enumerate(indices))))
+        return len(sparse.zcompress(b"".join(choices[i][0][j][1] for i,j in enumerate(indices))))
     best_name,minstate=min(states.items(),key=lambda kv:(size(kv[1]),kv[0]))
     best=minstate.copy()
     start=size(best)
     passes=0
     for _ in range(3):
         improved=False
-        for i,opts in enumerate(choices):
+        for i,(opts,_) in enumerate(choices):
             current=best[i]
             local=min(range(len(opts)),key=lambda j:(size(best[:i]+[j]+best[i+1:]),j))
             if size(best[:i]+[local]+best[i+1:])<size(best):
@@ -61,10 +63,10 @@ def optimize(items):
     final=size(best)
     assert final<=start
     return {("old",a["meta"]["pixel_rgba_sha256"],b["meta"]["pixel_rgba_sha256"]):opts[j][0]
-            for (a,b),opts,j in zip(pairs,choices,best)},dict(
+            for (a,b),(opts,_),j in zip(pairs,choices,best)},dict(
         initial_joint_patch_bytes=start,optimized_joint_patch_bytes=final,
         baseline_start=best_name,passes=passes,nonzero_shift_pairs=sum(
-            bool(choices[i][j][0][0] or choices[i][j][0][1]) for i,j in enumerate(best)))
+            bool(choices[i][0][j][0][0] or choices[i][j][0][1]) for i,j in enumerate(best)))
 
 def self_test():
     a=np.zeros((8,9,4),dtype=np.uint8);b=a.copy();b[2,3]=[10,20,30,0]
