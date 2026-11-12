@@ -66,7 +66,7 @@ def optimize(items):
             for (a,b),(opts,_),j in zip(pairs,choices,best)},dict(
         initial_joint_patch_bytes=start,optimized_joint_patch_bytes=final,
         baseline_start=best_name,passes=passes,nonzero_shift_pairs=sum(
-            bool(choices[i][0][j][0][0] or choices[i][j][0][1]) for i,j in enumerate(best)))
+            bool(choices[i][0][j][0][0] or choices[i][0][j][0][1]) for i,j in enumerate(best)))
 
 def self_test():
     a=np.zeros((8,9,4),dtype=np.uint8);b=a.copy();b[2,3]=[10,20,30,0]
