@@ -64,8 +64,7 @@ jobs:
               baseline=row["baseline_results"]
               assert baseline["shared_source_manifest"]==row["manifest"]
               assert set(baseline["methods"])==set(sparse.ALL)
-              assert row["best_reference_bytes"]==baseline["best_reference_bytes"]
-              assert row["best_sparse_bytes"]==baseline["best_sparse_bytes"]
+              assert row["best_existing_bytes"]==min(baseline["best_reference_bytes"],baseline["best_sparse_bytes"])
               for codec,record in baseline["methods"].items():
                   archive=(root/group/record["filename"]).read_bytes()
                   assert len(archive)==record["bytes"] and base.sha(archive)==record["sha256"]
