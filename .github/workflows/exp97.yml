@@ -4,12 +4,12 @@ on:
   push:
     branches: [research/exp51-fair-shared-siren]
     paths:
-      - "research/dedup/experiment_96_godot_transfer.py"
+      - "research/dedup/experiment_97_godot_transfer.py"
       - ".github/workflows/exp97.yml"
   pull_request:
     branches: [main]
     paths:
-      - "research/dedup/experiment_96_godot_transfer.py"
+      - "research/dedup/experiment_97_godot_transfer.py"
       - ".github/workflows/exp97.yml"
   workflow_dispatch:
 
@@ -27,10 +27,10 @@ jobs:
       - run: python -m pip install "numpy<3" "pillow>=11.2" zstandard bsdiff4
       - name: Frozen-source and selector self-test
         run: |
-          python -m py_compile research/dedup/experiment_96_godot_transfer.py
-          python research/dedup/experiment_96_godot_transfer.py --self-test
+          python -m py_compile research/dedup/experiment_97_godot_transfer.py
+          python research/dedup/experiment_97_godot_transfer.py --self-test
       - name: Run Godot source transfer and 14 baseline codecs
-        run: python research/dedup/experiment_96_godot_transfer.py --out /tmp/blkh_exp97
+        run: python research/dedup/experiment_97_godot_transfer.py --out /tmp/blkh_exp97
       - name: Independent persisted archive decode and comparison audit
         run: |
           python - <<'PY'
@@ -38,11 +38,11 @@ jobs:
           sys.path.insert(0,"research/dedup")
           import experiment_83_pixelorama_git_history as base
           import experiment_84_sparse_pixel_patches as sparse
-          import experiment_88_godot_png_history as source
+          import experiment_86_godot_png_holdout as source
           import experiment_92_motion_shift_patch as motion
           root=pathlib.Path("/tmp/blkh_exp97")
           data=json.loads((root/"results97.json").read_text())
-          assert data["experiment"]==96 and data["real_pairs"]==14
+          assert data["experiment"]==97 and data["real_pairs"]==14
           assert data["retrospective_cross_project"] and not data["independent_blinded_holdout"]
           assert not data["release_eligible"] and len(data["results"])==3
           source.configure_sources()
@@ -50,7 +50,7 @@ jobs:
           assert len(items)==28
           for row in data["results"]:
               group=row["group"]
-              subset=(items if group=="all_29_pairs" else
+              subset=(items if group=="all_14_pairs" else
                       [x for x in items if x["meta"]["commit_label"]==group])
               assert row["pairs"]==len(subset)//2
               assert row["manifest"]==sparse.shared_manifest(subset,inventory)
