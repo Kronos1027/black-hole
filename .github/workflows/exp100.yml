@@ -5,6 +5,7 @@ on:
     branches: [research/exp51-fair-shared-siren]
     paths:
       - "research/dedup/experiment_100_residual_transforms.py"
+      - "research/dedup/experiment_100_fuzz_regression.py"
       - ".github/workflows/exp100.yml"
   pull_request:
     branches: [main]
@@ -30,6 +31,7 @@ jobs:
         run: |
           python -m py_compile research/dedup/experiment_100_residual_transforms.py
           python research/dedup/experiment_100_residual_transforms.py --self-test
+          python research/dedup/experiment_100_fuzz_regression.py --trials 120
       - name: Run frozen real PNG history and all fourteen exact codec references
         run: python research/dedup/experiment_100_residual_transforms.py --out /tmp/blkh_exp100
       - name: Independently audit all 80 persisted full lossless archives
