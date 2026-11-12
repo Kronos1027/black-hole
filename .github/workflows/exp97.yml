@@ -1,0 +1,84 @@
+name: exp97 real Godot cross-project motion transfer
+
+on:
+  push:
+    branches: [research/exp51-fair-shared-siren]
+    paths:
+      - "research/dedup/experiment_96_godot_transfer.py"
+      - ".github/workflows/exp97.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "research/dedup/experiment_96_godot_transfer.py"
+      - ".github/workflows/exp97.yml"
+  workflow_dispatch:
+
+jobs:
+  frozen-godot-transfer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      OPENBLAS_NUM_THREADS: 1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python -m pip install "numpy<3" "pillow>=11.2" zstandard bsdiff4
+      - name: Frozen-source and selector self-test
+        run: |
+          python -m py_compile research/dedup/experiment_96_godot_transfer.py
+          python research/dedup/experiment_96_godot_transfer.py --self-test
+      - name: Run Godot source transfer and 14 baseline codecs
+        run: python research/dedup/experiment_96_godot_transfer.py --out /tmp/blkh_exp97
+      - name: Independent persisted archive decode and comparison audit
+        run: |
+          python - <<'PY'
+          import json,pathlib,sys,numpy as np
+          sys.path.insert(0,"research/dedup")
+          import experiment_83_pixelorama_git_history as base
+          import experiment_84_sparse_pixel_patches as sparse
+          import experiment_88_godot_png_history as source
+          import experiment_92_motion_shift_patch as motion
+          root=pathlib.Path("/tmp/blkh_exp97")
+          data=json.loads((root/"results97.json").read_text())
+          assert data["experiment"]==96 and data["real_pairs"]==14
+          assert data["retrospective_cross_project"] and not data["independent_blinded_holdout"]
+          assert not data["release_eligible"] and len(data["results"])==3
+          source.configure_sources()
+          items,inventory=source.discover(root)
+          assert len(items)==28
+          for row in data["results"]:
+              group=row["group"]
+              subset=(items if group=="all_29_pairs" else
+                      [x for x in items if x["meta"]["commit_label"]==group])
+              assert row["pairs"]==len(subset)//2
+              assert row["manifest"]==sparse.shared_manifest(subset,inventory)
+              for filename,key,sha in (("motion_mismatch.bl92m","mismatch_bytes","mismatch_sha256"),
+                                       ("motion_compressed.bl92m","compressed_bytes","compressed_sha256")):
+                  stream=(root/group/filename).read_bytes()
+                  assert len(stream)==row[key] and base.sha(stream)==row[sha]
+                  rebuilt,meta=motion.decode(stream)
+                  assert meta=={**row["manifest"],"codec":motion.MODE}
+                  assert all(np.array_equal(x["rgba"],y) for x,y in zip(subset,rebuilt))
+              baseline=row["baseline_results"]
+              assert baseline["shared_source_manifest"]==row["manifest"]
+              assert set(baseline["methods"])==set(sparse.ALL)
+              assert row["best_reference_bytes"]==baseline["best_reference_bytes"]
+              assert row["best_sparse_bytes"]==baseline["best_sparse_bytes"]
+              for codec,record in baseline["methods"].items():
+                  archive=(root/group/record["filename"]).read_bytes()
+                  assert len(archive)==record["bytes"] and base.sha(archive)==record["sha256"]
+                  rebuilt,meta=(sparse.decode(archive) if codec in sparse.NEW+(sparse.BINARY,)
+                                else base.decode(archive))
+                  assert meta=={**row["manifest"],"codec":codec}
+                  assert all(np.array_equal(x["rgba"],y) for x,y in zip(subset,rebuilt))
+              print("AUDITED",group,row["compressed_bytes"],"vs best",row["best_existing_bytes"],flush=True)
+          print("EXP97 PASS: 48 persisted full RGBA archives, cross-project retrospective only")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: exp97-godot-archive-audit
+          path: /tmp/blkh_exp97/
+          retention-days: 30
