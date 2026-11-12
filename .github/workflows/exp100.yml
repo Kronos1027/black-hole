@@ -2,7 +2,7 @@ name: exp100 exact RGBA residual representation factorial
 
 on:
   push:
-    branches: [research/exp51-fair-shared-siren]
+    branches: [research/exp51-fair-shared-siren, research/exp100-validation-isolated]
     paths:
       - "research/dedup/experiment_100_residual_transforms.py"
       - ".github/workflows/exp100.yml"
