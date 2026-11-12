@@ -62,8 +62,7 @@ def optimize(items):
         if not improved:break
     final=size(best)
     assert final<=start
-    return {("old",a["meta"]["pixel_rgba_sha256"],b["meta"]["pixel_rgba_sha256"]):opts[j][0]
-            for (a,b),(opts,_),j in zip(pairs,choices,best)},dict(
+    return [opts[j][0] for (opts,_),j in zip(choices,best)],dict(
         initial_joint_patch_bytes=start,optimized_joint_patch_bytes=final,
         baseline_start=best_name,passes=passes,nonzero_shift_pairs=sum(
             bool(choices[i][0][j][0][0] or choices[i][0][j][0][1]) for i,j in enumerate(best)))
@@ -75,8 +74,8 @@ def self_test():
     for i,(old,new) in enumerate(((a,b),(b,a))):
         fixtures.extend(({"rgba":old,"meta":{"pixel_rgba_sha256":base.sha(old.tobytes())}},
                          {"rgba":new,"meta":{"pixel_rgba_sha256":base.sha(new.tobytes())}}))
-    mapping,diagnostics=optimize(fixtures)
-    assert len(mapping)==2
+    selected,diagnostics=optimize(fixtures)
+    assert len(selected)==2
     assert diagnostics["optimized_joint_patch_bytes"]<=diagnostics["initial_joint_patch_bytes"]
     print("EXP98 selftest PASS",flush=True)
 
@@ -102,13 +101,15 @@ def execute(out):
             local,localstats=motion.encode(subset,manifest)
             motion.select_shift=original
             start_wall=time.perf_counter()
-            mapping,diagnostics=optimize(subset)
+            selected_shifts,diagnostics=optimize(subset)
             diagnostics["optimizer_wall_seconds"]=round(time.perf_counter()-start_wall,6)
             diagnostics["peak_process_maxrss_kib_linux"]=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+            shift_iter=iter(selected_shifts)
             def chosen(a,b):
-                return mapping[("old",base.sha(a.tobytes()),base.sha(b.tobytes()))]
+                return next(shift_iter)
             motion.select_shift=chosen
             global_archive,globalstats=motion.encode(subset,manifest)
+            assert next(shift_iter,None) is None
             motion.select_shift=original
             folder=out/name;folder.mkdir(parents=True,exist_ok=True)
             for filename,archive in (("mismatch.bl92m",old),("local.bl92m",local),
