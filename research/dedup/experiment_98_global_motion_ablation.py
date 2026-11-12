@@ -6,7 +6,7 @@ three frozen candidate shift sets: mismatch-min, per-pair zstd-min, and zero.
 This is retrospective optimization, NOT an unseen holdout or release result.
 """
 from __future__ import annotations
-import argparse,json
+import argparse,json,time,resource
 from pathlib import Path
 import numpy as np
 import experiment_83_pixelorama_git_history as base
@@ -71,6 +71,13 @@ def optimize(items):
 def self_test():
     a=np.zeros((8,9,4),dtype=np.uint8);b=a.copy();b[2,3]=[10,20,30,0]
     assert record(a,b,(0,0,0))==record(a,b,(0,0,1))
+    fixtures=[]
+    for i,(old,new) in enumerate(((a,b),(b,a))):
+        fixtures.extend(({"rgba":old,"meta":{"pixel_rgba_sha256":base.sha(old.tobytes())}},
+                         {"rgba":new,"meta":{"pixel_rgba_sha256":base.sha(new.tobytes())}}))
+    mapping,diagnostics=optimize(fixtures)
+    assert len(mapping)==2
+    assert diagnostics["optimized_joint_patch_bytes"]<=diagnostics["initial_joint_patch_bytes"]
     print("EXP98 selftest PASS",flush=True)
 
 def execute(out):
@@ -94,7 +101,10 @@ def execute(out):
             motion.select_shift=choose_by_compressed_patch
             local,localstats=motion.encode(subset,manifest)
             motion.select_shift=original
+            start_wall=time.perf_counter()
             mapping,diagnostics=optimize(subset)
+            diagnostics["optimizer_wall_seconds"]=round(time.perf_counter()-start_wall,6)
+            diagnostics["peak_process_maxrss_kib_linux"]=resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
             def chosen(a,b):
                 return mapping[("old",base.sha(a.tobytes()),base.sha(b.tobytes()))]
             motion.select_shift=chosen
