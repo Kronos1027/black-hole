@@ -1,0 +1,28 @@
+name: Exp108 lossless row-filter reproducibility
+on:
+  workflow_dispatch:
+  push:
+    branches: [research/exp108-row-filter-ablation]
+    paths:
+      - 'research/exp108/**'
+      - '.github/workflows/exp108.yml'
+jobs:
+  test-and-benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install pillow==12.3.0 scikit-image==0.26.0 numpy
+      - name: Roundtrip and malformed-stream tests
+        working-directory: research/exp108
+        run: python -m unittest -v test_exp108.py
+      - name: Real-image exploratory benchmark
+        working-directory: research/exp108
+        run: python bench.py > results.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: exp108-results
+          path: research/exp108/results.json
