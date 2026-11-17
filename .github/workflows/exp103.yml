@@ -1,0 +1,25 @@
+name: BLKH Exp103 reproducibility
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - research/exp103-adaptive-predictor-prototype
+    paths:
+      - 'research/exp103/**'
+      - '.github/workflows/exp103.yml'
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - run: python -m pip install numpy==2.2.6 Pillow==11.3.0 scikit-image==0.25.2
+      - run: cd research/exp103 && python -m unittest -v test_exp103.py
+      - run: cd research/exp103 && python benchmark_real.py | tee exp103-results.jsonl
+      - uses: actions/upload-artifact@v4
+        with:
+          name: exp103-real-image-results
+          path: research/exp103/exp103-results.jsonl
