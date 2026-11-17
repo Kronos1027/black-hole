@@ -1,0 +1,21 @@
+name: BLKH Exp113 reproducibility
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'research/exp113/**'
+      - '.github/workflows/exp113.yml'
+jobs:
+  reproduce:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install pillow==12.0.0
+      - run: cd research/exp113 && python -m unittest -v test_exp113.py && python bench.py > results.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: exp113-results
+          path: research/exp113/results.json
