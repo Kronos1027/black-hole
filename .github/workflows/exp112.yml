@@ -1,0 +1,20 @@
+name: BLKH Exp112 reproducibility
+on:
+  push:
+    paths: ['research/exp112/**', '.github/workflows/exp112.yml']
+  workflow_dispatch:
+jobs:
+  exp112:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install pillow numpy scikit-image
+      - run: cd research/exp112 && python -m unittest -v test_exp112.py
+      - run: cd research/exp112 && python bench.py > results.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: exp112-results
+          path: research/exp112/results.json
