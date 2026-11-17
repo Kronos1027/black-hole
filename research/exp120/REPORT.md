@@ -6,7 +6,7 @@ Test three deterministic palette orderings (first occurrence, frequency descendi
 ## Executed locally
 Python 3.13.5; NumPy 2.3.5; Pillow 12.3.0; scikit-image 0.26.0. Peak process RSS 157,988 KiB. Image size 128x128. All sources converted to 16-level grayscale RGB with the **same preprocessing before all codecs**. Dev: camera, coins, moon and seeded random images (101–103). Test: astronaut, coffee, rocket, chelsea, brick and seeded random images (9101–9103). This is NOT an original-photography lossless benchmark: grayscale quantization changes the source; losslessness is measured only relative to the common preprocessed input.
 
-Global development-selected configuration: **RGB-lexicographic palette, raw indices, LZMA-6**. Complete BLKH stream includes 12-byte header, exact palette bytes, and compressed payload. Decode checked RGB pixel-for-pixel. WebP lossless method=6 and optimized PNG decoded and verified against identical RGB input.
+Global development-selected configuration: **RGB-lexicographic palette, raw indices, LZMA-6**. Complete BLKH stream includes 12-byte header, exact palette bytes, and compressed payload. Decode checked RGB pixel-for-pixel. An additional local full factorial round-trip test verified **420/420 exact reconstructions** (14 inputs × 30 configurations); two malformed inputs were rejected. WebP lossless method=6 and optimized PNG decoded and verified against identical RGB input.
 
 | Held-out image | BLKH bytes | WebP lossless bytes | BLKH-WebP |
 |---|---:|---:|---:|
