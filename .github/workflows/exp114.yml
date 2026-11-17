@@ -1,0 +1,20 @@
+name: BLKH Exp114 lossless validation
+on:
+  push:
+    branches: [research/exp114-reversible-transform-holdout]
+  workflow_dispatch:
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install numpy==2.1.3 pillow==12.3.0 scikit-image==0.26.0
+      - run: python research/exp114/exp114.py > exp114-results.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: exp114-results
+          path: exp114-results.json
