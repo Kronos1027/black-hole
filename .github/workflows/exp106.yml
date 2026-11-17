@@ -1,0 +1,20 @@
+name: Exp106 RGB lossless research
+on:
+  push:
+    branches: [research/exp106-reversible-rgb]
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install numpy pillow scikit-image
+      - run: cd research/exp106 && python -m unittest -v test_exp106.py
+      - run: cd research/exp106 && python bench.py > results.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: exp106-results
+          path: research/exp106/results.json
