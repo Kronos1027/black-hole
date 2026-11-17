@@ -1,0 +1,23 @@
+name: Exp110 reproducibility
+on:
+  workflow_dispatch:
+  push:
+    branches: [research/exp110-byte-layout-ablation]
+    paths:
+      - 'research/exp110/**'
+      - '.github/workflows/exp110.yml'
+jobs:
+  exp110:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install pillow scikit-image numpy
+      - run: cd research/exp110 && python -m unittest -v test_exp110.py
+      - run: cd research/exp110 && python bench.py > results.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: exp110-results
+          path: research/exp110/results.json
