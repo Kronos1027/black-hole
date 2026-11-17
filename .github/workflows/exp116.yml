@@ -14,8 +14,8 @@ jobs:
         with:
           python-version: '3.13'
       - run: python -m pip install numpy==2.3.5 Pillow==12.3.0
-      - run: python research/exp116/experiment.py > exp116-results.json
+      - run: python research/exp116/experiment.py > exp116-results.txt
       - uses: actions/upload-artifact@v4
         with:
           name: exp116-results
-          path: exp116-results.json
+          path: exp116-results.txt
