@@ -1,0 +1,21 @@
+name: Exp119 operational palette selector
+on:
+  workflow_dispatch:
+  push:
+    branches: [research/exp119-operational-predictor-selection]
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - run: python -m pip install numpy==2.3.5 Pillow==12.3.0
+      - run: python research/exp119/experiment.py > exp119-results.json
+      - run: python -c "import json; d=json.load(open('exp119-results.json')); assert d['test_samples']==15 and len(d['results'])==15; print(d['global_mode'])"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: exp119-results
+          path: exp119-results.json
