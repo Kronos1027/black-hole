@@ -1,0 +1,23 @@
+name: Exp105 lossless stripe research
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'research/exp105/**'
+      - '.github/workflows/exp105.yml'
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - run: python -m pip install numpy pillow scikit-image
+      - run: cd research/exp105 && python -m unittest -v test_exp105.py
+      - run: cd research/exp105 && python bench.py > results.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: exp105-results
+          path: research/exp105/results.json
