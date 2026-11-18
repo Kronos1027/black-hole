@@ -1,0 +1,46 @@
+name: BLKH Exp147 bounded-error rate-distortion
+
+on:
+  push:
+    branches:
+      - research/exp147-bounded-rd-20261118
+    paths:
+      - research/exp147_rd/**
+      - .github/workflows/blkh-exp147-rd.yml
+  workflow_dispatch:
+
+jobs:
+  reproduce:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Install lossless and lossy benchmark dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          python -m pip install -r research/exp147_rd/requirements.txt
+      - name: Require all three baseline codecs
+        shell: bash
+        run: |
+          set -euo pipefail
+          ffmpeg -hide_banner -encoders 2>/dev/null | grep -q libjxl
+          python - <<'PY'
+          from PIL import features
+          assert features.check('webp')
+          assert features.check('avif')
+          PY
+      - name: Run complete reproducible encode-decode and RD battery
+        run: python research/exp147_rd/experiment.py --out research/exp147_rd/outputs
+      - name: Preserve measured results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: exp147-bounded-rd-${{ github.sha }}
+          path: |
+            research/exp147_rd/outputs/results.json
+            research/exp147_rd/outputs/REPORT.md
+          if-no-files-found: warn
