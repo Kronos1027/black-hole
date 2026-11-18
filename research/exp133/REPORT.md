@@ -1,0 +1,7 @@
+# Exp133 — full-resolution channel XOR ablation (2026-11-18)
+
+Local experiment on eight scikit-image images at native source dimensions (converted to RGB), four development and four held-out by image identity. Compared identity, modular green subtraction and green XOR; interleaved vs planar; zlib-9 vs LZMA-6 (12 combinations). Each candidate was decoded and checked byte-exact against the RGB source. Development-only selection: green subtraction / planar / LZMA-6.
+
+Held-out four-image total: BLKH **2,080,524 bytes**, WebP lossless method 6 **1,908,832 bytes** (+9.0% BLKH). Negative finding; no codec advantage demonstrated. PNG also encoded losslessly. AVIF was requested in Pillow at quality=100 and lossless=True, but this does not establish equivalent lossless codec settings without independent verification. Memory measured as whole-process peak, not isolated per codec. Times recorded per BLKH encoding, not fully normalized against codecs. Dataset is a fixed sample already used in earlier research and not a genuinely unseen external photographic benchmark. No rate-distortion curve, JPEG XL, or CI reproduction. No demo or LinkedIn claim warranted.
+
+**Reproducibility blocker:** full local source and JSON exist in execution environment at /mnt/data/exp133/experiment.py and /mnt/data/exp133/results.json but cannot be uploaded via Git transport (github.com DNS resolution failure). This report is a checkpoint, not an Actions-verified experiment. Next: upload both files and add Actions, then independent full-resolution datasets and controlled RD comparison.
