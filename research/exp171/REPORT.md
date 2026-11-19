@@ -1,0 +1,7 @@
+# Exp171 — channel layout versus reversible channel decorrelation (2026-11-19)
+
+Branch isolated from Exp170. Local executed script: /mnt/data/BLKH_exp171/experiment.py; full results: /mnt/data/BLKH_exp171/results.json (not yet uploaded to GitHub).
+
+Tested 3 reversible RGB channel modes (RGB, green subtraction modulo 256, green XOR), 2 spatial predictors (left, up), 2 layouts (interleaved pixel, planar), and 2 entropy backends (zlib-9, LZMA-6): 24 configurations on 8 images = 192 roundtrip checks, each bit-exact; 192 CRC tamper checks rejected. Images: skimage astronaut, coffee, chelsea, rocket (development); hubble_deep_field, immunohistochemistry, colorwheel, brick (held out). All converted to RGB, resized 48x48. The winner was chosen only on development: gsub/up/planar/lzma, dev 16,748 bytes. Held-out test 13,204 BLKH bytes versus 11,246 WebP lossless bytes, +17.41% larger. Complete file sizes include 16-byte header, payload and 4-byte CRC. Pillow WebP lossless method=6; decoded pixels checked. Peak shared-process RSS 139,672 KiB, not per-codec; wall clock per encoding and decoding in local JSON. Python 3.13.5, Pillow 12.3.0, Linux x86_64; deterministic data, seed 0 (no RNG).
+
+Negative result: no codec advantage. No external independent photographic set, AVIF/JXL, rate-distortion comparison, or Actions reproduction. Do not claim a breakthrough or release a demo. Next: upload executed code and JSON, add Actions workflow, run external corpus and genuine lossless AVIF/JXL.
