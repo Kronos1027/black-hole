@@ -1,0 +1,7 @@
+# BLKH Exp190 — per-channel row predictor (2026-11-20)
+
+Status: **negative / not competitive**. A local reproducible experiment (script and JSON packaged separately) tested per-channel row-adaptive choice among None, Left, Up and Paeth against fixed Paeth, with optional reversible green-channel decorrelation and zlib9/LZMA3. 8 combinations × 8 images = 64 encode/decode exact RGB roundtrips (SHA-256 recorded).
+
+Development images: skimage astronaut, coffee, chelsea, rocket. Held-out: camera, coins, moon, hubble_deep_field. Each converted to RGB and resized 96×96 Lanczos. Select configuration solely on development total bytes: row/green/zlib9. Test: **39,435 bytes BLKH versus 28,156 bytes WebP lossless (Pillow method=6), +40.06%**. Full encoded file bytes measured; WebP exact RGB roundtrip verified. BLKH decode exact for every candidate. 64 test cycles total across development and held-out images. Peak process RSS 132,552 KiB shared, not isolated. Python 3.13.5, Pillow 12.3.0, Linux 6.18.57; deterministic images, no randomness used (seed label 190).
+
+Limitations: 96×96 images only; no external independent photographic datasets, AVIF/JXL lossless, matched lossy R-D curves, isolated RAM, or Actions run. Thus no competitive claim, demo or LinkedIn publication. The executable and detailed JSON are in the local Exp190 bundle; **not yet committed to this branch**. Follow-up should commit code + JSON and run Actions before treating as independently reproducible.
