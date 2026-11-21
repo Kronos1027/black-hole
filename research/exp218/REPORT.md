@@ -1,0 +1,9 @@
+# Exp218 — green-difference zlib holdout (2026-11-21)
+
+This is a **negative exploratory result**, not a compression breakthrough. Tested two reversible RGB representations, raw interleaved bytes and modulo-256 green-channel differences, each compressed with zlib level 9. Complete B218 stream header: magic (4 bytes), big-endian width and height (2 bytes each), mode (1 byte), followed by zlib. Decoder validated exact RGB reconstruction. Also tested WebP lossless (Pillow method=6) and PNG (compress_level=9) using full output file sizes.
+
+Seed 218; 128x128 RGB; development: procedural smooth gradient and flat shapes; reserved test: random RGB noise and blocky noisy texture. The development-selected green-difference candidate produced **98,316 bytes** on the two reserved images, versus **81,608 bytes WebP lossless** and **81,115 bytes PNG**. Raw-zlib candidate was 98,164 bytes on the reserved test; green transform failed to generalize. Development totals: green 49,389; raw 49,615; WebP 358; PNG 1,423 bytes. All four images decoded exactly with SHA-256 of input pixel arrays checked in local records. Note the procedural gradient and shapes heavily favor predictive image codecs.
+
+Local Python/Pillow/Numpy run completed. Script and full JSON records were produced in the execution environment, but **are not included in this commit**; this report alone cannot reproduce the run. Peak shared process RSS reported 109,324 KiB, not isolated by codec. Encode/decode elapsed times recorded locally but not independently repeated. No AVIF/JPEG XL encoders, no photographic external holdout, no lossy rate-distortion curves, no Actions validation. No publication warranted.
+
+Next: commit executable script and results, add fixed-dependency CI, independent photographic holdout with license and SHA-256 manifests, fair AVIF/JXL baselines, repeated isolated time and RSS measurements. Never claim superiority from this result.
