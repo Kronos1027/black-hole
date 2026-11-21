@@ -1,0 +1,21 @@
+name: BLKH Exp211 row-filter validation
+on:
+  push:
+    paths:
+      - 'research/exp211/**'
+      - '.github/workflows/exp211.yml'
+  workflow_dispatch:
+jobs:
+  lossless:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install numpy==2.2.6 pillow==12.3.0 scikit-image==0.26.0
+      - run: python research/exp211/exp211.py | tee exp211-output.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: exp211-output
+          path: exp211-output.txt
