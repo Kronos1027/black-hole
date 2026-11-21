@@ -1,0 +1,7 @@
+# Exp215 — prequantization before WebP lossless (2026-11-21)
+
+Exploratory negative result. Tested RGB scalar prequantization, green-channel-relative prequantization and shared luminance offset (steps 4/8/16/32) encoded in WebP lossless, against native lossy WebP quality 10..100. Eight scikit-image examples resized to 64x64; first four development, last four held out. Pillow WebP method=2. Complete size for prototype includes 16-byte hypothetical metadata overhead; decode of WebP bitstreams verified exactly against the quantized input. PSNR evaluated against original RGB. 96 prototype configurations plus 88 native WebP encodes; no full matched-RD interpolation.
+
+Development: 0/22 comparable candidate points smaller than a WebP point with equal-or-higher PSNR. Holdout: 1/26 comparable points smaller; hubble_deep_field RGB step32 574 B at 34.09 dB versus WebP 860 B at 35.43 dB. This isolated win does not establish dominance; no AVIF/JXL or independent external photo set, and no Actions reproduction. Some prototype points had no native WebP quality with equal-or-higher PSNR in measured grid, excluded from these counts. No scientific breakthrough, no demo/LinkedIn.
+
+Local executable artifact: experiment.py + results.json (not yet uploaded to GitHub). Next: upload reproducible code and data, run GitHub Actions, independently source Kodak/Tecnick, compute interpolated BD-rate with AVIF/JXL and measure peak RSS. Do not use these results for superiority claims.
