@@ -1,0 +1,5 @@
+# Exp241 — fixed predictor holdout (2026-11-22)
+
+Local executable: /mnt/data/blkh_exp241/bench.py; local raw results: /mnt/data/blkh_exp241/results.json (NOT yet committed; do not claim Actions reproducibility).
+
+Six scikit-image images resized to 128x128 RGB, first three development (astronaut, coffee, chelsea), last three reserved (rocket, hubble_deep_field, immunohistochemistry). Five predictors (none, left, up, average, Paeth) crossed with zlib9/LZMA6; 60 experimental encode/decode exact reconstruction checks and 12 PNG/WebP lossless controls. Container includes 14-byte header plus full compressed payload. Development-selected vertical+LZMA6: **81,994 bytes** on holdout, PNG **87,890**, WebP lossless **67,608**. Experimental method **21.28% larger** than WebP. Negative result; no competitive claim. Per-case wall clock timings and source hashes in local results.json. Python/Pillow versions recorded there. Limitations: no independent external corpus, AVIF/JXL, RSS measurement, RD curves or CI reproduction. Next: commit exact executed code/results before enabling workflow; add external images and equivalent-quality comparisons.
