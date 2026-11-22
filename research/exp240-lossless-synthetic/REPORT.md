@@ -1,0 +1,9 @@
+# Exp240 — lossless predictor ablation (2026-11-22)
+
+Scope: synthetic grayscale 128×128, **not external independent evidence**. The existing repo has a separate BHUH SRTM/SIREN lossy terrain research front (Exp50), which cannot be judged by this lossless experiment. This experiment tests whether simple reversible first-order predictors + zlib/LZMA generalize across texture types.
+
+Protocol: fixed seed 240; dev_smooth and dev_ridge select the best variant by aggregate serialized bytes; test_rough and test_steps are held out. Three predictors (raw, horizontal, vertical), two entropy backends (zlib9, LZMA6), 24 exact BLKH roundtrips and eight PNG/WebP lossless exact controls. Experimental container uses 14-byte actual header (magic, dimensions, mode, backend, payload length). Pillow 12.3.0, numpy 2.3.5, Python 3.13.5. First run failed exact reconstruction due to row/column wraparound; corrected boundary residuals, then reran successfully.
+
+Selected on dev: horizontal + LZMA, 10,344 bytes total. Held-out: 21,840 bytes vs WebP lossless 19,642 and PNG 20,465. BLKH is **11.19% larger** than WebP on held-out synthetic textures. Negative finding; no generalization or competitive superiority established.
+
+**Limitations:** scripts and detailed results generated locally at /mnt/data/blkh_exp240/bench.py and results.json; not yet committed to GitHub, therefore GitHub Actions reproducibility is NOT established. No independent terrain corpus, AVIF/JPEG XL, RSS memory, or rate-distortion curves. Do not use this experiment to justify demo or LinkedIn publication. Next: upload executable script and deterministic fixtures, configure Actions, run external terrain corpus, compare lossy at matched PSNR/SSIM with AVIF/JXL/WebP; avoid comparing SIREN lossy to PNG lossless as competitive evidence.
