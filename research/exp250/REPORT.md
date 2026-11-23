@@ -1,0 +1,5 @@
+# Exp250 — palette indices / transposed index stream
+
+2026-11-23. Tested four lossless variants on six 128×128 images from scikit-image, with RGB quantized beforehand to 8 levels per channel for all codecs. Development: astronaut, coffee, chelsea. Holdout: rocket, camera, coins. Variants: row-major or transposed uint16 palette indices, each compressed with LZMA or zlib. Full palette and 10-byte header included. All 24 BLKH encode/decode roundtrips passed exact array equality.
+
+Selected solely on development: transposed indices + LZMA. Holdout: 9,033 bytes vs WebP lossless 8,600 bytes (+5.03% larger) and PNG 13,149 bytes. This is a negative result; not a competitive codec breakthrough. Quantization is a preprocessing condition, NOT a claim of lossless reconstruction of original source photographs. No independent external corpus, AVIF/JXL, rate-distortion curves, isolated RSS, or Actions replication. Local executable and raw results generated as /mnt/data/blkh_exp250/bench.py and results.json; not yet uploaded. Next: upload exact script and raw results, add CI, test independent corpus and lossy RD curves. Do not announce demo/LinkedIn superiority.
