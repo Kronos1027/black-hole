@@ -1,0 +1,9 @@
+# BLKH Exp248 — row-wise predictor selection (2026-11-23)
+
+Independent local execution, **negative result**. The previous Exp247 tested spatial permutations; this run tests per-row selection among PNG-style predictors (None/Sub/Up/Average/Paeth), using absolute signed residual sum or row entropy, against fixed Sub and Paeth. Each was combined with zlib-9, LZMA-6, and Brotli-9 (12 configurations). Six bundled scikit-image photographs were resized to 128x128 RGB, first three fixed as development and last three held out. Total: 72 custom roundtrips and 12 PNG/WebP-lossless controls; all decoded exactly, SHA-256 checked in local results.
+
+Selection based exclusively on development bytes: **adaptive row entropy + LZMA**. Held-out aggregate: **82,059 bytes**, WebP lossless **70,780 bytes**, PNG **91,106 bytes**. **15.94% larger than WebP**, so no competitive advantage. Full container bytes include BL48 magic, width, height, codec ID, row filter IDs and compressed residuals. Measurements of encode/decode time and process peak RSS were recorded in local JSON, but timing excludes Python filter construction and is NOT comparable fairly to reference codec encoders.
+
+Local executable: `/mnt/data/blkh_exp248/bench.py`; local per-image JSON: `/mnt/data/blkh_exp248/results.json`. **These files are not yet in this repository**, and this experiment has **not** been reproduced in GitHub Actions. The data are scikit-image examples, not an independent external corpus. No AVIF/JPEG XL rate-distortion curves; no justified demo or professional announcement.
+
+Next: incorporate scripts and exact dependency locks into Git, add Actions workflow, use external licensed test corpus and lossless JXL/AVIF where available, then test matched-rate lossy curves. Preserve existing branches and data.
