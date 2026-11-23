@@ -1,0 +1,7 @@
+# BLKH Exp252 — reversible RGB prediction holdout (2026-11-23)
+
+Local execution: 8 skimage.data RGB images resized to 128x128 with Pillow LANCZOS. First four fixed as development, remaining four fixed as holdout. Ten candidates: RGB, green-relative, green-relative+Sub, green-relative+Paeth, green-relative+planar, each with zlib9 and LZMA6. Each encoded payload includes 10-byte header. All 80 custom encode/decode cycles passed exact pixel equality. PNG and WebP lossless reference outputs also passed exact pixel equality (16 additional cycles).
+
+Selection by sum of full-file bytes on development only: green-relative+Paeth+LZMA6. Locked holdout sums: BLKH 88,884 bytes; WebP lossless 73,876 bytes; PNG 101,272 bytes. BLKH is 20.315% larger than WebP. Negative result; not evidence of competitive compression. Runtime: Python 3.13.5, NumPy 2.3.5, Pillow 12.3.0, libwebp 1.6.0, Linux x86_64. Peak process RSS 149,444 KB (whole benchmark process, not isolated per codec). Individual timing and SHA256 results were generated locally but NOT uploaded to this branch. No Actions run, independent external corpus, AVIF/JXL, or rate-distortion curves. No public demo or LinkedIn announcement justified.
+
+Reproduction artifacts generated locally at /mnt/data/blkh_exp252/bench.py and results.json; these paths are environment-local and not reproducible from GitHub until uploaded. Preserve previous branches and scientific alert automation.
